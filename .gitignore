@@ -1,0 +1,55 @@
+/vendor/
+/node_modules/
+/dist/
+.env
+.env.local
+.env.*.local
+.env.backup
+.env.production.backup
+/public/hot
+/public/storage
+/storage/*.key
+/storage/logs/*
+/bootstrap/cache/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.iml
+*.swp
+*.swo
+*~
+.phpunit.result.cache
+.php-cs-fixer.cache
+composer.lock
+npm-debug.log
+yarn-error.log
+
+# Secretos y credenciales (CRÍTICO)
+.aws/credentials
+.ssh/
+secrets.yml
+*.pem
+*.key
+.env.production
+
+# Uploads (nunca commitear archivos de usuarios)
+storage/app/tickets/*
+!storage/app/tickets/.gitkeep
+storage/app/public/*
+!storage/app/public/.gitkeep
+
+# Cache y temporales
+/cache/*
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# Database
+*.sqlite
+*.db
+*.sqlite3
