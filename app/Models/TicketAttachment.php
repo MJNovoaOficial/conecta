@@ -9,6 +9,8 @@ class TicketAttachment extends Model
 {
     use HasFactory;
 
+    protected $table = 'adjuntos_ticket';
+
     protected $fillable = [
         'ticket_id',
         'comment_id',

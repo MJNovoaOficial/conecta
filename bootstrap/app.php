@@ -11,12 +11,18 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->web(\App\Http\Middleware\EncryptCookies::class);
-        $middleware->web(\Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class);
-        $middleware->web(\Illuminate\Session\Middleware\StartSession::class);
-        $middleware->web(\Illuminate\View\Middleware\ShareErrorsFromSession::class);
-        $middleware->web(\App\Http\Middleware\VerifyCsrfToken::class);
-        $middleware->web(\Illuminate\Session\Middleware\AuthenticateSession::class);
+        // Agregar Security Headers a todas las respuestas web
+        $middleware->web(append: [
+            \App\Http\Middleware\SecurityHeaders::class,
+            \App\Http\Middleware\DetectIpChange::class,
+        ]);
+
+        // Alias de middleware para rutas
+        $middleware->alias([
+            'auth'  => \App\Http\Middleware\Authenticate::class,
+            'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

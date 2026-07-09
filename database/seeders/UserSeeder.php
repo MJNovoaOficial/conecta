@@ -10,12 +10,15 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        // Contraseña de prueba: Conecta2024!@
+        $password = Hash::make('Conecta2024!@');
+
         // Admin
         User::firstOrCreate(
             ['email' => 'admin@dimak.local'],
             [
                 'name' => 'Administrador',
-                'password' => Hash::make('password'),
+                'password' => $password,
                 'department_id' => 1,
                 'role' => 'admin',
                 'is_active' => true,
@@ -27,7 +30,7 @@ class UserSeeder extends Seeder
             ['email' => 'soporte1@dimak.local'],
             [
                 'name' => 'Soporte IT',
-                'password' => Hash::make('password'),
+                'password' => $password,
                 'department_id' => 1,
                 'role' => 'support',
                 'is_active' => true,
@@ -38,7 +41,7 @@ class UserSeeder extends Seeder
             ['email' => 'soporte2@dimak.local'],
             [
                 'name' => 'Soporte General',
-                'password' => Hash::make('password'),
+                'password' => $password,
                 'department_id' => 2,
                 'role' => 'support',
                 'is_active' => true,
@@ -50,7 +53,7 @@ class UserSeeder extends Seeder
             ['email' => 'usuario@dimak.local'],
             [
                 'name' => 'Usuario Ejemplo',
-                'password' => Hash::make('password'),
+                'password' => $password,
                 'department_id' => 2,
                 'role' => 'user',
                 'is_active' => true,

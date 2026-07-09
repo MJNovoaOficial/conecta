@@ -9,17 +9,14 @@ use Illuminate\Support\Facades\Gate;
 
 class AuthServiceProvider extends ServiceProvider
 {
-    protected $policies = [
-        Ticket::class => TicketPolicy::class,
-    ];
-
     public function register(): void
     {
     }
 
     public function boot(): void
     {
-        $this->registerPolicies();
+        // Registrar policies manualmente
+        Gate::policy(Ticket::class, TicketPolicy::class);
 
         Gate::define('admin', function ($user) {
             return $user->isAdmin();

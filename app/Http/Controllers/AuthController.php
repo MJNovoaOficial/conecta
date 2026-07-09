@@ -13,7 +13,11 @@ class AuthController extends Controller
 {
     public function showLoginForm()
     {
-        return view('auth.login');
+        if (Auth::check()) {
+            return redirect()->route('tickets.index');
+        }
+        // La página de inicio ya muestra el formulario de login
+        return redirect()->route('home');
     }
 
     public function login(Request $request)
@@ -52,7 +56,8 @@ class AuthController extends Controller
 
     public function showRegisterForm()
     {
-        return view('auth.register');
+        $departments = \App\Models\Department::where('is_active', true)->get();
+        return view('auth.register', compact('departments'));
     }
 
     public function register(Request $request)
@@ -61,10 +66,10 @@ class AuthController extends Controller
         $this->rateLimitRegister($request);
 
         $request->validate([
-            'name' => 'required|string|max:255|regex:/^[a-zA-Z\s]*$/',
-            'email' => 'required|string|email|max:255|unique:users|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
+            'name' => 'required|string|max:255|regex:/^[\p{L}\s]+$/u',
+            'email' => 'required|string|email|max:255|unique:usuarios|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
             'password' => ['required', 'string', 'confirmed', Password::min(12)->mixedCase()->numbers()->symbols()],
-            'department_id' => 'required|integer|exists:departments,id',
+            'department_id' => 'required|integer|exists:departamentos,id',
         ]);
 
         $user = User::create([

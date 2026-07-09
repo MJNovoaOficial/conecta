@@ -36,13 +36,22 @@ class AutoCloseTicketJob implements ShouldQueue
                 'field_name' => 'status',
             ]);
 
-            // Notificar al usuario
-            $ticket->user->notify(
-                new \App\Notifications\TicketUpdatedNotification(
-                    $ticket,
-                    'Tu ticket ha sido cerrado por falta de respuesta.'
-                )
-            );
+            // Notificar al usuario registrado
+            if ($ticket->user) {
+                $ticket->user->notify(
+                    new \App\Notifications\TicketUpdatedNotification(
+                        $ticket,
+                        'Tu ticket ' . $ticket->ticket_number . ' ha sido cerrado automáticamente por falta de respuesta. Si el problema persiste, por favor abre un nuevo ticket.'
+                    )
+                );
+            }
+
+            // Notificar al invitado por correo directamente
+            if ($ticket->isGuestTicket() && $ticket->guest_email) {
+                \Illuminate\Support\Facades\Mail::to($ticket->guest_email)->send(
+                    new \App\Mail\GuestTicketAutoClosedMail($ticket)
+                );
+            }
         }
     }
 }

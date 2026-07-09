@@ -2,14 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasFactory, Notifiable;
+
+    protected $table = 'usuarios';
 
     protected $fillable = [
         'name',
@@ -65,7 +66,7 @@ class User extends Authenticatable
 
     public function assignedTickets()
     {
-        return $this->belongsToMany(Ticket::class, 'ticket_assignments', 'user_id', 'ticket_id');
+        return $this->belongsToMany(Ticket::class, 'asignaciones_ticket', 'user_id', 'ticket_id');
     }
 
     public function comments()

@@ -9,6 +9,8 @@ class TicketHistory extends Model
 {
     use HasFactory;
 
+    protected $table = 'historial_ticket';
+
     protected $fillable = [
         'ticket_id',
         'user_id',

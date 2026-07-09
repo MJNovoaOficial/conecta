@@ -9,6 +9,8 @@ class TicketComment extends Model
 {
     use HasFactory;
 
+    protected $table = 'comentarios_ticket';
+
     protected $fillable = [
         'ticket_id',
         'user_id',

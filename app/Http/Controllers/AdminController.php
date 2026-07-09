@@ -6,34 +6,39 @@ use App\Models\User;
 use App\Models\Department;
 use App\Models\Ticket;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
 
 class AdminController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('auth');
-        $this->middleware('admin');
-    }
-
     public function dashboard()
     {
-        $totalUsers = User::count();
-        $totalTickets = Ticket::count();
-        $openTickets = Ticket::where('status', 'open')->count();
+        $totalUsers      = User::count();
+        $activeUsers     = User::where('is_active', true)->count();
+        $totalTickets    = Ticket::count();
+        $openTickets     = Ticket::where('status', 'open')->count();
+        $inProgressTickets = Ticket::where('status', 'in_progress')->count();
+        $pendingTickets  = Ticket::where('status', 'pending_user')->count();
         $resolvedTickets = Ticket::where('status', 'resolved')->count();
+        $closedTickets   = Ticket::where('status', 'closed')->count();
+        $totalDepts      = \App\Models\Department::count();
 
         Log::info('Panel de admin accedido', ['user_id' => Auth::id()]);
 
-        return view('admin.dashboard', compact('totalUsers', 'totalTickets', 'openTickets', 'resolvedTickets'));
+        return view('admin.dashboard', compact(
+            'totalUsers', 'activeUsers', 'totalTickets',
+            'openTickets', 'inProgressTickets', 'pendingTickets',
+            'resolvedTickets', 'closedTickets', 'totalDepts'
+        ));
     }
 
     public function users()
     {
         $users = User::with('department')->paginate(20);
-        return view('admin.users.index', compact('users'));
+        $departments = Department::where('is_active', true)->get();
+        return view('admin.users.index', compact('users', 'departments'));
     }
 
     public function editUser(User $user)
@@ -42,18 +47,55 @@ class AdminController extends Controller
         return view('admin.users.edit', compact('user', 'departments'));
     }
 
+    public function createUser()
+    {
+        $departments = Department::where('is_active', true)->get();
+        return view('admin.users.create', compact('departments'));
+    }
+
+    public function storeUser(Request $request)
+    {
+        $request->validate([
+            'name'                  => 'required|string|max:255|regex:/^[\p{L}\s]+$/u',
+            'email'                 => 'required|email|max:255|unique:usuarios,email',
+            'department_id'         => 'required|integer|exists:departamentos,id',
+            'role'                  => 'required|in:user,support,admin',
+            'password'              => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = User::create([
+            'name'          => trim($request->name),
+            'email'         => strtolower($request->email),
+            'password'      => Hash::make($request->password),
+            'department_id' => $request->department_id,
+            'role'          => $request->role,
+            'is_active'     => true,
+        ]);
+
+        Log::info('Usuario creado por admin', [
+            'admin_id' => Auth::id(),
+            'user_id'  => $user->id,
+            'role'     => $request->role,
+        ]);
+
+        return redirect()->route('admin.users')->with('success', 'Usuario "' . $user->name . '" creado correctamente.');
+    }
+
     public function updateUser(Request $request, User $user)
     {
         $request->validate([
-            'name' => 'required|string|max:255|regex:/^[a-zA-Z\s]*$/',
-            'email' => 'required|email|max:255|unique:users,email,' . $user->id,
-            'role' => 'required|in:user,support,admin',
-            'department_id' => 'required|integer|exists:departments,id',
-            'is_active' => 'boolean',
+            'name'          => 'required|string|max:255|regex:/^[\p{L}\s]+$/u',
+            'email'         => 'required|email|max:255|unique:usuarios,email,' . $user->id,
+            'role'          => 'required|in:user,support,admin',
+            'department_id' => 'required|integer|exists:departamentos,id',
+            'is_active'     => 'nullable|boolean',
         ]);
 
-        // No permitir que un usuario se elimine a sí mismo
-        if ($user->id === Auth::id() && $request->input('is_active') === false) {
+        // El checkbox no envía nada cuando está desmarcado → boolean() retorna false por defecto
+        $isActive = $request->boolean('is_active');
+
+        // No permitir que un admin se desactive a sí mismo
+        if ($user->id === Auth::id() && !$isActive) {
             return back()->withErrors(['is_active' => 'No puedes desactivar tu propia cuenta.']);
         }
 
@@ -62,22 +104,22 @@ class AdminController extends Controller
         if ($user->role !== $request->role) {
             $changes['role'] = ['from' => $user->role, 'to' => $request->role];
         }
-        if ($user->is_active != $request->boolean('is_active')) {
-            $changes['is_active'] = ['from' => $user->is_active, 'to' => $request->boolean('is_active')];
+        if ((bool) $user->is_active !== $isActive) {
+            $changes['is_active'] = ['from' => $user->is_active, 'to' => $isActive];
         }
 
         $user->update([
-            'name' => trim($request->name),
-            'email' => strtolower($request->email),
-            'role' => $request->role,
+            'name'          => trim($request->name),
+            'email'         => strtolower($request->email),
+            'role'          => $request->role,
             'department_id' => $request->department_id,
-            'is_active' => $request->boolean('is_active', true),
+            'is_active'     => $isActive,
         ]);
 
         Log::warning('Usuario modificado por admin', [
             'admin_id' => Auth::id(),
-            'user_id' => $user->id,
-            'changes' => $changes,
+            'user_id'  => $user->id,
+            'changes'  => $changes,
         ]);
 
         return redirect()->route('admin.users')->with('success', 'Usuario actualizado correctamente.');
@@ -97,7 +139,7 @@ class AdminController extends Controller
     public function storeDepartment(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255|unique:departments|regex:/^[a-zA-Z\s]*$/',
+            'name' => 'required|string|max:255|unique:departments|regex:/^[\p{L}\s\-]+$/u',
             'description' => 'nullable|string|max:1000',
         ]);
 
