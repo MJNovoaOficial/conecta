@@ -93,7 +93,7 @@
                         @error('title')<div style="color:#e74c3c;font-size:0.76rem;margin-top:3px;">{{ $message }}</div>@enderror
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
                         <div>
                             <label class="form-label-custom">Departamento *</label>
                             <select name="department_id" class="form-control-custom @error('department_id') is-invalid @enderror" required>
@@ -105,18 +105,6 @@
                             @error('department_id')<div style="color:#e74c3c;font-size:0.76rem;margin-top:3px;">{{ $message }}</div>@enderror
                         </div>
                         <div>
-                            <label class="form-label-custom">Categoría *</label>
-                            <select name="category" class="form-control-custom @error('category') is-invalid @enderror" required>
-                                <option value="">Seleccionar...</option>
-                                <option value="hardware"  {{ old('category') == 'hardware'  ? 'selected' : '' }}>Hardware</option>
-                                <option value="software"  {{ old('category') == 'software'  ? 'selected' : '' }}>Software</option>
-                                <option value="network"   {{ old('category') == 'network'   ? 'selected' : '' }}>Red/Internet</option>
-                                <option value="account"   {{ old('category') == 'account'   ? 'selected' : '' }}>Cuenta/Acceso</option>
-                                <option value="other"     {{ old('category') == 'other'     ? 'selected' : '' }}>Otro</option>
-                            </select>
-                            @error('category')<div style="color:#e74c3c;font-size:0.76rem;margin-top:3px;">{{ $message }}</div>@enderror
-                        </div>
-                        <div>
                             <label class="form-label-custom">Prioridad *</label>
                             <select name="priority" class="form-control-custom @error('priority') is-invalid @enderror" required>
                                 <option value="low"      {{ old('priority') == 'low'      ? 'selected' : '' }}>Baja</option>
@@ -126,6 +114,31 @@
                             </select>
                             @error('priority')<div style="color:#e74c3c;font-size:0.76rem;margin-top:3px;">{{ $message }}</div>@enderror
                         </div>
+                    </div>
+
+                    {{-- Clasificación jerárquica (RNG-08) --}}
+                    <div style="margin-bottom: 16px;">
+                        <label class="form-label-custom">Categoría *</label>
+                        <select id="guestCatSelect" class="form-control-custom mb-2" onchange="loadGuestSubcats(this.value)">
+                            <option value="">Seleccionar categoría...</option>
+                            @foreach(App\Models\Categoria::where('is_active', true)->orderBy('name')->get() as $cat)
+                            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('subcategoria_id')<div style="color:#e74c3c;font-size:0.76rem;margin-top:3px;">{{ $message }}</div>@enderror
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label class="form-label-custom">Subcategoría *</label>
+                        <select id="guestSubcatSelect" name="subcategoria_id" class="form-control-custom" required
+                                onchange="loadGuestTipos(this.value)" disabled>
+                            <option value="">Primero selecciona categoría...</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label class="form-label-custom">Tipo de Incidente <small style="font-weight:400;color:#a0aec0;">(opcional)</small></label>
+                        <select id="guestTipoSelect" name="tipo_incidente_id" class="form-control-custom" disabled>
+                            <option value="">Seleccionar tipo...</option>
+                        </select>
                     </div>
 
                     <div style="margin-bottom: 16px;">
@@ -214,6 +227,54 @@ textarea.form-control-custom { resize: vertical; min-height: 90px; }
 function showFiles(input) {
     const names = Array.from(input.files).map(f => f.name).join(', ');
     document.getElementById('fileNames').textContent = names;
+}
+
+function loadGuestSubcats(catId) {
+    const sub  = document.getElementById('guestSubcatSelect');
+    const tipo = document.getElementById('guestTipoSelect');
+    tipo.innerHTML = '<option value="">Seleccionar tipo...</option>';
+    tipo.disabled  = true;
+
+    if (!catId) {
+        sub.innerHTML = '<option value="">Primero selecciona categoría...</option>';
+        sub.disabled  = true;
+        return;
+    }
+    sub.innerHTML = '<option value="">Cargando...</option>';
+    sub.disabled  = true;
+
+    fetch(`/api/categorias/${catId}/subcategorias`)
+        .then(r => r.json())
+        .then(data => {
+            sub.innerHTML = '<option value="">Seleccionar subcategoría...</option>';
+            data.forEach(s => {
+                const o = document.createElement('option');
+                o.value = s.id; o.textContent = s.name;
+                sub.appendChild(o);
+            });
+            sub.disabled = false;
+        })
+        .catch(() => { sub.innerHTML = '<option value="">Error al cargar</option>'; });
+}
+
+function loadGuestTipos(subcatId) {
+    const tipo = document.getElementById('guestTipoSelect');
+    if (!subcatId) { tipo.innerHTML = '<option value="">Seleccionar tipo...</option>'; tipo.disabled = true; return; }
+    tipo.innerHTML = '<option value="">Cargando...</option>';
+    tipo.disabled  = true;
+
+    fetch(`/api/subcategorias/${subcatId}/tipos`)
+        .then(r => r.json())
+        .then(data => {
+            tipo.innerHTML = '<option value="">Sin tipo específico</option>';
+            data.forEach(t => {
+                const o = document.createElement('option');
+                o.value = t.id; o.textContent = t.name;
+                tipo.appendChild(o);
+            });
+            tipo.disabled = (data.length === 0);
+        })
+        .catch(() => { tipo.innerHTML = '<option value="">Sin tipos</option>'; });
 }
 </script>
 @endsection

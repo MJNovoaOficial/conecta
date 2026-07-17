@@ -7,6 +7,8 @@ use App\Models\Notificacion;
 use App\Models\SlaConfig;
 use App\Models\Ticket;
 use App\Models\TicketComment;
+use App\Mail\GuestTicketCreatedMail;
+use App\Mail\GuestTicketAutoClosedMail;
 use App\Models\TicketAttachment;
 use App\Models\Department;
 use App\Models\TicketHistory;
@@ -114,16 +116,16 @@ class TicketController extends Controller
         RateLimiter::hit($throttleKey, 3600);
 
         $request->validate([
-            'title'         => 'required|string|max:255',
-            'description'   => 'required|string|max:10000',
-            'subcategoria_id' => 'nullable|exists:subcategorias,id',
+            'title'             => 'required|string|max:255',
+            'description'       => 'required|string|max:10000',
+            'subcategoria_id'   => 'required|exists:subcategorias,id', // RNG-08: clasificación obligatoria
             'tipo_incidente_id' => 'nullable|exists:tipos_incidente,id',
-            'category'      => 'nullable|string|max:100',
-            'device_type'   => 'required|string|max:100',
-            'priority'      => 'required|in:low,medium,high,critical',
-            'department_id' => 'required|integer|exists:departamentos,id',
-            'attachments'   => 'nullable|array|max:5',
-            'attachments.*' => 'file|max:5120',
+            'category'          => 'nullable|string|max:100',
+            'device_type'       => 'required|string|max:100',
+            'priority'          => 'required|in:low,medium,high,critical',
+            'department_id'     => 'required|integer|exists:departamentos,id',
+            'attachments'       => 'nullable|array|max:5',
+            'attachments.*'     => 'file|max:5120',
         ]);
 
         // Generar número de ticket único
@@ -183,36 +185,41 @@ class TicketController extends Controller
         RateLimiter::hit($throttleKey, 3600);
 
         $request->validate([
-            'guest_name' => 'required|string|max:255',
-            'guest_email' => 'required|email|max:255',
-            'guest_department' => 'required|string|max:255',
-            'title' => 'required|string|max:255',
-            'description' => 'required|string|max:10000',
-            'category' => 'required|string|max:100',
-            'device_type' => 'required|string|max:100',
-            'priority' => 'required|in:low,medium,high,critical',
-            'department_id' => 'required|integer|exists:departamentos,id',
-            'attachments' => 'nullable|array|max:5',
-            'attachments.*' => 'file|max:5120',
+            'guest_name'        => 'required|string|max:255',
+            'guest_email'       => 'required|email|max:255',
+            'guest_department'  => 'required|string|max:255',
+            'title'             => 'required|string|max:255',
+            'description'       => 'required|string|max:10000',
+            'subcategoria_id'   => 'required|exists:subcategorias,id', // RNG-08
+            'tipo_incidente_id' => 'nullable|exists:tipos_incidente,id',
+            'device_type'       => 'required|string|max:100',
+            'priority'          => 'required|in:low,medium,high,critical',
+            'department_id'     => 'required|integer|exists:departamentos,id',
+            'attachments'       => 'nullable|array|max:5',
+            'attachments.*'     => 'file|max:5120',
         ]);
 
         $ticketNumber = 'TK-' . date('YmdHis') . '-' . rand(1000, 9999);
-        $guestToken = Str::random(40);
+        $guestToken   = Str::random(40);
+        $sla          = SlaConfig::forPriority($request->priority);
 
         $ticket = Ticket::create([
-            'ticket_number' => $ticketNumber,
-            'user_id' => null,
-            'department_id' => $request->department_id,
-            'title' => $request->title,
-            'description' => $request->description,
-            'category' => $request->category,
-            'device_type' => $request->device_type,
-            'priority' => $request->priority,
-            'status' => Ticket::STATUS_OPEN,
-            'guest_name' => $request->guest_name,
-            'guest_email' => $request->guest_email,
-            'guest_department' => $request->guest_department,
-            'guest_token' => $guestToken,
+            'ticket_number'              => $ticketNumber,
+            'user_id'                    => null,
+            'department_id'              => $request->department_id,
+            'title'                      => $request->title,
+            'description'                => $request->description,
+            'subcategoria_id'            => $request->subcategoria_id,
+            'tipo_incidente_id'          => $request->tipo_incidente_id ?: null,
+            'device_type'                => $request->device_type,
+            'priority'                   => $request->priority,
+            'status'                     => Ticket::STATUS_OPEN,
+            'sla_response_deadline_at'   => now()->addHours($sla->response_hours),
+            'sla_resolution_deadline_at' => now()->addHours($sla->resolution_hours),
+            'guest_name'                 => $request->guest_name,
+            'guest_email'                => $request->guest_email,
+            'guest_department'           => $request->guest_department,
+            'guest_token'                => $guestToken,
         ]);
 
         // Procesar adjuntos
@@ -221,6 +228,14 @@ class TicketController extends Controller
         // Notificar al equipo de soporte
         $this->notifySupportTeamInApp($ticket);
         $this->notifySupportTeam($ticket);
+
+        // Email de confirmación al invitado (RF-RI-11)
+        try {
+            \Illuminate\Support\Facades\Mail::to($ticket->guest_email)
+                ->send(new GuestTicketCreatedMail($ticket));
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo enviar email de confirmación al invitado: ' . $e->getMessage());
+        }
 
         Log::info('Ticket de invitado creado: ' . $ticket->ticket_number, [
             'guest_email' => $request->guest_email,

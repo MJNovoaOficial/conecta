@@ -69,13 +69,21 @@ class AdminController extends Controller
             ->take(8)
             ->get();
 
+        // Usuarios con mayor cantidad de solicitudes (RN-24)
+        $topRequesters = User::where('role', 'user')
+            ->withCount('tickets as ticket_count')
+            ->orderByDesc('ticket_count')
+            ->take(5)
+            ->get();
+
         Log::info('Panel de admin accedido', ['user_id' => Auth::id()]);
 
         return view('admin.dashboard', compact(
             'totalUsers', 'activeUsers', 'totalTickets',
             'openTickets', 'inProgressTickets', 'pendingTickets',
             'resolvedTickets', 'closedTickets', 'totalDepts',
-            'byPriority', 'byCategory', 'byAgent', 'monthly', 'recentTickets'
+            'byPriority', 'byCategory', 'byAgent', 'monthly', 'recentTickets',
+            'topRequesters'
         ));
     }
 

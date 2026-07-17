@@ -429,6 +429,52 @@
         </div>
     </div>
 
+    {{-- Top Solicitantes (RN-24) --}}
+    <div class="dash-card" style="grid-column:span 2;">
+        <div class="dash-card-header">
+            <i class="fas fa-trophy"></i>
+            <h3>Usuarios con Mayor Cantidad de Solicitudes</h3>
+        </div>
+        <div class="dash-card-body" style="padding:16px 20px;">
+            @if($topRequesters->isEmpty())
+                <p style="color:#a0aec0;font-size:.85rem;text-align:center;padding:20px;">Sin datos aún.</p>
+            @else
+            <table style="width:100%;border-collapse:collapse;">
+                <thead>
+                    <tr style="border-bottom:2px solid #f0f2f5;">
+                        <th style="padding:6px 10px;font-size:.72rem;font-weight:700;color:#718096;text-align:left;width:30px;">#</th>
+                        <th style="padding:6px 10px;font-size:.72rem;font-weight:700;color:#718096;text-align:left;">Usuario</th>
+                        <th style="padding:6px 10px;font-size:.72rem;font-weight:700;color:#718096;text-align:left;">Departamento</th>
+                        <th style="padding:6px 10px;font-size:.72rem;font-weight:700;color:#718096;text-align:left;">Tickets</th>
+                        <th style="padding:6px 10px;width:40%;font-size:.72rem;font-weight:700;color:#718096;text-align:left;">Proporción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @php $maxCount = $topRequesters->first()->ticket_count ?: 1; @endphp
+                    @foreach($topRequesters as $i => $req)
+                    <tr style="border-bottom:1px solid #f7f9fc;">
+                        <td style="padding:8px 10px;font-size:.8rem;font-weight:700;color:#a0aec0;">{{ $i + 1 }}</td>
+                        <td style="padding:8px 10px;">
+                            <div style="font-size:.84rem;font-weight:600;color:#2d3748;">{{ $req->name }}</div>
+                            <div style="font-size:.72rem;color:#a0aec0;">{{ $req->email }}</div>
+                        </td>
+                        <td style="padding:8px 10px;font-size:.82rem;color:#718096;">{{ $req->department->name ?? '—' }}</td>
+                        <td style="padding:8px 10px;">
+                            <span style="font-size:.9rem;font-weight:700;color:#3498db;">{{ $req->ticket_count }}</span>
+                        </td>
+                        <td style="padding:8px 10px;">
+                            <div style="background:#e8ecf0;border-radius:4px;height:8px;overflow:hidden;">
+                                <div style="background:linear-gradient(90deg,#3498db,#2980b9);height:100%;border-radius:4px;width:{{ round(($req->ticket_count / $maxCount) * 100) }}%;"></div>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            @endif
+        </div>
+    </div>
+
 </div>
 
 @push('scripts')

@@ -281,11 +281,85 @@ function submitModalTicket() {
     if (!text) { document.getElementById('modalDescField').value = ''; }
     document.getElementById('modalTicketForm').submit();
 }
+
+// ── AJAX: cargar subcategorías del catálogo ──────────────────────
+function loadModalSubcats(catId) {
+    const subSel  = document.getElementById('modalSubcatSelect');
+    const tipoSel = document.getElementById('modalTipoSelect');
+
+    // Resetear tipo
+    tipoSel.innerHTML = '<option value="">Seleccionar tipo (opcional)...</option>';
+    tipoSel.disabled = true;
+
+    if (!catId) {
+        subSel.innerHTML = '<option value="">Primero selecciona categoría...</option>';
+        subSel.disabled = true;
+        return;
+    }
+
+    subSel.innerHTML = '<option value="">Cargando...</option>';
+    subSel.disabled = true;
+
+    fetch(`/api/categorias/${catId}/subcategorias`)
+        .then(r => r.json())
+        .then(data => {
+            subSel.innerHTML = '<option value="">Seleccionar subcategoría...</option>';
+            data.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.name;
+                subSel.appendChild(opt);
+            });
+            subSel.disabled = false;
+        })
+        .catch(() => {
+            subSel.innerHTML = '<option value="">Error al cargar</option>';
+        });
+}
+
+// ── AJAX: cargar tipos de incidente ──────────────────────────────
+function loadModalTipos(subcatId) {
+    const tipoSel = document.getElementById('modalTipoSelect');
+
+    if (!subcatId) {
+        tipoSel.innerHTML = '<option value="">Seleccionar tipo (opcional)...</option>';
+        tipoSel.disabled = true;
+        return;
+    }
+
+    tipoSel.innerHTML = '<option value="">Cargando...</option>';
+    tipoSel.disabled = true;
+
+    fetch(`/api/subcategorias/${subcatId}/tipos`)
+        .then(r => r.json())
+        .then(data => {
+            tipoSel.innerHTML = '<option value="">Sin tipo específico</option>';
+            data.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.id;
+                opt.textContent = t.name;
+                tipoSel.appendChild(opt);
+            });
+            tipoSel.disabled = (data.length === 0);
+        })
+        .catch(() => {
+            tipoSel.innerHTML = '<option value="">Sin tipos</option>';
+        });
+}
+
+// ── Reset modal al cerrar ────────────────────────────────────────
 document.getElementById('newTicketModal').addEventListener('hidden.bs.modal', function() {
     document.getElementById('modalTicketForm').reset();
     document.getElementById('modalEditor').innerHTML = '';
     document.getElementById('modalDescField').value = '';
     document.getElementById('modalFileNames').textContent = '';
+    // Resetear selectores de clasificación
+    const subSel  = document.getElementById('modalSubcatSelect');
+    const tipoSel = document.getElementById('modalTipoSelect');
+    subSel.innerHTML  = '<option value="">Primero selecciona categoría...</option>';
+    subSel.disabled   = true;
+    tipoSel.innerHTML = '<option value="">Seleccionar tipo (opcional)...</option>';
+    tipoSel.disabled  = true;
 });
 </script>
 @endsection
@@ -348,16 +422,26 @@ document.getElementById('newTicketModal').addEventListener('hidden.bs.modal', fu
             </div>
           </div>
 
-          {{-- Categoría --}}
+          {{-- Clasificación (RNG-08: obligatoria) --}}
           <div class="mb-3">
             <label class="form-label fw-semibold" style="font-size:0.85rem; color:#2d3748;">Categoría *</label>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              @foreach(['Hardware'=>'Hardware','Software'=>'Software','Red/Internet'=>'Red/Internet','Cuenta/Acceso'=>'Cuenta/Acceso','Otro'=>'Otro'] as $val => $label)
-              <label class="modal-cat-label" style="display:flex; align-items:center; gap:5px; padding:6px 12px; border:1.5px solid #e2e8f0; border-radius:6px; cursor:pointer; font-size:0.81rem; color:#4a5568; background:#fff;">
-                <input type="radio" name="category" value="{{ $val }}" style="accent-color:#3498db;"> {{ $label }}
-              </label>
+            <select id="modalCatSelect" class="form-select mb-2"
+                    style="border-radius:7px; border-color:#e2e8f0; font-size:0.87rem;"
+                    onchange="loadModalSubcats(this.value)">
+              <option value="">Seleccionar categoría...</option>
+              @foreach(App\Models\Categoria::where('is_active', true)->orderBy('name')->get() as $cat)
+              <option value="{{ $cat->id }}">{{ $cat->name }}</option>
               @endforeach
-            </div>
+            </select>
+            <select id="modalSubcatSelect" name="subcategoria_id" class="form-select mb-2" required
+                    style="border-radius:7px; border-color:#e2e8f0; font-size:0.87rem;"
+                    onchange="loadModalTipos(this.value)" disabled>
+              <option value="">Primero selecciona categoría...</option>
+            </select>
+            <select id="modalTipoSelect" name="tipo_incidente_id" class="form-select"
+                    style="border-radius:7px; border-color:#e2e8f0; font-size:0.87rem;" disabled>
+              <option value="">Seleccionar tipo (opcional)...</option>
+            </select>
           </div>
 
           {{-- Descripción --}}
