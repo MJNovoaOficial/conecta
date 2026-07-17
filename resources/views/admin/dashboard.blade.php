@@ -357,4 +357,117 @@
 
 </div>
 
+{{-- ── GRÁFICOS ────────────────────────────────────────────── --}}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px;max-width:1100px;margin-left:auto;margin-right:auto;padding:0 24px 48px;">
+
+    {{-- Gráfico de prioridad --}}
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <i class="fas fa-chart-pie"></i>
+            <h3>Tickets por Prioridad</h3>
+        </div>
+        <div class="dash-card-body" style="display:flex;align-items:center;justify-content:center;padding:20px;">
+            <canvas id="priorityChart" style="max-height:220px;max-width:220px;"></canvas>
+        </div>
+    </div>
+
+    {{-- Gráfico de tendencia mensual --}}
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <i class="fas fa-chart-line"></i>
+            <h3>Tendencia Mensual (últimos 6 meses)</h3>
+        </div>
+        <div class="dash-card-body" style="padding:20px;">
+            <canvas id="monthlyChart" style="max-height:220px;"></canvas>
+        </div>
+    </div>
+
+    {{-- Carga por técnico --}}
+    <div class="dash-card" style="grid-column:span 2;">
+        <div class="dash-card-header">
+            <i class="fas fa-users"></i>
+            <h3>Carga de Trabajo por Técnico</h3>
+        </div>
+        <div class="dash-card-body" style="padding:20px;">
+            <canvas id="agentChart" style="max-height:200px;"></canvas>
+        </div>
+    </div>
+
+</div>
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ── Gráfico de prioridad (Doughnut) ──
+const priData = @json($byPriority);
+const priLabels = { low: 'Baja', medium: 'Media', high: 'Alta', critical: 'Crítica' };
+const priColors = { low: '#22c55e', medium: '#3b82f6', high: '#f59e0b', critical: '#ef4444' };
+new Chart(document.getElementById('priorityChart'), {
+    type: 'doughnut',
+    data: {
+        labels: Object.keys(priData).map(k => priLabels[k] || k),
+        datasets: [{
+            data: Object.values(priData),
+            backgroundColor: Object.keys(priData).map(k => priColors[k] || '#94a3b8'),
+            borderWidth: 2,
+            borderColor: '#fff',
+        }]
+    },
+    options: {
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 12 } } },
+        cutout: '65%',
+    }
+});
+
+// ── Tendencia mensual (Line) ──
+const monthly = @json($monthly);
+new Chart(document.getElementById('monthlyChart'), {
+    type: 'line',
+    data: {
+        labels: monthly.map(m => m.month),
+        datasets: [{
+            label: 'Tickets creados',
+            data: monthly.map(m => m.total),
+            borderColor: '#3498db',
+            backgroundColor: 'rgba(52,152,219,0.12)',
+            tension: 0.35,
+            fill: true,
+            pointBackgroundColor: '#3498db',
+            pointRadius: 4,
+        }]
+    },
+    options: {
+        scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 } },
+            x: { grid: { display: false } }
+        },
+        plugins: { legend: { display: false } },
+    }
+});
+
+// ── Carga por técnico (Bar horizontal) ──
+const agents = @json($byAgent);
+new Chart(document.getElementById('agentChart'), {
+    type: 'bar',
+    data: {
+        labels: agents.map(a => a.name),
+        datasets: [{
+            label: 'Tickets activos',
+            data: agents.map(a => a.active_count),
+            backgroundColor: '#3498db',
+            borderRadius: 4,
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        scales: {
+            x: { beginAtZero: true, ticks: { stepSize: 1 } },
+            y: { grid: { display: false } }
+        },
+        plugins: { legend: { display: false } },
+    }
+});
+</script>
+@endpush
+
 @endsection

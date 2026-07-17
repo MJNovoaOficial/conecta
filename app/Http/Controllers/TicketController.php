@@ -155,6 +155,15 @@ class TicketController extends Controller
         $this->notifySupportTeamInApp($ticket);
         $this->notifySupportTeam($ticket);
 
+        // Notificación in-app de confirmación al creador (RF-RI-10)
+        Notificacion::notify(
+            Auth::id(),
+            'new_ticket',
+            'Ticket ' . $ticketNumber . ' creado exitosamente',
+            'Tu solicitud ha sido registrada y será atendida próximamente.',
+            $ticket->id
+        );
+
         AuditLog::record('ticket.created', 'Ticket', $ticket->id, ['ticket_number' => $ticketNumber]);
 
         return redirect()->route('tickets.show', $ticket)
@@ -210,6 +219,7 @@ class TicketController extends Controller
         $this->processAttachments($request, $ticket, null);
 
         // Notificar al equipo de soporte
+        $this->notifySupportTeamInApp($ticket);
         $this->notifySupportTeam($ticket);
 
         Log::info('Ticket de invitado creado: ' . $ticket->ticket_number, [
@@ -353,11 +363,22 @@ class TicketController extends Controller
 
         $updateData = ['status' => $newStatus];
 
-        // Si se solicita información al usuario, establecer deadline
+        // Si se solicita información al usuario, establecer deadline (RNG-01: 2 horas)
         if ($newStatus === Ticket::STATUS_PENDING_USER) {
             $updateData['last_response_request_at'] = Carbon::now();
-            $updateData['response_deadline_at'] = Carbon::now()->addMinutes(30);
+            $updateData['response_deadline_at'] = Carbon::now()->addHours(2); // RNG-01: 2 horas
             $updateData['user_responded_at'] = null;
+
+            // Notificar in-app al creador del ticket
+            if ($ticket->user_id && $ticket->user_id !== Auth::id()) {
+                Notificacion::notify(
+                    $ticket->user_id,
+                    'comment',
+                    'Soporte necesita tu información — ' . $ticket->ticket_number,
+                    'Tienes 2 horas para responder antes del cierre automático.',
+                    $ticket->id
+                );
+            }
         }
 
         $ticket->update($updateData);
