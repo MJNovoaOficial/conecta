@@ -352,6 +352,42 @@
                 </div>
                 <i class="fas fa-chevron-right arrow"></i>
             </a>
+            <a href="{{ route('admin.reports') }}" class="nav-link-item">
+                <div class="link-left">
+                    <div class="link-icon" style="background:#fef3c7;color:#d97706;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:600;">Reportes</div>
+                        <div style="font-size:0.75rem; color:#a0aec0;">Exportar CSV y PDF</div>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right arrow"></i>
+            </a>
+            <a href="{{ route('admin.audit') }}" class="nav-link-item">
+                <div class="link-left">
+                    <div class="link-icon" style="background:#ffe4e6;color:#be123c;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:600;">Auditoría</div>
+                        <div style="font-size:0.75rem; color:#a0aec0;">Historial de acciones</div>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right arrow"></i>
+            </a>
+            <a href="{{ route('admin.settings') }}" class="nav-link-item">
+                <div class="link-left">
+                    <div class="link-icon" style="background:#e0f2fe;color:#0369a1;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:600;">Configuración</div>
+                        <div style="font-size:0.75rem; color:#a0aec0;">General, Notificaciones, SLA, Seguridad</div>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right arrow"></i>
+            </a>
         </div>
     </div>
 

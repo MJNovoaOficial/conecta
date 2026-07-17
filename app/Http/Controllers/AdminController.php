@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Categoria;
+use App\Models\LoginAttempt;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\Department;
 use App\Models\Ticket;
@@ -207,5 +209,48 @@ class AdminController extends Controller
             ->paginate(50);
 
         return view('admin.audit.index', compact('logs'));
+    }
+
+    public function settings()
+    {
+        // Obtener configuraciones agrupadas
+        $groups = ['general', 'notifications', 'sla', 'security'];
+        $settings = [];
+        foreach ($groups as $g) {
+            $settings[$g] = SystemSetting::byGroup($g);
+        }
+
+        // Últimos 10 intentos fallidos de login
+        $recentFailedLogins = LoginAttempt::where('successful', false)
+            ->orderByDesc('attempted_at')
+            ->take(10)
+            ->get();
+
+        return view('admin.settings.index', compact('settings', 'recentFailedLogins'));
+    }
+
+    public function updateSettings(Request $request)
+    {
+        $data = $request->input('settings', []);
+
+        // Obtener todos los settings de DB para manejar los booleanos no enviados
+        $allSettings = SystemSetting::all()->keyBy('key');
+
+        foreach ($allSettings as $key => $setting) {
+            if ($setting->type === 'boolean') {
+                // Checkbox no enviado = false
+                $value = isset($data[$key]) ? '1' : '0';
+            } elseif (isset($data[$key])) {
+                $value = $data[$key];
+            } else {
+                continue;
+            }
+
+            SystemSetting::set($key, $value);
+        }
+
+        AuditLog::record('settings.updated', 'SystemSetting', null, ['keys' => array_keys($data)]);
+
+        return redirect()->route('admin.settings')->with('success', 'Configuración guardada correctamente.');
     }
 }

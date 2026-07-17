@@ -88,8 +88,13 @@ Route::middleware('auth')->group(function () {
         // Reportes
         Route::get('/reports',              [ReportController::class, 'index'])->name('admin.reports');
         Route::get('/reports/export',       [ReportController::class, 'export'])->name('admin.reports.export');
+        Route::get('/reports/export-pdf',   [ReportController::class, 'exportPdf'])->name('admin.reports.exportPdf');
 
         // Auditoría
         Route::get('/audit',                [AdminController::class, 'audit'])->name('admin.audit');
+
+        // Configuración del Sistema (RF-AD-13, RF-AD-14)
+        Route::get('/settings',             [AdminController::class, 'settings'])->name('admin.settings');
+        Route::post('/settings',            [AdminController::class, 'updateSettings'])->name('admin.settings.update');
     });
 });

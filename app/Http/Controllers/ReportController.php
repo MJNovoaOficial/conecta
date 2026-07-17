@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Categoria;
 use App\Models\Ticket;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -138,5 +139,52 @@ class ReportController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Exportar reporte como PDF usando DomPDF (RF-AD-11).
+     */
+    public function exportPdf(Request $request)
+    {
+        $query = Ticket::with(['assignedTo', 'subcategoria.categoria', 'tipoIncidente', 'user'])
+            ->orderBy('created_at', 'desc');
+
+        if ($request->filled('status'))    $query->where('status', $request->status);
+        if ($request->filled('priority'))  $query->where('priority', $request->priority);
+        if ($request->filled('agent_id'))  $query->where('assigned_to', $request->agent_id);
+        if ($request->filled('date_from')) $query->whereDate('created_at', '>=', $request->date_from);
+        if ($request->filled('date_to'))   $query->whereDate('created_at', '<=', $request->date_to);
+
+        $tickets = $query->take(500)->get(); // Límite para evitar PDFs enormes
+
+        $summary = [
+            'total'        => Ticket::count(),
+            'open'         => Ticket::where('status', 'open')->count(),
+            'in_progress'  => Ticket::where('status', 'in_progress')->count(),
+            'pending_user' => Ticket::where('status', 'pending_user')->count(),
+            'resolved'     => Ticket::where('status', 'resolved')->count(),
+            'closed'       => Ticket::where('status', 'closed')->count(),
+        ];
+
+        $resolvedWithSla = Ticket::whereNotNull('resolved_at')
+            ->whereNotNull('sla_resolution_deadline_at')
+            ->where('resolved_at', '<=', DB::raw('sla_resolution_deadline_at'))
+            ->count();
+        $totalResolved   = Ticket::whereNotNull('resolved_at')->count();
+        $slaCompliance   = $totalResolved > 0 ? round(($resolvedWithSla / $totalResolved) * 100, 1) : null;
+
+        $byAgent = User::where(function($q) {
+            $q->where('role', 'support')->orWhere('role', 'admin');
+        })->withCount([
+            'assignedTickets as total_tickets',
+            'assignedTickets as open_tickets'       => fn($q) => $q->where('status', 'open'),
+            'assignedTickets as in_progress_tickets' => fn($q) => $q->where('status', 'in_progress'),
+            'assignedTickets as resolved_tickets'   => fn($q) => $q->whereIn('status', ['resolved', 'closed']),
+        ])->orderByDesc('total_tickets')->get();
+
+        $pdf = Pdf::loadView('admin.reports.pdf', compact('tickets', 'summary', 'slaCompliance', 'byAgent'))
+                  ->setPaper('a4', 'landscape');
+
+        return $pdf->download('reporte_tickets_' . now()->format('Y-m-d') . '.pdf');
     }
 }

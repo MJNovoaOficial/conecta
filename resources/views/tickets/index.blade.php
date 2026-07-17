@@ -107,14 +107,58 @@
         </div>
 
         <div class="content-card">
-            <div class="content-card-header">
-                <span class="header-info">
-                    Mostrando {{ $tickets->firstItem() ?? 0 }} a {{ $tickets->lastItem() ?? 0 }} de {{ $tickets->total() ?? 0 }} entradas
-                </span>
-                <div class="content-card-search">
-                    <i class="fas fa-search search-icon"></i>
-                    <input type="text" id="searchInput" placeholder="Buscar ticket..." onkeyup="filterTable(this.value)">
+            {{-- Barra de filtros (RF-RI-09) --}}
+            <form method="GET" action="{{ route('tickets.index') }}" id="filterForm"
+                  style="padding:12px 18px;background:#f7f9fc;border-bottom:1px solid #e8ecf0;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+                @if(request('status'))<input type="hidden" name="status" value="{{ request('status') }}">@endif
+                <div style="flex:1;min-width:160px;">
+                    <label style="font-size:.72rem;font-weight:600;color:#718096;display:block;margin-bottom:3px;">Buscar</label>
+                    <div style="position:relative;">
+                        <i class="fas fa-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#a0aec0;font-size:.8rem;"></i>
+                        <input type="text" name="search" value="{{ request('search') }}"
+                               placeholder="N° ticket, título..."
+                               style="width:100%;padding:7px 10px 7px 30px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:.83rem;">
+                    </div>
                 </div>
+                <div style="min-width:120px;">
+                    <label style="font-size:.72rem;font-weight:600;color:#718096;display:block;margin-bottom:3px;">Prioridad</label>
+                    <select name="priority" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:.83rem;">
+                        <option value="">Todas</option>
+                        <option value="low"      {{ request('priority')=='low'      ?'selected':'' }}>⚪ Baja</option>
+                        <option value="medium"   {{ request('priority')=='medium'   ?'selected':'' }}>🔵 Media</option>
+                        <option value="high"     {{ request('priority')=='high'     ?'selected':'' }}>🟠 Alta</option>
+                        <option value="critical" {{ request('priority')=='critical' ?'selected':'' }}>🔴 Crítica</option>
+                    </select>
+                </div>
+                <div style="min-width:120px;">
+                    <label style="font-size:.72rem;font-weight:600;color:#718096;display:block;margin-bottom:3px;">Desde</label>
+                    <input type="date" name="date_from" value="{{ request('date_from') }}"
+                           style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:.83rem;">
+                </div>
+                <div style="min-width:120px;">
+                    <label style="font-size:.72rem;font-weight:600;color:#718096;display:block;margin-bottom:3px;">Hasta</label>
+                    <input type="date" name="date_to" value="{{ request('date_to') }}"
+                           style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:.83rem;">
+                </div>
+                <div style="display:flex;gap:6px;align-items:flex-end;">
+                    <button type="submit" style="padding:7px 16px;background:#3498db;color:#fff;border:none;border-radius:6px;font-size:.83rem;font-weight:600;cursor:pointer;white-space:nowrap;">
+                        <i class="fas fa-search me-1"></i> Filtrar
+                    </button>
+                    @if(request()->hasAny(['search','priority','date_from','date_to']))
+                    <a href="{{ route('tickets.index', request()->only('status')) }}" style="padding:7px 12px;background:#e2e8f0;color:#4a5568;border-radius:6px;font-size:.83rem;text-decoration:none;white-space:nowrap;">
+                        <i class="fas fa-times me-1"></i> Limpiar
+                    </a>
+                    @endif
+                </div>
+                <span style="margin-left:auto;font-size:.78rem;color:#a0aec0;align-self:center;">
+                    {{ $tickets->total() }} resultado{{ $tickets->total() != 1 ? 's' : '' }}
+                </span>
+            </form>
+
+            <div class="content-card-header" style="border-top:none;padding-top:8px;">
+                <span class="header-info">
+                    Mostrando {{ $tickets->firstItem() ?? 0 }}–{{ $tickets->lastItem() ?? 0 }} de {{ $tickets->total() ?? 0 }}
+                </span>
             </div>
 
             @if($tickets->count() > 0)

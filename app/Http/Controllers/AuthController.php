@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LoginAttempt;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -34,8 +35,9 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
-            
-            // Log de login exitoso
+
+            // Log de login exitoso (RNF-08)
+            LoginAttempt::record($request->email, $request->ip(), $request->userAgent(), true);
             Log::info('Usuario autenticado: ' . $request->email, [
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent(),
@@ -44,7 +46,8 @@ class AuthController extends Controller
             return redirect()->intended('/tickets');
         }
 
-        // Log de intento fallido (sin exponer contraseña)
+        // Registro en DB de intento fallido (RNF-08)
+        LoginAttempt::record($request->email, $request->ip(), $request->userAgent(), false);
         Log::warning('Intento de login fallido: ' . $request->email, [
             'ip' => $request->ip(),
         ]);

@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\SecurityHeaders::class,
             \App\Http\Middleware\DetectIpChange::class,
+            \App\Http\Middleware\SessionTimeout::class,
         ]);
 
         // Alias de middleware para rutas

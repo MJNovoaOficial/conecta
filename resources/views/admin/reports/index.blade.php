@@ -129,6 +129,9 @@
                         <a href="{{ route('admin.reports.export') }}?{{ http_build_query(request()->all()) }}" class="btn btn-outline" style="height:36px;font-size:.85rem;color:var(--accent);">
                             <i class="bi bi-download"></i> CSV
                         </a>
+                        <a href="{{ route('admin.reports.exportPdf') }}?{{ http_build_query(request()->all()) }}" class="btn btn-outline" style="height:36px;font-size:.85rem;color:#e53e3e;">
+                            <i class="fas fa-file-pdf me-1"></i> PDF
+                        </a>
                     </div>
                 </form>
             </div>
