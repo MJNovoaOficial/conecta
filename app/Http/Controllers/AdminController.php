@@ -2,35 +2,78 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
+use App\Models\Categoria;
 use App\Models\User;
 use App\Models\Department;
 use App\Models\Ticket;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rules\Password;
 
 class AdminController extends Controller
 {
     public function dashboard()
     {
-        $totalUsers      = User::count();
-        $activeUsers     = User::where('is_active', true)->count();
-        $totalTickets    = Ticket::count();
-        $openTickets     = Ticket::where('status', 'open')->count();
+        $totalUsers        = User::count();
+        $activeUsers       = User::where('is_active', true)->count();
+        $totalTickets      = Ticket::count();
+        $openTickets       = Ticket::where('status', 'open')->count();
         $inProgressTickets = Ticket::where('status', 'in_progress')->count();
-        $pendingTickets  = Ticket::where('status', 'pending_user')->count();
-        $resolvedTickets = Ticket::where('status', 'resolved')->count();
-        $closedTickets   = Ticket::where('status', 'closed')->count();
-        $totalDepts      = \App\Models\Department::count();
+        $pendingTickets    = Ticket::where('status', 'pending_user')->count();
+        $resolvedTickets   = Ticket::where('status', 'resolved')->count();
+        $closedTickets     = Ticket::where('status', 'closed')->count();
+        $totalDepts        = Department::count();
+
+        // Tickets por prioridad
+        $byPriority = Ticket::select('priority', DB::raw('count(*) as total'))
+            ->whereNotIn('status', ['closed'])
+            ->groupBy('priority')
+            ->pluck('total', 'priority');
+
+        // Tickets por categoría (top 5)
+        $byCategory = Ticket::select('category', DB::raw('count(*) as total'))
+            ->whereNotNull('category')
+            ->groupBy('category')
+            ->orderByDesc('total')
+            ->take(5)
+            ->pluck('total', 'category');
+
+        // Tickets por técnico (activos)
+        $byAgent = User::where(function($q) {
+                $q->where('role', 'support')->orWhere('role', 'admin');
+            })
+            ->withCount(['assignedTickets as active_count' => fn($q) =>
+                $q->whereIn('status', ['open','in_progress','pending_user'])
+            ])
+            ->orderByDesc('active_count')
+            ->get();
+
+        // Tendencia mensual (últimos 6 meses)
+        $monthly = Ticket::select(
+                DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
+                DB::raw('count(*) as total')
+            )
+            ->where('created_at', '>=', now()->subMonths(6))
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get();
+
+        // Tickets recientes
+        $recentTickets = Ticket::with(['user','assignedTo'])
+            ->orderByDesc('created_at')
+            ->take(8)
+            ->get();
 
         Log::info('Panel de admin accedido', ['user_id' => Auth::id()]);
 
         return view('admin.dashboard', compact(
             'totalUsers', 'activeUsers', 'totalTickets',
             'openTickets', 'inProgressTickets', 'pendingTickets',
-            'resolvedTickets', 'closedTickets', 'totalDepts'
+            'resolvedTickets', 'closedTickets', 'totalDepts',
+            'byPriority', 'byCategory', 'byAgent', 'monthly', 'recentTickets'
         ));
     }
 
@@ -155,5 +198,14 @@ class AdminController extends Controller
         ]);
 
         return redirect()->route('admin.departments')->with('success', 'Departamento creado exitosamente.');
+    }
+
+    public function audit()
+    {
+        $logs = AuditLog::with('user')
+            ->orderByDesc('created_at')
+            ->paginate(50);
+
+        return view('admin.audit.index', compact('logs'));
     }
 }

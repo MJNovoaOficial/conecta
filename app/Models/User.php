@@ -66,12 +66,22 @@ class User extends Authenticatable
 
     public function assignedTickets()
     {
-        return $this->belongsToMany(Ticket::class, 'asignaciones_ticket', 'user_id', 'ticket_id');
+        return $this->hasMany(Ticket::class, 'assigned_to');
     }
 
     public function comments()
     {
         return $this->hasMany(TicketComment::class);
+    }
+
+    public function notificaciones()
+    {
+        return $this->hasMany(Notificacion::class);
+    }
+
+    public function unreadNotificationsCount(): int
+    {
+        return $this->notificaciones()->whereNull('read_at')->count();
     }
 
     // Métodos de roles

@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
+use App\Models\Notificacion;
+use App\Models\SlaConfig;
 use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Models\TicketAttachment;
@@ -42,19 +45,25 @@ class TicketController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $statusFilter = request('status');
 
         if ($user->isSupport() || $user->isAdmin()) {
-            $query = Ticket::with(['user', 'assignedTo', 'department']);
+            $query = Ticket::with(['user', 'assignedTo', 'department', 'subcategoria.categoria']);
             $countQuery = Ticket::query();
         } else {
-            $query = Ticket::where('user_id', $user->id)->with(['user', 'assignedTo', 'department']);
+            $query = Ticket::where('user_id', $user->id)->with(['user', 'assignedTo', 'department', 'subcategoria.categoria']);
             $countQuery = Ticket::where('user_id', $user->id);
         }
 
-        if ($statusFilter) {
-            $query->where('status', $statusFilter);
+        // Filtros
+        if (request('status'))     $query->where('status', request('status'));
+        if (request('priority'))   $query->where('priority', request('priority'));
+        if (request('agent_id'))   $query->where('assigned_to', request('agent_id'));
+        if (request('search')) {
+            $s = request('search');
+            $query->where(fn($q) => $q->where('ticket_number','like',"%{$s}%")->orWhere('title','like',"%{$s}%"));
         }
+        if (request('date_from'))  $query->whereDate('created_at','>=',request('date_from'));
+        if (request('date_to'))    $query->whereDate('created_at','<=',request('date_to'));
 
         $tickets = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
 
@@ -68,9 +77,12 @@ class TicketController extends Controller
             'closed'       => (clone $countQuery)->where('status', Ticket::STATUS_CLOSED)->count(),
         ];
 
-        $departments = Department::where('is_active', true)->get();
+        $departments  = Department::where('is_active', true)->get();
+        $supportUsers = ($user->isSupport() || $user->isAdmin())
+            ? User::whereIn('role',['support','admin'])->where('is_active',true)->orderBy('name')->get()
+            : collect();
 
-        return view('tickets.index', compact('tickets', 'counts', 'departments'));
+        return view('tickets.index', compact('tickets', 'counts', 'departments', 'supportUsers'));
     }
 
     public function create()
@@ -102,41 +114,48 @@ class TicketController extends Controller
         RateLimiter::hit($throttleKey, 3600);
 
         $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'required|string|max:10000',
-            'category' => 'required|string|max:100',
-            'device_type' => 'required|string|max:100',
-            'priority' => 'required|in:low,medium,high,critical',
+            'title'         => 'required|string|max:255',
+            'description'   => 'required|string|max:10000',
+            'subcategoria_id' => 'nullable|exists:subcategorias,id',
+            'tipo_incidente_id' => 'nullable|exists:tipos_incidente,id',
+            'category'      => 'nullable|string|max:100',
+            'device_type'   => 'required|string|max:100',
+            'priority'      => 'required|in:low,medium,high,critical',
             'department_id' => 'required|integer|exists:departamentos,id',
-            'attachments' => 'nullable|array|max:5',
+            'attachments'   => 'nullable|array|max:5',
             'attachments.*' => 'file|max:5120',
         ]);
 
         // Generar número de ticket único
         $ticketNumber = 'TK-' . date('YmdHis') . '-' . rand(1000, 9999);
 
+        // Calcular SLA deadline según prioridad
+        $sla = SlaConfig::forPriority($request->priority);
+
         $ticket = Ticket::create([
-            'ticket_number' => $ticketNumber,
-            'user_id' => Auth::id(),
-            'department_id' => $request->department_id,
-            'title' => $request->title,
-            'description' => $request->description,
-            'category' => $request->category,
-            'device_type' => $request->device_type,
-            'priority' => $request->priority,
-            'status' => Ticket::STATUS_OPEN,
+            'ticket_number'        => $ticketNumber,
+            'user_id'              => Auth::id(),
+            'department_id'        => $request->department_id,
+            'title'                => $request->title,
+            'description'          => $request->description,
+            'category'             => $request->category,
+            'subcategoria_id'      => $request->subcategoria_id ?: null,
+            'tipo_incidente_id'    => $request->tipo_incidente_id ?: null,
+            'device_type'          => $request->device_type,
+            'priority'             => $request->priority,
+            'status'               => Ticket::STATUS_OPEN,
+            'sla_response_deadline_at'   => now()->addHours($sla->response_hours),
+            'sla_resolution_deadline_at' => now()->addHours($sla->resolution_hours),
         ]);
 
         // Procesar adjuntos con validación estricta
         $this->processAttachments($request, $ticket);
 
-        // Notificar al equipo de soporte
+        // Notificar al equipo de soporte (in-app)
+        $this->notifySupportTeamInApp($ticket);
         $this->notifySupportTeam($ticket);
 
-        Log::info('Ticket creado: ' . $ticket->ticket_number, [
-            'user_id' => Auth::id(),
-            'department_id' => $request->department_id,
-        ]);
+        AuditLog::record('ticket.created', 'Ticket', $ticket->id, ['ticket_number' => $ticketNumber]);
 
         return redirect()->route('tickets.show', $ticket)
             ->with('success', 'Ticket creado exitosamente: ' . $ticketNumber);
@@ -205,10 +224,12 @@ class TicketController extends Controller
     public function show(Ticket $ticket)
     {
         $this->authorize('view', $ticket);
-        
-        $ticket->load(['user', 'assignedTo', 'department', 'comments.user', 'comments.attachments', 'attachments', 'history.user']);
-        
-        $departments = Department::where('is_active', true)->get();
+
+        $ticket->load(['user', 'assignedTo', 'department',
+            'subcategoria.categoria', 'tipoIncidente',
+            'comments.user', 'comments.attachments', 'attachments', 'history.user']);
+
+        $departments  = Department::where('is_active', true)->get();
         $supportUsers = User::whereIn('role', ['support', 'admin'])->where('is_active', true)->get();
 
         return view('tickets.show', compact('ticket', 'departments', 'supportUsers'));
@@ -284,21 +305,37 @@ class TicketController extends Controller
 
             TicketHistory::create([
                 'ticket_id' => $ticket->id,
-                'user_id' => Auth::id(),
-                'action' => 'user_responded',
+                'user_id'   => Auth::id(),
+                'action'    => 'user_responded',
                 'old_value' => Ticket::STATUS_PENDING_USER,
                 'new_value' => Ticket::STATUS_IN_PROGRESS,
-                'field_name' => 'status',
+                'field_name'=> 'status',
             ]);
         }
 
-        // Notificar a los involucrados
-        $this->notifyTicketUpdate($ticket, 'Se agregó un nuevo comentario al ticket.');
+        // Notificar in-app al asignado si el comentario lo hace el usuario
+        if ($ticket->assigned_to && $ticket->assigned_to !== Auth::id() && !$request->boolean('is_internal')) {
+            Notificacion::notify(
+                $ticket->assigned_to,
+                'comment',
+                'Nuevo comentario en ' . $ticket->ticket_number,
+                Auth::user()->name . ' agregó un comentario.',
+                $ticket->id
+            );
+        }
+        // Notificar in-app al creador si el comentario lo hace soporte
+        if ($ticket->user_id && $ticket->user_id !== Auth::id() && !$request->boolean('is_internal')) {
+            Notificacion::notify(
+                $ticket->user_id,
+                'comment',
+                'Respuesta en tu ticket ' . $ticket->ticket_number,
+                Auth::user()->name . ' respondió tu ticket.',
+                $ticket->id
+            );
+        }
 
-        Log::info('Comentario agregado a ticket: ' . $ticket->ticket_number, [
-            'user_id' => Auth::id(),
-            'is_internal' => $request->boolean('is_internal'),
-        ]);
+        // Notificar a los involucrados por email
+        $this->notifyTicketUpdate($ticket, 'Se agregó un nuevo comentario al ticket.');
 
         return back()->with('success', 'Comentario agregado.');
     }
@@ -358,23 +395,28 @@ class TicketController extends Controller
         $oldAssigned = $ticket->assigned_to;
         $ticket->update(['assigned_to' => $request->user_id]);
 
-        // Registrar en historial
         TicketHistory::create([
-            'ticket_id' => $ticket->id,
-            'user_id' => Auth::id(),
-            'action' => 'assigned',
-            'old_value' => $oldAssigned,
-            'new_value' => $request->user_id,
+            'ticket_id'  => $ticket->id,
+            'user_id'    => Auth::id(),
+            'action'     => 'assigned',
+            'old_value'  => $oldAssigned,
+            'new_value'  => $request->user_id,
             'field_name' => 'assigned_to',
         ]);
 
-        // Notificar al usuario asignado
         $assignedUser = User::find($request->user_id);
         if ($assignedUser) {
-            $assignedUser->notify(new TicketUpdatedNotification($ticket, 'Se te ha asignado el ticket ' . $ticket->ticket_number));
+            // Notificación in-app
+            Notificacion::notify(
+                $assignedUser->id,
+                'assigned',
+                'Ticket asignado: ' . $ticket->ticket_number,
+                'Se te asignó el ticket: ' . $ticket->title,
+                $ticket->id
+            );
+            try { $assignedUser->notify(new TicketUpdatedNotification($ticket, 'Se te ha asignado el ticket ' . $ticket->ticket_number)); } catch(\Throwable $e) {}
         }
 
-        // Notificar al creador del ticket
         $this->notifyTicketUpdate($ticket, 'Tu ticket ha sido asignado a ' . ($assignedUser->name ?? 'un agente de soporte') . '.');
 
         return back()->with('success', 'Ticket asignado a ' . ($assignedUser->name ?? 'soporte') . '.');
@@ -405,25 +447,34 @@ class TicketController extends Controller
             $ticket->update(['status' => Ticket::STATUS_IN_PROGRESS]);
 
             TicketHistory::create([
-                'ticket_id' => $ticket->id,
-                'user_id'   => $user->id,
-                'action'    => 'status_change',
-                'old_value' => Ticket::STATUS_OPEN,
-                'new_value' => Ticket::STATUS_IN_PROGRESS,
-                'field_name'=> 'status',
+                'ticket_id'  => $ticket->id,
+                'user_id'    => $user->id,
+                'action'     => 'status_change',
+                'old_value'  => Ticket::STATUS_OPEN,
+                'new_value'  => Ticket::STATUS_IN_PROGRESS,
+                'field_name' => 'status',
             ]);
         }
 
         TicketHistory::create([
-            'ticket_id' => $ticket->id,
-            'user_id'   => $user->id,
-            'action'    => 'self_assigned',
-            'old_value' => $oldAssigned,
-            'new_value' => $user->id,
-            'field_name'=> 'assigned_to',
+            'ticket_id'  => $ticket->id,
+            'user_id'    => $user->id,
+            'action'     => 'self_assigned',
+            'old_value'  => $oldAssigned,
+            'new_value'  => $user->id,
+            'field_name' => 'assigned_to',
         ]);
 
-        // Notificar al creador
+        // Notificar in-app al creador del ticket
+        if ($ticket->user_id && $ticket->user_id !== $user->id) {
+            Notificacion::notify(
+                $ticket->user_id,
+                'assigned',
+                'Tu ticket fue tomado: ' . $ticket->ticket_number,
+                $user->name . ' tomó tu ticket.',
+                $ticket->id
+            );
+        }
         $this->notifyTicketUpdate($ticket, 'Tu ticket ha sido tomado por ' . $user->name . '.');
 
         return back()->with('success', 'Te has asignado este ticket.');
@@ -452,63 +503,192 @@ class TicketController extends Controller
 
         $ticket->update([
             'department_id' => $newDept,
-            'status' => Ticket::STATUS_FORWARDED,
-            'assigned_to' => null, // Resetear asignación al derivar
+            'status'        => Ticket::STATUS_FORWARDED,
+            'assigned_to'   => null,
         ]);
 
         TicketHistory::create([
-            'ticket_id' => $ticket->id,
-            'user_id' => Auth::id(),
-            'action' => 'forwarded',
-            'old_value' => $oldDeptName,
-            'new_value' => $newDeptName,
+            'ticket_id'  => $ticket->id,
+            'user_id'    => Auth::id(),
+            'action'     => 'forwarded',
+            'old_value'  => $oldDeptName,
+            'new_value'  => $newDeptName,
             'field_name' => 'department_id',
         ]);
 
         if ($request->comment) {
             TicketComment::create([
-                'ticket_id' => $ticket->id,
-                'user_id' => Auth::id(),
-                'comment' => 'Ticket derivado a ' . $newDeptName . ': ' . $request->comment,
-                'ticket_status_at_comment' => Ticket::STATUS_FORWARDED,
-                'is_internal' => true,
+                'ticket_id'               => $ticket->id,
+                'user_id'                 => Auth::id(),
+                'comment'                 => 'Ticket derivado a ' . $newDeptName . ': ' . $request->comment,
+                'ticket_status_at_comment'=> Ticket::STATUS_FORWARDED,
+                'is_internal'             => true,
             ]);
         }
 
-        // Notificar al nuevo equipo de soporte
+        // Notificar in-app al nuevo equipo
         $newSupportTeam = User::where('role', 'support')
             ->where('department_id', $newDept)
-            ->where('is_active', true)
-            ->get();
+            ->where('is_active', true)->get();
 
         foreach ($newSupportTeam as $support) {
-            $support->notify(new TicketUpdatedNotification($ticket, 'Se ha derivado un ticket a tu departamento: ' . $ticket->ticket_number));
+            Notificacion::notify(
+                $support->id,
+                'forwarded',
+                'Ticket derivado a tu departamento',
+                'Ticket ' . $ticket->ticket_number . ' derivado a ' . $newDeptName,
+                $ticket->id
+            );
+            try { $support->notify(new TicketUpdatedNotification($ticket, 'Se ha derivado un ticket a tu departamento: ' . $ticket->ticket_number)); } catch(\Throwable $e) {}
         }
 
-        // Notificar al creador
         $this->notifyTicketUpdate($ticket, 'Tu ticket ha sido derivado al departamento ' . $newDeptName . '.');
-
-        Log::info('Ticket derivado: ' . $ticket->ticket_number, [
-            'user_id' => Auth::id(),
-            'from_department' => $oldDeptName,
-            'to_department' => $newDeptName,
-        ]);
 
         return back()->with('success', 'Ticket derivado a ' . $newDeptName . '.');
     }
 
     /**
-     * Notificar a todo el equipo de soporte sobre un nuevo ticket
+     * Actualizar prioridad del ticket (RF-ST-07)
+     */
+    public function updatePriority(Request $request, Ticket $ticket)
+    {
+        $this->authorize('update', $ticket);
+
+        $user = Auth::user();
+        if (!$user->isAdmin() && $ticket->assigned_to !== $user->id) {
+            return back()->with('error', 'No tienes permiso para cambiar la prioridad.');
+        }
+
+        $request->validate(['priority' => 'required|in:low,medium,high,critical']);
+
+        $oldPriority = $ticket->priority;
+        $ticket->update(['priority' => $request->priority]);
+
+        TicketHistory::create([
+            'ticket_id'  => $ticket->id,
+            'user_id'    => Auth::id(),
+            'action'     => 'priority_change',
+            'old_value'  => $oldPriority,
+            'new_value'  => $request->priority,
+            'field_name' => 'priority',
+        ]);
+
+        AuditLog::record('ticket.priority_changed', 'Ticket', $ticket->id, [
+            'from' => $oldPriority, 'to' => $request->priority,
+        ]);
+
+        return back()->with('success', 'Prioridad actualizada a ' . $ticket->getPriorityLabel() . '.');
+    }
+
+    /**
+     * Actualizar clasificación del ticket (RF-ST-06)
+     */
+    public function updateClassification(Request $request, Ticket $ticket)
+    {
+        $this->authorize('update', $ticket);
+
+        $user = Auth::user();
+        if (!$user->isAdmin() && $ticket->assigned_to !== $user->id) {
+            return back()->with('error', 'No tienes permiso para cambiar la clasificación.');
+        }
+
+        $request->validate([
+            'subcategoria_id'   => 'nullable|exists:subcategorias,id',
+            'tipo_incidente_id' => 'nullable|exists:tipos_incidente,id',
+        ]);
+
+        $ticket->update([
+            'subcategoria_id'   => $request->subcategoria_id ?: null,
+            'tipo_incidente_id' => $request->tipo_incidente_id ?: null,
+        ]);
+
+        TicketHistory::create([
+            'ticket_id'  => $ticket->id,
+            'user_id'    => Auth::id(),
+            'action'     => 'classification_changed',
+            'old_value'  => null,
+            'new_value'  => $ticket->getClassificationLabel(),
+            'field_name' => 'classification',
+        ]);
+
+        return back()->with('success', 'Clasificación actualizada.');
+    }
+
+    /**
+     * Cierre formal del ticket con solución (RF-ST-14, RF-ST-10)
+     */
+    public function close(Request $request, Ticket $ticket)
+    {
+        $this->authorize('update', $ticket);
+
+        $user = Auth::user();
+        if (!$user->isAdmin() && $ticket->assigned_to !== $user->id) {
+            return back()->with('error', 'Solo el agente asignado o el administrador puede cerrar este ticket.');
+        }
+
+        $request->validate([
+            'solution_text' => 'required|string|min:10|max:5000',
+        ]);
+
+        $wasResolved = in_array($ticket->status, [Ticket::STATUS_RESOLVED]);
+
+        $ticket->update([
+            'status'        => Ticket::STATUS_CLOSED,
+            'solution_text' => $request->solution_text,
+            'closed_at'     => now(),
+            'resolved_at'   => $wasResolved ? $ticket->resolved_at : now(),
+        ]);
+
+        TicketHistory::create([
+            'ticket_id'  => $ticket->id,
+            'user_id'    => Auth::id(),
+            'action'     => 'closed',
+            'old_value'  => $ticket->getOriginal('status'),
+            'new_value'  => Ticket::STATUS_CLOSED,
+            'field_name' => 'status',
+        ]);
+
+        // Notificar al creador
+        if ($ticket->user_id && $ticket->user_id !== Auth::id()) {
+            Notificacion::notify(
+                $ticket->user_id,
+                'closed',
+                'Tu ticket fue cerrado: ' . $ticket->ticket_number,
+                'El soporte cerró tu ticket con la solución registrada.',
+                $ticket->id
+            );
+        }
+
+        AuditLog::record('ticket.closed', 'Ticket', $ticket->id, ['solution' => substr($request->solution_text, 0, 100)]);
+
+        return back()->with('success', 'Ticket cerrado correctamente.');
+    }
+
+    /**
+     * Notificar in-app a todo el equipo de soporte sobre un nuevo ticket
+     */
+    private function notifySupportTeamInApp(Ticket $ticket)
+    {
+        $supportTeam = User::whereIn('role', ['support', 'admin'])->where('is_active', true)->get();
+        foreach ($supportTeam as $support) {
+            Notificacion::notify(
+                $support->id,
+                'new_ticket',
+                'Nuevo ticket: ' . $ticket->ticket_number,
+                $ticket->title,
+                $ticket->id
+            );
+        }
+    }
+
+    /**
+     * Notificar a todo el equipo de soporte sobre un nuevo ticket (email)
      */
     private function notifySupportTeam(Ticket $ticket)
     {
-        // Notificar a todos los agentes de soporte y admins activos (sin filtro de departamento)
-        $supportTeam = User::whereIn('role', ['support', 'admin'])
-            ->where('is_active', true)
-            ->get();
-
+        $supportTeam = User::whereIn('role', ['support', 'admin'])->where('is_active', true)->get();
         foreach ($supportTeam as $support) {
-            $support->notify(new NewTicketNotification($ticket));
+            try { $support->notify(new NewTicketNotification($ticket)); } catch(\Throwable $e) {}
         }
     }
 

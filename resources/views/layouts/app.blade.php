@@ -576,6 +576,33 @@
             <span class="nav-user-sep"></span>
             <span class="nav-user-role">{{ Auth::user()->role === 'admin' ? 'Administrador' : (Auth::user()->role === 'support' ? 'Soporte' : 'Usuario') }}</span>
         </div>
+
+        {{-- Campana de notificaciones --}}
+        <div class="notif-bell-wrap" id="notifWrap" style="position:relative;">
+            <button id="notifBtn" onclick="toggleNotifPanel()" style="background:none;border:none;cursor:pointer;padding:6px;position:relative;color:#cbd5e0;" title="Notificaciones">
+                <i class="fas fa-bell" style="font-size:1.1rem;"></i>
+                <span id="notifBadge" style="display:none;position:absolute;top:2px;right:2px;background:#ef4444;color:#fff;border-radius:99px;font-size:.6rem;font-weight:700;min-width:14px;height:14px;line-height:14px;text-align:center;padding:0 2px;"></span>
+            </button>
+            <div id="notifPanel" style="display:none;position:absolute;right:0;top:calc(100% + 6px);width:320px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.15);z-index:2000;overflow:hidden;">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;border-bottom:1px solid #f0f2f5;">
+                    <span style="font-size:.85rem;font-weight:700;color:#1a2332;">Notificaciones</span>
+                    <form method="POST" action="{{ route('notifications.readAll') }}" style="margin:0;">
+                        @csrf
+                        <button type="submit" style="background:none;border:none;cursor:pointer;font-size:.75rem;color:#3498db;padding:0;">Marcar todas leídas</button>
+                    </form>
+                </div>
+                <div id="notifList" style="max-height:340px;overflow-y:auto;">
+                    <div style="text-align:center;padding:1.5rem;color:#a0aec0;font-size:.83rem;">
+                        <i class="fas fa-bell-slash" style="font-size:1.5rem;display:block;margin-bottom:.5rem;"></i>
+                        Cargando notificaciones…
+                    </div>
+                </div>
+                <div style="padding:.5rem 1rem;border-top:1px solid #f0f2f5;text-align:center;">
+                    <a href="{{ route('notifications.index') }}" style="font-size:.8rem;color:#3498db;text-decoration:none;">Ver todas las notificaciones</a>
+                </div>
+            </div>
+        </div>
+
         <form method="POST" action="{{ route('logout') }}" style="margin:0;">
             @csrf
             <button type="submit"><i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión</button>
@@ -621,6 +648,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 @yield('scripts')
+@stack('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.auto-toast').forEach(function (el) {
@@ -638,6 +666,74 @@ document.addEventListener('DOMContentLoaded', function () {
         }, timeout);
     });
 });
+
+// ── NOTIFICACIONES IN-APP ─────────────────────────────────
+@auth
+(function() {
+    var panelOpen = false;
+
+    function updateBadge() {
+        fetch('{{ route("notifications.count") }}', {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+            .then(r => r.json())
+            .then(data => {
+                var badge = document.getElementById('notifBadge');
+                if (!badge) return;
+                if (data.count > 0) {
+                    badge.textContent = data.count > 99 ? '99+' : data.count;
+                    badge.style.display = 'block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }).catch(() => {});
+    }
+
+    function loadNotifications() {
+        var list = document.getElementById('notifList');
+        if (!list) return;
+        fetch('{{ route("notifications.recent") }}', {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+            .then(r => r.json())
+            .then(data => {
+                if (!data.items || data.items.length === 0) {
+                    list.innerHTML = '<div style="text-align:center;padding:1.5rem;color:#a0aec0;font-size:.83rem;"><i class="fas fa-check-circle" style="font-size:1.5rem;display:block;margin-bottom:.5rem;color:#68d391;"></i>Sin notificaciones pendientes</div>';
+                    return;
+                }
+                var icons = {new_ticket:'🎫', assigned:'👤', comment:'💬', forwarded:'↗️', closed:'🔒', default:'🔔'};
+                list.innerHTML = data.items.map(n => `
+                    <a href="${n.url}" style="display:block;padding:.65rem 1rem;border-bottom:1px solid #f0f2f5;text-decoration:none;background:${n.read?'#fff':'#f0f7ff'};transition:background .15s;" onmouseover="this.style.background='#f7faff'" onmouseout="this.style.background='${n.read?'#fff':'#f0f7ff'}'">
+                        <div style="display:flex;align-items:flex-start;gap:.5rem;">
+                            <span style="font-size:1rem;margin-top:1px;">${icons[n.type] || icons.default}</span>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:.82rem;font-weight:${n.read?500:700};color:#1a2332;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.title}</div>
+                                <div style="font-size:.76rem;color:#718096;margin-top:1px;">${n.body || ''}</div>
+                                <div style="font-size:.72rem;color:#a0aec0;margin-top:2px;">${n.time}</div>
+                            </div>
+                            ${!n.read ? '<span style="width:7px;height:7px;background:#3498db;border-radius:50%;flex-shrink:0;margin-top:5px;"></span>' : ''}
+                        </div>
+                    </a>`).join('');
+            }).catch(() => {});
+    }
+
+    window.toggleNotifPanel = function() {
+        var panel = document.getElementById('notifPanel');
+        if (!panel) return;
+        panelOpen = !panelOpen;
+        panel.style.display = panelOpen ? 'block' : 'none';
+        if (panelOpen) loadNotifications();
+    };
+
+    document.addEventListener('click', function(e) {
+        var wrap = document.getElementById('notifWrap');
+        if (wrap && !wrap.contains(e.target) && panelOpen) {
+            document.getElementById('notifPanel').style.display = 'none';
+            panelOpen = false;
+        }
+    });
+
+    // Actualizar badge cada 60 segundos
+    updateBadge();
+    setInterval(updateBadge, 60000);
+})();
+@endauth
 </script>
 </body>
 </html>

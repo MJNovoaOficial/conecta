@@ -18,14 +18,21 @@ class Ticket extends Model
         'description',
         'status',
         'category',
+        'subcategoria_id',
+        'tipo_incidente_id',
         'device_type',
         'priority',
         'assigned_to',
+        'solution_text',
         'created_at',
         'updated_at',
         'last_response_request_at',
         'response_deadline_at',
+        'sla_response_deadline_at',
+        'sla_resolution_deadline_at',
         'user_responded_at',
+        'closed_at',
+        'resolved_at',
         'guest_name',
         'guest_email',
         'guest_department',
@@ -33,11 +40,15 @@ class Ticket extends Model
     ];
 
     protected $casts = [
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'last_response_request_at' => 'datetime',
-        'response_deadline_at' => 'datetime',
-        'user_responded_at' => 'datetime',
+        'created_at'                  => 'datetime',
+        'updated_at'                  => 'datetime',
+        'last_response_request_at'    => 'datetime',
+        'response_deadline_at'        => 'datetime',
+        'sla_response_deadline_at'    => 'datetime',
+        'sla_resolution_deadline_at'  => 'datetime',
+        'user_responded_at'           => 'datetime',
+        'closed_at'                   => 'datetime',
+        'resolved_at'                 => 'datetime',
     ];
 
     // Estados posibles
@@ -68,6 +79,16 @@ class Ticket extends Model
     {
         return $this->belongsToMany(User::class, 'ticket_assignments', 'ticket_id', 'user_id')
                     ->withTimestamps();
+    }
+
+    public function subcategoria()
+    {
+        return $this->belongsTo(Subcategoria::class, 'subcategoria_id');
+    }
+
+    public function tipoIncidente()
+    {
+        return $this->belongsTo(TipoIncidente::class, 'tipo_incidente_id');
     }
 
     public function comments()
@@ -243,5 +264,61 @@ class Ticket extends Model
             return $hours . 'h ' . $mins . 'min';
         }
         return $minutes . ' min';
+    }
+
+    /**
+     * Obtiene el nombre completo de la clasificación del ticket.
+     */
+    public function getClassificationLabel(): string
+    {
+        $parts = [];
+        if ($this->subcategoria) {
+            if ($this->subcategoria->categoria) {
+                $parts[] = $this->subcategoria->categoria->name;
+            }
+            $parts[] = $this->subcategoria->name;
+        } elseif ($this->category) {
+            $parts[] = $this->category;
+        }
+        if ($this->tipoIncidente) {
+            $parts[] = $this->tipoIncidente->name;
+        }
+        return implode(' › ', $parts) ?: 'Sin clasificar';
+    }
+
+    /**
+     * Calcula el estado del SLA de resolución.
+     * Retorna: 'ok', 'warning' (75% del tiempo usado), 'exceeded'.
+     */
+    public function getSlaResolutionStatus(): string
+    {
+        if (!$this->sla_resolution_deadline_at) {
+            return 'none';
+        }
+        if (in_array($this->status, [self::STATUS_RESOLVED, self::STATUS_CLOSED])) {
+            return 'ok';
+        }
+        $now = Carbon::now();
+        if ($now->isAfter($this->sla_resolution_deadline_at)) {
+            return 'exceeded';
+        }
+        // Warning si ya se usó más del 75% del tiempo
+        $total = $this->created_at->diffInMinutes($this->sla_resolution_deadline_at);
+        $used  = $this->created_at->diffInMinutes($now);
+        if ($total > 0 && ($used / $total) >= 0.75) {
+            return 'warning';
+        }
+        return 'ok';
+    }
+
+    /**
+     * Minutos restantes para el vencimiento del SLA de resolución.
+     */
+    public function getSlaRemainingMinutes(): int
+    {
+        if (!$this->sla_resolution_deadline_at) {
+            return 0;
+        }
+        return max(0, (int) Carbon::now()->diffInMinutes($this->sla_resolution_deadline_at, false));
     }
 }

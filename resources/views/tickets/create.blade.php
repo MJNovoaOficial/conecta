@@ -131,18 +131,32 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label-custom">Categoría *</label>
-                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                            @foreach(['hardware' => 'Hardware', 'software' => 'Software', 'network' => 'Red/Internet', 'account' => 'Cuenta/Acceso', 'other' => 'Otro'] as $val => $label)
-                            <label style="display:flex; align-items:center; gap:6px; padding:7px 14px; border:1.5px solid {{ old('category') == $val ? '#3498db' : '#e2e8f0' }}; border-radius:6px; cursor:pointer; font-size:0.82rem; color:{{ old('category') == $val ? '#2980b9' : '#4a5568' }}; background:{{ old('category') == $val ? '#ebf5fb' : '#fff' }};" class="category-label">
-                                <input type="radio" name="category" value="{{ $val }}" {{ old('category') == $val ? 'checked' : '' }} style="accent-color:#3498db;">
-                                {{ $label }}
-                            </label>
-                            @endforeach
+                        <label class="form-label-custom">Clasificación del Problema</label>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label style="font-size:.78rem;color:#718096;font-weight:600;display:block;margin-bottom:4px;">Categoría / Área</label>
+                                <select id="sel-categoria" class="form-control-custom" onchange="loadSubcategorias(this.value)">
+                                    <option value="">— Seleccionar —</option>
+                                    @php $cats = \App\Models\Categoria::where('is_active',true)->orderBy('name')->get(); @endphp
+                                    @foreach($cats as $cat)
+                                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label style="font-size:.78rem;color:#718096;font-weight:600;display:block;margin-bottom:4px;">Subcategoría</label>
+                                <select name="subcategoria_id" id="sel-subcategoria" class="form-control-custom" onchange="loadTipos(this.value)">
+                                    <option value="">— Primero elige categoría —</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label style="font-size:.78rem;color:#718096;font-weight:600;display:block;margin-bottom:4px;">Tipo de Incidente</label>
+                                <select name="tipo_incidente_id" id="sel-tipo" class="form-control-custom">
+                                    <option value="">— Opcional —</option>
+                                </select>
+                            </div>
                         </div>
-                        @error('category')
-                            <div style="color:#e74c3c; font-size:0.78rem; margin-top:4px;">{{ $message }}</div>
-                        @enderror
+                        <p style="font-size:.75rem;color:#a0aec0;margin-top:4px;">Selecciona la clasificación que mejor describe tu problema (opcional pero recomendado).</p>
                     </div>
 
                     {{-- MENSAJE --}}
@@ -256,18 +270,39 @@ document.querySelector('form').addEventListener('submit', function() {
     }
 });
 
-// Highlight selected category
-document.querySelectorAll('.category-label').forEach(label => {
-    label.querySelector('input').addEventListener('change', () => {
-        document.querySelectorAll('.category-label').forEach(l => {
-            l.style.borderColor = '#e2e8f0';
-            l.style.color = '#4a5568';
-            l.style.background = '#fff';
+// ── Carga dinámica de clasificación ──────────────────────────
+function loadSubcategorias(catId) {
+    const subSel = document.getElementById('sel-subcategoria');
+    const tipoSel = document.getElementById('sel-tipo');
+    subSel.innerHTML = '<option value="">— Cargando… —</option>';
+    tipoSel.innerHTML = '<option value="">— Opcional —</option>';
+    if (!catId) { subSel.innerHTML = '<option value="">— Primero elige categoría —</option>'; return; }
+    fetch('/api/categorias/' + catId + '/subcategorias')
+        .then(r => r.json())
+        .then(data => {
+            subSel.innerHTML = '<option value="">— Seleccionar subcategoría —</option>';
+            data.forEach(s => {
+                const o = document.createElement('option');
+                o.value = s.id; o.textContent = s.name;
+                subSel.appendChild(o);
+            });
         });
-        label.style.borderColor = '#3498db';
-        label.style.color = '#2980b9';
-        label.style.background = '#ebf5fb';
-    });
-});
+}
+
+function loadTipos(subId) {
+    const tipoSel = document.getElementById('sel-tipo');
+    tipoSel.innerHTML = '<option value="">— Cargando… —</option>';
+    if (!subId) { tipoSel.innerHTML = '<option value="">— Opcional —</option>'; return; }
+    fetch('/api/subcategorias/' + subId + '/tipos')
+        .then(r => r.json())
+        .then(data => {
+            tipoSel.innerHTML = '<option value="">— Seleccionar tipo (opcional) —</option>';
+            data.forEach(t => {
+                const o = document.createElement('option');
+                o.value = t.id; o.textContent = t.name;
+                tipoSel.appendChild(o);
+            });
+        });
+}
 </script>
 @endsection

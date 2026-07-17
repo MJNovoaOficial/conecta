@@ -439,12 +439,92 @@
     @endif
     @endauth
 
-    {{-- Info del ticket --}}
+    {{-- Gestión avanzada: prioridad, clasificación, cierre formal --}}
+    @auth
+    @if((Auth::user()->isAdmin() || $ticket->assigned_to === Auth::id()) && $ticket->status !== 'closed')
+    <div class="side-card">
+        <div class="side-card-header"><i class="fas fa-sliders-h me-1"></i> Gestión del Ticket</div>
+        <div class="side-card-body">
+
+            {{-- Prioridad editable --}}
+            <form method="POST" action="{{ route('tickets.updatePriority', $ticket) }}" style="margin-bottom:12px;">
+                @csrf @method('PUT')
+                <label style="font-size:.74rem;color:#718096;font-weight:600;display:block;margin-bottom:5px;">Prioridad</label>
+                <div style="display:flex;gap:.4rem;">
+                    <select name="priority" class="side-status-select" style="flex:1;">
+                        <option value="low"      {{ $ticket->priority==='low'      ?'selected':'' }}>⚪ Baja</option>
+                        <option value="medium"   {{ $ticket->priority==='medium'   ?'selected':'' }}>🔵 Media</option>
+                        <option value="high"     {{ $ticket->priority==='high'     ?'selected':'' }}>🟠 Alta</option>
+                        <option value="critical" {{ $ticket->priority==='critical' ?'selected':'' }}>🔴 Crítica</option>
+                    </select>
+                    <button type="submit" class="side-btn side-btn-outline" style="width:auto;padding:0 10px;" title="Guardar prioridad">
+                        <i class="fas fa-save"></i>
+                    </button>
+                </div>
+            </form>
+
+            {{-- Clasificación editable --}}
+            <form method="POST" action="{{ route('tickets.updateClassification', $ticket) }}">
+                @csrf @method('PUT')
+                <label style="font-size:.74rem;color:#718096;font-weight:600;display:block;margin-bottom:5px;">Clasificación</label>
+                @php
+                    $allSubs = \App\Models\Subcategoria::with('categoria')
+                        ->where('is_active', true)->orderBy('name')->get();
+                @endphp
+                <select name="subcategoria_id" id="sc-sub" class="side-status-select" style="margin-bottom:4px;"
+                        onchange="loadTiposShow(this.value)">
+                    <option value="">— Subcategoría —</option>
+                    @foreach($allSubs as $s)
+                    <option value="{{ $s->id }}" {{ $ticket->subcategoria_id == $s->id ? 'selected' : '' }}>
+                        {{ $s->categoria->name ?? '' }} › {{ $s->name }}
+                    </option>
+                    @endforeach
+                </select>
+                <select name="tipo_incidente_id" id="sc-tipo" class="side-status-select" style="margin-bottom:8px;">
+                    <option value="">— Tipo de Incidente —</option>
+                    @if($ticket->tipoIncidente)
+                    <option value="{{ $ticket->tipoIncidente->id }}" selected>{{ $ticket->tipoIncidente->name }}</option>
+                    @endif
+                </select>
+                <button type="submit" class="side-btn side-btn-outline">
+                    <i class="fas fa-tag"></i> Actualizar clasificación
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {{-- Cierre formal con solución (RF-ST-10, RF-ST-14) --}}
+    <div class="side-card" style="border-left:3px solid #8b5cf6;">
+        <div class="side-card-header" style="color:#5b21b6;"><i class="fas fa-check-circle me-1"></i> Cerrar Ticket</div>
+        <div class="side-card-body">
+            @if($ticket->solution_text)
+            <div style="font-size:.8rem;color:#4a5568;background:#f5f3ff;padding:.6rem .8rem;border-radius:.4rem;margin-bottom:.6rem;">
+                <strong>Solución registrada:</strong><br>{{ $ticket->solution_text }}
+            </div>
+            @endif
+            <form method="POST" action="{{ route('tickets.close', $ticket) }}">
+                @csrf
+                <label style="font-size:.74rem;color:#718096;font-weight:600;display:block;margin-bottom:5px;">
+                    Solución Aplicada *
+                </label>
+                <textarea name="solution_text" rows="3"
+                          class="side-status-select" style="height:auto;resize:vertical;font-size:.82rem;padding:.5rem;"
+                          placeholder="Describe la solución antes de cerrar…" required>{{ $ticket->solution_text }}</textarea>
+                <button type="submit" class="side-btn" style="background:#8b5cf6;color:#fff;margin-top:8px;"
+                        onclick="return confirm('¿Confirmas el cierre formal del ticket?')">
+                    <i class="fas fa-lock"></i> Cerrar con solución
+                </button>
+            </form>
+        </div>
+    </div>
+    @endif
+    @endauth
+
     <div class="side-card">
         <div class="side-card-header"><i class="fas fa-info-circle me-1"></i> Información</div>
         <div class="side-card-body" style="padding:10px 16px;">
             <ul class="info-list">
-                <li><span class="lbl">Categoría</span><span class="val">{{ ucfirst($ticket->category) }}</span></li>
+                <li><span class="lbl">Clasificación</span><span class="val" style="font-size:.78rem;">{{ $ticket->getClassificationLabel() }}</span></li>
                 <li><span class="lbl">Dispositivo</span><span class="val">{{ ucfirst($ticket->device_type) }}</span></li>
                 <li><span class="lbl">Departamento</span><span class="val">{{ $ticket->department->name ?? '—' }}</span></li>
                 <li><span class="lbl">Prioridad</span>
@@ -456,8 +536,21 @@
                 <li><span class="lbl">T. soporte</span>
                     <span class="val" title="Excluye espera de respuesta del usuario">{{ $ticket->getSupportTimeFormatted() }}</span>
                 </li>
+                @if($ticket->sla_resolution_deadline_at)
+                <li><span class="lbl">SLA vence</span>
+                    <span class="val" style="font-size:.78rem;color:{{ $ticket->getSlaResolutionStatus()==='exceeded'?'#ef4444':($ticket->getSlaResolutionStatus()==='warning'?'#f59e0b':'#22c55e') }}">
+                        @if($ticket->getSlaResolutionStatus()==='exceeded') ⚠ Vencido
+                        @elseif($ticket->getSlaResolutionStatus()==='warning') ⏰ Por vencer
+                        @else ✓ {{ $ticket->sla_resolution_deadline_at->format('d/m/Y H:i') }}
+                        @endif
+                    </span>
+                </li>
+                @endif
                 <li><span class="lbl">Creado</span><span class="val">{{ $ticket->created_at->format('d/m/Y H:i') }}</span></li>
                 <li><span class="lbl">Actualizado</span><span class="val">{{ $ticket->updated_at->format('d/m/Y H:i') }}</span></li>
+                @if($ticket->closed_at)
+                <li><span class="lbl">Cerrado</span><span class="val">{{ $ticket->closed_at->format('d/m/Y H:i') }}</span></li>
+                @endif
             </ul>
         </div>
     </div>
@@ -566,4 +659,24 @@
 </div>
 @endif
 @endauth
+
+@push('scripts')
+<script>
+function loadTiposShow(subId) {
+    const sel = document.getElementById('sc-tipo');
+    sel.innerHTML = '<option value="">— Tipo de Incidente —</option>';
+    if (!subId) return;
+    fetch('/api/subcategorias/' + subId + '/tipos')
+        .then(r => r.json())
+        .then(data => {
+            data.forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t.id;
+                opt.textContent = t.name;
+                sel.appendChild(opt);
+            });
+        });
+}
+</script>
+@endpush
 @endsection
