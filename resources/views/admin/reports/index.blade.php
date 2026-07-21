@@ -114,6 +114,15 @@
                         </select>
                     </div>
                     <div>
+                        <label class="form-label" style="font-size:.8rem;">Solicitante</label>
+                        <select name="user_id" class="form-control" style="width:150px;height:36px;font-size:.85rem;">
+                            <option value="">Todos</option>
+                            @foreach($requesters as $req)
+                            <option value="{{ $req->id }}" {{ request('user_id')==$req->id?'selected':'' }}>{{ $req->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
                         <label class="form-label" style="font-size:.8rem;">Desde</label>
                         <input type="date" name="date_from" class="form-control" style="width:130px;height:36px;font-size:.85rem;" value="{{ request('date_from') }}">
                     </div>
@@ -126,9 +135,14 @@
                             <i class="bi bi-funnel"></i> Filtrar
                         </button>
                         <a href="{{ route('admin.reports') }}" class="btn btn-outline" style="height:36px;font-size:.85rem;">Limpiar</a>
-                        <a href="{{ route('admin.reports.export') }}?{{ http_build_query(request()->all()) }}" class="btn btn-outline" style="height:36px;font-size:.85rem;color:var(--accent);">
-                            <i class="bi bi-download"></i> CSV
+                        <a href="{{ route('admin.reports.export') }}?{{ http_build_query(request()->all()) }}" class="btn btn-outline" style="height:36px;font-size:.85rem;color:#22c55e;">
+                            <i class="fas fa-file-csv me-1"></i> CSV
                         </a>
+                        @if(Route::has('admin.reports.exportExcel'))
+                        <a href="{{ route('admin.reports.exportExcel') }}?{{ http_build_query(request()->all()) }}" class="btn btn-outline" style="height:36px;font-size:.85rem;color:#16a34a;">
+                            <i class="fas fa-file-excel me-1"></i> Excel
+                        </a>
+                        @endif
                         <a href="{{ route('admin.reports.exportPdf') }}?{{ http_build_query(request()->all()) }}" class="btn btn-outline" style="height:36px;font-size:.85rem;color:#e53e3e;">
                             <i class="fas fa-file-pdf me-1"></i> PDF
                         </a>

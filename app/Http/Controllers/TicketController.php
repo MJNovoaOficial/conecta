@@ -120,7 +120,6 @@ class TicketController extends Controller
             'description'       => 'required|string|max:10000',
             'subcategoria_id'   => 'required|exists:subcategorias,id', // RNG-08: clasificación obligatoria
             'tipo_incidente_id' => 'nullable|exists:tipos_incidente,id',
-            'category'          => 'nullable|string|max:100',
             'device_type'       => 'required|string|max:100',
             'priority'          => 'required|in:low,medium,high,critical',
             'department_id'     => 'required|integer|exists:departamentos,id',
@@ -135,17 +134,16 @@ class TicketController extends Controller
         $sla = SlaConfig::forPriority($request->priority);
 
         $ticket = Ticket::create([
-            'ticket_number'        => $ticketNumber,
-            'user_id'              => Auth::id(),
-            'department_id'        => $request->department_id,
-            'title'                => $request->title,
-            'description'          => $request->description,
-            'category'             => $request->category,
-            'subcategoria_id'      => $request->subcategoria_id ?: null,
-            'tipo_incidente_id'    => $request->tipo_incidente_id ?: null,
-            'device_type'          => $request->device_type,
-            'priority'             => $request->priority,
-            'status'               => Ticket::STATUS_OPEN,
+            'ticket_number'              => $ticketNumber,
+            'user_id'                    => Auth::id(),
+            'department_id'              => $request->department_id,
+            'title'                      => $request->title,
+            'description'                => $request->description,
+            'subcategoria_id'            => $request->subcategoria_id ?: null,
+            'tipo_incidente_id'          => $request->tipo_incidente_id ?: null,
+            'device_type'                => $request->device_type,
+            'priority'                   => $request->priority,
+            'status'                     => Ticket::STATUS_OPEN,
             'sla_response_deadline_at'   => now()->addHours($sla->response_hours),
             'sla_resolution_deadline_at' => now()->addHours($sla->resolution_hours),
         ]);
@@ -311,15 +309,44 @@ class TicketController extends Controller
         }
 
         $comment = TicketComment::create([
-            'ticket_id' => $ticket->id,
-            'user_id' => Auth::id(),
-            'comment' => $request->comment,
-            'ticket_status_at_comment' => $ticket->status,
-            'is_internal' => $request->boolean('is_internal', false),
+            'ticket_id'               => $ticket->id,
+            'user_id'                 => Auth::id(),
+            'comment'                 => $request->comment,
+            'ticket_status_at_comment'=> $ticket->status,
+            'is_internal'             => $request->boolean('is_internal', false),
         ]);
 
         // Procesar adjuntos del comentario
         $this->processAttachments($request, $ticket, $comment->id);
+
+        // RF-ST-15 / RNG-01: Si soporte solicita información mediante el modal dedicado
+        if ($request->boolean('request_info') && (Auth::user()->isSupport() || Auth::user()->isAdmin())) {
+            $ticket->update([
+                'status'                   => Ticket::STATUS_PENDING_USER,
+                'last_response_request_at' => Carbon::now(),
+                'response_deadline_at'     => Carbon::now()->addHours(2), // RNG-01
+                'user_responded_at'        => null,
+            ]);
+            TicketHistory::create([
+                'ticket_id'  => $ticket->id,
+                'user_id'    => Auth::id(),
+                'action'     => 'requested_info',
+                'old_value'  => $ticket->getOriginal('status'),
+                'new_value'  => Ticket::STATUS_PENDING_USER,
+                'field_name' => 'status',
+            ]);
+            // Notificar al solicitante
+            if ($ticket->user_id) {
+                Notificacion::notify(
+                    $ticket->user_id,
+                    'info_requested',
+                    'Se solicita información adicional: ' . $ticket->ticket_number,
+                    'El equipo de soporte necesita más información. Tienes 2 horas para responder.',
+                    $ticket->id
+                );
+            }
+            return back()->with('success', 'Solicitud de información enviada. El ticket queda Pendiente del Usuario (2h).');
+        }
 
         // Si el ticket estaba en "pendiente_usuario" y el creador responde, registrar respuesta
         if ($ticket->status === Ticket::STATUS_PENDING_USER && Auth::id() === $ticket->user_id) {
@@ -373,8 +400,9 @@ class TicketController extends Controller
             'status' => 'required|in:open,in_progress,pending_user,forwarded,resolved,closed',
         ]);
 
-        $oldStatus = $ticket->status;
-        $newStatus = $request->status;
+        $oldStatus    = $ticket->status;
+        $oldStatusLabel = $ticket->getStatusLabel(); // Guardar ANTES del update
+        $newStatus    = $request->status;
 
         $updateData = ['status' => $newStatus];
 
@@ -408,10 +436,11 @@ class TicketController extends Controller
             'field_name' => 'status',
         ]);
 
-        // Notificar cambio de estado
-        $this->notifyTicketUpdate($ticket, 'El estado del ticket cambió de "' . $this->getStatusLabelStatic($oldStatus) . '" a "' . $ticket->getStatusLabel() . '".');
+        // Notificar cambio de estado (usando labels guardados correctamente)
+        $newStatusLabel = $ticket->getStatusLabel();
+        $this->notifyTicketUpdate($ticket, "El estado del ticket cambió de \"{$oldStatusLabel}\" a \"{$newStatusLabel}\".");
 
-        return back()->with('success', 'Estado actualizado a: ' . $ticket->getStatusLabel());
+        return back()->with('success', "Estado actualizado a: {$newStatusLabel}");
     }
 
     public function assignTo(Request $request, Ticket $ticket)
@@ -658,8 +687,20 @@ class TicketController extends Controller
         $this->authorize('update', $ticket);
 
         $user = Auth::user();
-        if (!$user->isAdmin() && $ticket->assigned_to !== $user->id) {
-            return back()->with('error', 'Solo el agente asignado o el administrador puede cerrar este ticket.');
+
+        // El usuario creador puede cerrar su propio ticket (confirmando resolución)
+        $isOwner = $ticket->user_id === $user->id;
+
+        // Solo admin, agente asignado o el propietario del ticket pueden cerrar
+        if (!$user->isAdmin() && $ticket->assigned_to !== $user->id && !$isOwner) {
+            return back()->with('error', 'No tienes permiso para cerrar este ticket.');
+        }
+
+        // El propietario solo puede cerrar tickets ya resueltos (confirmar resolución)
+        if ($isOwner && !$user->isAdmin() && $ticket->assigned_to !== $user->id) {
+            if ($ticket->status !== Ticket::STATUS_RESOLVED) {
+                return back()->with('error', 'Solo puedes cerrar tu ticket cuando ha sido marcado como resuelto.');
+            }
         }
 
         $request->validate([
@@ -807,19 +848,5 @@ class TicketController extends Controller
         return $filename ?: 'archivo_'.time();
     }
 
-    /**
-     * Obtener label de estado estáticamente
-     */
-    private function getStatusLabelStatic(string $status): string
-    {
-        return match($status) {
-            'open' => 'Abierto',
-            'in_progress' => 'En Proceso',
-            'pending_user' => 'Pendiente Usuario',
-            'forwarded' => 'Derivado',
-            'resolved' => 'Resuelto',
-            'closed' => 'Cerrado',
-            default => 'Desconocido',
-        };
-    }
 }
+

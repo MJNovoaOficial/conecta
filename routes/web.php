@@ -89,6 +89,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports',              [ReportController::class, 'index'])->name('admin.reports');
         Route::get('/reports/export',       [ReportController::class, 'export'])->name('admin.reports.export');
         Route::get('/reports/export-pdf',   [ReportController::class, 'exportPdf'])->name('admin.reports.exportPdf');
+        Route::get('/reports/export-excel', [ReportController::class, 'exportExcel'])->name('admin.reports.exportExcel');
 
         // Auditoría
         Route::get('/audit',                [AdminController::class, 'audit'])->name('admin.audit');

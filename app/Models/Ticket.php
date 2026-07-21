@@ -75,11 +75,6 @@ class Ticket extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
-    public function assignments()
-    {
-        return $this->belongsToMany(User::class, 'ticket_assignments', 'ticket_id', 'user_id')
-                    ->withTimestamps();
-    }
 
     public function subcategoria()
     {
@@ -165,18 +160,6 @@ class Ticket extends Model
         };
     }
 
-    public function getStatusIcon()
-    {
-        return match($this->status) {
-            self::STATUS_OPEN => '🟢',
-            self::STATUS_IN_PROGRESS => '🟡',
-            self::STATUS_PENDING_USER => '🟠',
-            self::STATUS_FORWARDED => '🔵',
-            self::STATUS_RESOLVED => '✅',
-            self::STATUS_CLOSED => '⚫',
-            default => '⚪',
-        };
-    }
 
     public function getPriorityLabel()
     {
@@ -200,10 +183,6 @@ class Ticket extends Model
         };
     }
 
-    public function getTimeElapsed()
-    {
-        return $this->created_at->diffForHumans(Carbon::now());
-    }
 
     public function getTimeElapsedFormatted()
     {
@@ -311,14 +290,5 @@ class Ticket extends Model
         return 'ok';
     }
 
-    /**
-     * Minutos restantes para el vencimiento del SLA de resolución.
-     */
-    public function getSlaRemainingMinutes(): int
-    {
-        if (!$this->sla_resolution_deadline_at) {
-            return 0;
-        }
-        return max(0, (int) Carbon::now()->diffInMinutes($this->sla_resolution_deadline_at, false));
-    }
 }
+

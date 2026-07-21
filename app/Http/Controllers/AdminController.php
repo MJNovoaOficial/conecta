@@ -35,13 +35,16 @@ class AdminController extends Controller
             ->groupBy('priority')
             ->pluck('total', 'priority');
 
-        // Tickets por categoría (top 5)
-        $byCategory = Ticket::select('category', DB::raw('count(*) as total'))
-            ->whereNotNull('category')
-            ->groupBy('category')
-            ->orderByDesc('total')
+        // Tickets por categoría (top 5) — vía subcategoria JOIN
+        $byCategory = \App\Models\Categoria::withCount([
+                'subcategorias as ticket_count' => fn($q) => $q
+                    ->join('tickets', 'tickets.subcategoria_id', '=', 'subcategorias.id')
+                    ->select(DB::raw('COUNT(tickets.id)'))
+            ])
+            ->orderByDesc('ticket_count')
             ->take(5)
-            ->pluck('total', 'category');
+            ->get()
+            ->pluck('ticket_count', 'name');
 
         // Tickets por técnico (activos)
         $byAgent = User::where(function($q) {
@@ -76,6 +79,19 @@ class AdminController extends Controller
             ->take(5)
             ->get();
 
+        // Tiempo promedio de resolución (horas) (RN-24)
+        $avgResolutionHours = Ticket::whereNotNull('resolved_at')
+            ->select(DB::raw('AVG(TIMESTAMPDIFF(HOUR, created_at, resolved_at)) as avg_h'))
+            ->value('avg_h');
+
+        // % Cumplimiento de SLA (RN-24 / RN-17)
+        $totalResolved  = Ticket::whereNotNull('resolved_at')->count();
+        $resolvedInSla  = Ticket::whereNotNull('resolved_at')
+            ->whereNotNull('sla_resolution_deadline_at')
+            ->where('resolved_at', '<=', DB::raw('sla_resolution_deadline_at'))
+            ->count();
+        $slaCompliance = $totalResolved > 0 ? round(($resolvedInSla / $totalResolved) * 100, 1) : null;
+
         Log::info('Panel de admin accedido', ['user_id' => Auth::id()]);
 
         return view('admin.dashboard', compact(
@@ -83,7 +99,7 @@ class AdminController extends Controller
             'openTickets', 'inProgressTickets', 'pendingTickets',
             'resolvedTickets', 'closedTickets', 'totalDepts',
             'byPriority', 'byCategory', 'byAgent', 'monthly', 'recentTickets',
-            'topRequesters'
+            'topRequesters', 'avgResolutionHours', 'slaCompliance'
         ));
     }
 

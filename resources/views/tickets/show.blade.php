@@ -433,6 +433,21 @@
             <button class="side-btn side-btn-outline" data-bs-toggle="modal" data-bs-target="#forwardModal">
                 <i class="fas fa-share"></i> Derivar a departamento
             </button>
+
+            {{-- Solicitar Información Adicional (RF-ST-15 / RNG-01) --}}
+            @if(!in_array($ticket->status, ['closed','resolved','pending_user']))
+            <button class="side-btn side-btn-outline" data-bs-toggle="modal" data-bs-target="#requestInfoModal"
+                    style="border-color:#f59e0b;color:#f59e0b;margin-top:4px;">
+                <i class="fas fa-question-circle"></i> Solicitar información
+            </button>
+            @elseif($ticket->status === 'pending_user')
+            <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:8px 10px;font-size:.76rem;color:#92400e;margin-top:6px;">
+                <i class="fas fa-clock"></i> Esperando respuesta del usuario
+                @if($ticket->response_deadline_at)
+                    <br><small>Vence: {{ $ticket->response_deadline_at->format('d/m H:i') }}</small>
+                @endif
+            </div>
+            @endif
             @endif
         </div>
     </div>
@@ -520,6 +535,31 @@
     @endif
     @endauth
 
+    {{-- Confirmar resolución: el usuario puede cerrar su propio ticket resuelto (RF-RI-01) --}}
+    @auth
+    @if(Auth::user()->isUser() && $ticket->user_id === Auth::id() && $ticket->status === 'resolved')
+    <div class="side-card" style="border-left:3px solid #22c55e;">
+        <div class="side-card-header" style="color:#065f46;"><i class="fas fa-check-double me-1"></i> Confirmar Resolución</div>
+        <div class="side-card-body">
+            <p style="font-size:.8rem;color:#4a5568;margin-bottom:10px;">
+                El equipo de soporte marcó tu ticket como <strong>Resuelto</strong>. ¿El problema fue solucionado?
+            </p>
+            <form method="POST" action="{{ route('tickets.close', $ticket) }}">
+                @csrf
+                <input type="hidden" name="solution_text" value="{{ $ticket->solution_text ?? 'Confirmado por el solicitante.' }}">
+                <button type="submit" class="side-btn" style="background:#22c55e;color:#fff;margin-bottom:8px;"
+                        onclick="return confirm('¿Confirmas que el problema fue resuelto?')">
+                    <i class="fas fa-check-circle"></i> Sí, confirmar y cerrar
+                </button>
+            </form>
+            <a href="#commentForm" class="side-btn side-btn-outline" style="font-size:.78rem;padding:6px 10px;text-align:center;display:block;">
+                <i class="fas fa-comment"></i> No, necesito más ayuda
+            </a>
+        </div>
+    </div>
+    @endif
+    @endauth
+
     <div class="side-card">
         <div class="side-card-header"><i class="fas fa-info-circle me-1"></i> Información</div>
         <div class="side-card-body" style="padding:10px 16px;">
@@ -575,7 +615,9 @@
                         @elseif($entry->action === 'forwarded') Derivado: {{ $entry->old_value }} → {{ $entry->new_value }}
                         @elseif($entry->action === 'auto_closed') Cerrado automáticamente
                         @elseif($entry->action === 'user_responded') Usuario respondió
-                        @else {{ $entry->action }}
+                        @elseif($entry->action === 'requested_info') ❓ Información adicional solicitada al usuario
+                        @elseif($entry->action === 'closed') Ticket cerrado
+                        @else {{ str_replace('_', ' ', ucfirst($entry->action)) }}
                         @endif
                         @if($entry->user) <span style="color:#a0aec0;">· {{ $entry->user->name }}</span>@endif
                     </div>
@@ -621,6 +663,8 @@
         </form>
     </div>
 </div>
+@endif
+@endauth
 
 {{-- Modal Derivar --}}
 <div class="modal fade" id="forwardModal" tabindex="-1">
@@ -655,6 +699,47 @@
                 </div>
             </div>
         </form>
+    </div>
+</div>
+
+{{-- Modal: Solicitar Información Adicional (RF-ST-15 / RNG-01) --}}
+@auth
+@if(Auth::user()->isSupport() || Auth::user()->isAdmin())
+<div class="modal fade" id="requestInfoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius:12px;border:none;">
+            <div class="modal-header" style="background:linear-gradient(90deg,#92400e,#b45309);border-radius:12px 12px 0 0;padding:14px 20px;">
+                <h5 class="modal-title" style="color:#fff;font-size:.95rem;font-weight:600;margin:0;">
+                    <i class="fas fa-question-circle me-2" style="color:#fcd34d;"></i>Solicitar Información Adicional
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding:20px;">
+                <p style="font-size:.84rem;color:#4a5568;margin-bottom:14px;">
+                    Al solicitar información, el ticket cambiará a <strong>Pendiente Usuario</strong> y el solicitante
+                    tendrá <strong>2 horas</strong> para responder antes del cierre automático.
+                </p>
+                <form method="POST" action="{{ route('tickets.addComment', $ticket) }}" enctype="multipart/form-data">
+                    @csrf
+                    {{-- Campo oculto para cambiar estado a pending_user --}}
+                    <input type="hidden" name="request_info" value="1">
+                    <div style="margin-bottom:12px;">
+                        <label style="font-size:.82rem;font-weight:600;color:#4a5568;display:block;margin-bottom:5px;">
+                            Mensaje al solicitante *
+                        </label>
+                        <textarea name="comment" rows="4" required
+                                  style="width:100%;border:1.5px solid #e2e8f0;border-radius:7px;padding:10px;font-size:.84rem;resize:vertical;"
+                                  placeholder="Describe qué información necesitas del solicitante..."></textarea>
+                    </div>
+                    <div style="display:flex;gap:10px;justify-content:flex-end;">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-sm" style="background:#f59e0b;color:#fff;font-weight:600;padding:7px 18px;border-radius:6px;border:none;">
+                            <i class="fas fa-paper-plane me-1"></i> Enviar solicitud
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 @endif

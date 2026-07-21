@@ -281,6 +281,26 @@
             <div class="stat-label">Resueltos</div>
             <div class="stat-sub">{{ $pendingTickets }} pendientes usuario</div>
         </div>
+        {{-- Tiempo promedio resolución (RN-24) --}}
+        <div class="stat-card" style="background:linear-gradient(135deg,#1a2332,#2d3e55);border-left:3px solid #2ecc71;">
+            <div class="stat-value" style="color:#2ecc71;">
+                @if($avgResolutionHours !== null)
+                    {{ $avgResolutionHours >= 24 ? round($avgResolutionHours/24,1).'d' : round($avgResolutionHours,1).'h' }}
+                @else
+                    —
+                @endif
+            </div>
+            <div class="stat-label">Tiempo Prom. Resolución</div>
+            <div class="stat-sub">Promedio de tickets resueltos</div>
+        </div>
+        {{-- Cumplimiento SLA (RN-17, RN-24) --}}
+        <div class="stat-card" style="background:linear-gradient(135deg,#1a2332,#2d3e55);border-left:3px solid {{ ($slaCompliance !== null && $slaCompliance >= 80) ? '#3498db' : '#e74c3c' }};">
+            <div class="stat-value" style="color:{{ ($slaCompliance !== null && $slaCompliance >= 80) ? '#3498db' : '#e74c3c' }};">
+                {{ $slaCompliance !== null ? $slaCompliance.'%' : '—' }}
+            </div>
+            <div class="stat-label">Cumplimiento SLA</div>
+            <div class="stat-sub">Tickets resueltos dentro del plazo</div>
+        </div>
     </div>
 
     {{-- ESTADO DE TICKETS --}}

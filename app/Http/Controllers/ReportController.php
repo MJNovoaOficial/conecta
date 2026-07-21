@@ -41,10 +41,15 @@ class ReportController extends Controller
                   ->orWhere('title', 'like', '%' . $request->search . '%');
             });
         }
+        // Filtro por solicitante (RN-25 / RF-AD-10)
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
 
         $tickets    = $query->paginate(50)->withQueryString();
         $agents     = User::where('role', 'support')->orWhere('role', 'admin')->orderBy('name')->get();
         $categorias = Categoria::orderBy('name')->get();
+        $requesters = User::where('role', 'user')->orderBy('name')->get();
 
         // ── Resumen estadístico ───────────────────────────────────
         $baseQuery = clone $query->getQuery();
@@ -83,7 +88,7 @@ class ReportController extends Controller
         ->get();
 
         return view('admin.reports.index', compact(
-            'tickets', 'agents', 'categorias', 'summary',
+            'tickets', 'agents', 'categorias', 'requesters', 'summary',
             'avgResolution', 'slaCompliance', 'byAgent'
         ));
     }
@@ -99,6 +104,7 @@ class ReportController extends Controller
         if ($request->filled('status'))     $query->where('status', $request->status);
         if ($request->filled('priority'))   $query->where('priority', $request->priority);
         if ($request->filled('agent_id'))   $query->where('assigned_to', $request->agent_id);
+        if ($request->filled('user_id'))    $query->where('user_id', $request->user_id);
         if ($request->filled('date_from'))  $query->whereDate('created_at', '>=', $request->date_from);
         if ($request->filled('date_to'))    $query->whereDate('created_at', '<=', $request->date_to);
 
@@ -152,6 +158,7 @@ class ReportController extends Controller
         if ($request->filled('status'))    $query->where('status', $request->status);
         if ($request->filled('priority'))  $query->where('priority', $request->priority);
         if ($request->filled('agent_id'))  $query->where('assigned_to', $request->agent_id);
+        if ($request->filled('user_id'))   $query->where('user_id', $request->user_id);
         if ($request->filled('date_from')) $query->whereDate('created_at', '>=', $request->date_from);
         if ($request->filled('date_to'))   $query->whereDate('created_at', '<=', $request->date_to);
 
@@ -186,5 +193,98 @@ class ReportController extends Controller
                   ->setPaper('a4', 'landscape');
 
         return $pdf->download('reporte_tickets_' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Exportar reporte como Excel XLSX usando PhpSpreadsheet (RF-AD-11).
+     */
+    public function exportExcel(Request $request)
+    {
+        $query = Ticket::with(['assignedTo', 'subcategoria.categoria', 'tipoIncidente', 'user'])
+            ->orderBy('created_at', 'desc');
+
+        if ($request->filled('status'))    $query->where('status', $request->status);
+        if ($request->filled('priority'))  $query->where('priority', $request->priority);
+        if ($request->filled('agent_id'))  $query->where('assigned_to', $request->agent_id);
+        if ($request->filled('user_id'))   $query->where('user_id', $request->user_id);
+        if ($request->filled('date_from')) $query->whereDate('created_at', '>=', $request->date_from);
+        if ($request->filled('date_to'))   $query->whereDate('created_at', '<=', $request->date_to);
+
+        $tickets = $query->get();
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Tickets');
+
+        // Encabezados
+        $headers = [
+            'A1' => 'N° Ticket',
+            'B1' => 'Título',
+            'C1' => 'Solicitante',
+            'D1' => 'Estado',
+            'E1' => 'Prioridad',
+            'F1' => 'Categoría',
+            'G1' => 'Subcategoría',
+            'H1' => 'Tipo de Incidente',
+            'I1' => 'Técnico Asignado',
+            'J1' => 'Fecha Creación',
+            'K1' => 'Fecha Cierre',
+            'L1' => 'SLA Respuesta',
+            'M1' => 'SLA Resolución',
+        ];
+
+        // Estilo encabezados
+        $headerStyle = [
+            'font'      => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
+            'fill'      => ['fillType' => 'solid', 'startColor' => ['argb' => 'FF1E3A5F']],
+            'alignment' => ['horizontal' => 'center'],
+        ];
+
+        foreach ($headers as $cell => $label) {
+            $sheet->setCellValue($cell, $label);
+            $sheet->getStyle($cell)->applyFromArray($headerStyle);
+        }
+
+        // Datos
+        $row = 2;
+        foreach ($tickets as $t) {
+            $sheet->setCellValue("A{$row}", $t->ticket_number);
+            $sheet->setCellValue("B{$row}", $t->title);
+            $sheet->setCellValue("C{$row}", $t->getCreatorName());
+            $sheet->setCellValue("D{$row}", $t->getStatusLabel());
+            $sheet->setCellValue("E{$row}", $t->getPriorityLabel());
+            $sheet->setCellValue("F{$row}", $t->subcategoria?->categoria?->name ?? '');
+            $sheet->setCellValue("G{$row}", $t->subcategoria?->name ?? '');
+            $sheet->setCellValue("H{$row}", $t->tipoIncidente?->name ?? '');
+            $sheet->setCellValue("I{$row}", $t->assignedTo?->name ?? 'Sin asignar');
+            $sheet->setCellValue("J{$row}", $t->created_at->format('d/m/Y H:i'));
+            $sheet->setCellValue("K{$row}", $t->closed_at?->format('d/m/Y H:i') ?? '');
+            $sheet->setCellValue("L{$row}", $t->sla_response_deadline_at?->format('d/m/Y H:i') ?? '');
+            $sheet->setCellValue("M{$row}", $t->sla_resolution_deadline_at?->format('d/m/Y H:i') ?? '');
+
+            // Colorear filas alternadas
+            if ($row % 2 === 0) {
+                $sheet->getStyle("A{$row}:M{$row}")->applyFromArray([
+                    'fill' => ['fillType' => 'solid', 'startColor' => ['argb' => 'FFF0F4F8']],
+                ]);
+            }
+            $row++;
+        }
+
+        // Ajustar anchos automáticamente
+        foreach (range('A', 'M') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        // Escribir a buffer y descargar
+        $writer   = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $filename = 'reporte_tickets_' . now()->format('Y-m-d') . '.xlsx';
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
     }
 }
