@@ -252,21 +252,23 @@ table.rp-tbl tbody tr:hover td { background:#fafbff; }
                 <button type="submit" class="btn-filter btn-f-apply"><i class="fas fa-filter"></i> Filtrar</button>
                 <a href="{{ route('admin.reports.index') }}" class="btn-filter btn-f-clear"><i class="fas fa-times"></i> Limpiar</a>
                 @php
-                    $dlDate    = now()->format('Y-m-d');
-                    $dlParams  = http_build_query(request()->except('page'));
-                    $dlPrefix  = 'reporte_tickets_' . $dlDate;
+                    $dlDate   = now()->format('Y-m-d');
+                    $dlParams = http_build_query(request()->except('page'));
+                    $dlPrefix = 'reporte_tickets_' . $dlDate;
+                    // Usar URL relativa para garantizar same-origin (requerido por atributo download en Chrome/Edge)
+                    $dlBase   = '/admin/reports/download/' . $dlPrefix;
                 @endphp
-                <a href="{{ url('admin/reports/download/' . $dlPrefix) }}.csv?{{ $dlParams }}"
+                <a href="{{ $dlBase }}.csv?{{ $dlParams }}"
                    download="{{ $dlPrefix }}.csv"
                    class="btn-filter btn-f-csv" title="Exportar CSV">
                     <i class="fas fa-file-csv"></i> CSV
                 </a>
-                <a href="{{ url('admin/reports/download/' . $dlPrefix) }}.xlsx?{{ $dlParams }}"
+                <a href="{{ $dlBase }}.xlsx?{{ $dlParams }}"
                    download="{{ $dlPrefix }}.xlsx"
                    class="btn-filter btn-f-excel" title="Exportar Excel">
                     <i class="fas fa-file-excel"></i> Excel
                 </a>
-                <a href="{{ url('admin/reports/download/' . $dlPrefix) }}.pdf?{{ $dlParams }}"
+                <a href="{{ $dlBase }}.pdf?{{ $dlParams }}"
                    download="{{ $dlPrefix }}.pdf"
                    class="btn-filter btn-f-pdf" title="Exportar PDF">
                     <i class="fas fa-file-pdf"></i> PDF
