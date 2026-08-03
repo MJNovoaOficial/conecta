@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Categoria;
+use App\Models\CategoryDepartmentRule;
+use App\Models\Department;
 use App\Models\SlaConfig;
 use App\Models\Subcategoria;
 use App\Models\TipoIncidente;
@@ -17,11 +19,22 @@ class CategoryController extends Controller
 
     public function index()
     {
-        $categorias = Categoria::withCount(['subcategorias', 'tickets'])
+        $categorias = Categoria::withCount(['subcategorias'])
+            ->with(['subcategorias.tiposIncidente'])
             ->orderBy('name')
-            ->get();
+            ->get()
+            ->each(function ($cat) {
+                $cat->tickets_count = \App\Models\Ticket::whereIn(
+                    'subcategoria_id',
+                    $cat->subcategorias->pluck('id')
+                )->count();
+                // Cargar regla de departamento automático si existe
+                $cat->dept_rule = CategoryDepartmentRule::where('categoria_id', $cat->id)->first();
+            });
 
-        return view('admin.categories.index', compact('categorias'));
+        $departments = Department::where('is_active', true)->orderBy('name')->get();
+
+        return view('admin.categories.index', compact('categorias', 'departments'));
     }
 
     public function store(Request $request)
@@ -202,5 +215,32 @@ class CategoryController extends Controller
         AuditLog::record('sla.updated', 'SlaConfig', null, $request->sla);
 
         return back()->with('success', 'Configuración de SLA actualizada.');
+    }
+
+    // ══════════════════════════════════════════
+    //  REGLA DE DEPARTAMENTO POR CATEGORÍA
+    // ══════════════════════════════════════════
+
+    public function storeDeptRule(Request $request, Categoria $categoria)
+    {
+        $request->validate([
+            'department_id' => 'required|exists:departamentos,id',
+        ]);
+
+        CategoryDepartmentRule::updateOrCreate(
+            ['categoria_id' => $categoria->id],
+            ['department_id' => $request->department_id]
+        );
+
+        AuditLog::log('Regla de departamento configurada', "Categoría '{$categoria->name}' → Dpto ID {$request->department_id}");
+
+        return back()->with('success', "Derivación automática configurada para '{$categoria->name}'.");
+    }
+
+    public function destroyDeptRule(Categoria $categoria)
+    {
+        CategoryDepartmentRule::where('categoria_id', $categoria->id)->delete();
+        AuditLog::log('Regla de departamento eliminada', "Categoría '{$categoria->name}'");
+        return back()->with('success', 'Regla de derivación eliminada.');
     }
 }

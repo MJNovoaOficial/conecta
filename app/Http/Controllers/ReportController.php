@@ -197,6 +197,7 @@ class ReportController extends Controller
 
     /**
      * Exportar reporte como Excel XLSX usando PhpSpreadsheet (RF-AD-11).
+     * Fix encoding: se usa setCellValueExplicit con TYPE_STRING para acentos/eñes.
      */
     public function exportExcel(Request $request)
     {
@@ -213,56 +214,68 @@ class ReportController extends Controller
         $tickets = $query->get();
 
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $spreadsheet->getDefaultStyle()->getFont()->setName('Calibri')->setSize(10);
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Tickets');
 
-        // Encabezados
+        // Fix encoding: usar TYPE_STRING explícito para cabeceras con tildes/eñes
+        $dt = \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING;
+
         $headers = [
-            'A1' => 'N° Ticket',
-            'B1' => 'Título',
-            'C1' => 'Solicitante',
-            'D1' => 'Estado',
-            'E1' => 'Prioridad',
-            'F1' => 'Categoría',
-            'G1' => 'Subcategoría',
-            'H1' => 'Tipo de Incidente',
-            'I1' => 'Técnico Asignado',
-            'J1' => 'Fecha Creación',
-            'K1' => 'Fecha Cierre',
-            'L1' => 'SLA Respuesta',
-            'M1' => 'SLA Resolución',
+            'A' => 'N° Ticket',
+            'B' => 'Título',
+            'C' => 'Solicitante',
+            'D' => 'Estado',
+            'E' => 'Prioridad',
+            'F' => 'Categoría',
+            'G' => 'Subcategoría',
+            'H' => 'Tipo de Incidente',
+            'I' => 'Técnico Asignado',
+            'J' => 'Fecha Creación',
+            'K' => 'Fecha Cierre',
+            'L' => 'SLA Respuesta',
+            'M' => 'SLA Resolución',
         ];
 
-        // Estilo encabezados
         $headerStyle = [
-            'font'      => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
+            'font'      => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF'], 'size' => 10],
             'fill'      => ['fillType' => 'solid', 'startColor' => ['argb' => 'FF1E3A5F']],
-            'alignment' => ['horizontal' => 'center'],
+            'alignment' => ['horizontal' => 'center', 'vertical' => 'center'],
         ];
 
-        foreach ($headers as $cell => $label) {
-            $sheet->setCellValue($cell, $label);
+        foreach ($headers as $col => $label) {
+            $cell = $col . '1';
+            $sheet->getCellByColumnAndRow(
+                \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($col), 1
+            )->setValueExplicit($label, $dt);
             $sheet->getStyle($cell)->applyFromArray($headerStyle);
         }
+        $sheet->getRowDimension(1)->setRowHeight(18);
 
         // Datos
         $row = 2;
         foreach ($tickets as $t) {
-            $sheet->setCellValue("A{$row}", $t->ticket_number);
-            $sheet->setCellValue("B{$row}", $t->title);
-            $sheet->setCellValue("C{$row}", $t->getCreatorName());
-            $sheet->setCellValue("D{$row}", $t->getStatusLabel());
-            $sheet->setCellValue("E{$row}", $t->getPriorityLabel());
-            $sheet->setCellValue("F{$row}", $t->subcategoria?->categoria?->name ?? '');
-            $sheet->setCellValue("G{$row}", $t->subcategoria?->name ?? '');
-            $sheet->setCellValue("H{$row}", $t->tipoIncidente?->name ?? '');
-            $sheet->setCellValue("I{$row}", $t->assignedTo?->name ?? 'Sin asignar');
-            $sheet->setCellValue("J{$row}", $t->created_at->format('d/m/Y H:i'));
-            $sheet->setCellValue("K{$row}", $t->closed_at?->format('d/m/Y H:i') ?? '');
-            $sheet->setCellValue("L{$row}", $t->sla_response_deadline_at?->format('d/m/Y H:i') ?? '');
-            $sheet->setCellValue("M{$row}", $t->sla_resolution_deadline_at?->format('d/m/Y H:i') ?? '');
+            $rowData = [
+                'A' => $t->ticket_number,
+                'B' => $t->title,
+                'C' => $t->getCreatorName(),
+                'D' => $t->getStatusLabel(),
+                'E' => $t->getPriorityLabel(),
+                'F' => $t->subcategoria?->categoria?->name ?? '',
+                'G' => $t->subcategoria?->name ?? '',
+                'H' => $t->tipoIncidente?->name ?? '',
+                'I' => $t->assignedTo?->name ?? 'Sin asignar',
+                'J' => $t->created_at->format('d/m/Y H:i'),
+                'K' => $t->closed_at?->format('d/m/Y H:i') ?? '',
+                'L' => $t->sla_response_deadline_at?->format('d/m/Y H:i') ?? '',
+                'M' => $t->sla_resolution_deadline_at?->format('d/m/Y H:i') ?? '',
+            ];
 
-            // Colorear filas alternadas
+            foreach ($rowData as $col => $val) {
+                $colIdx = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($col);
+                $sheet->getCellByColumnAndRow($colIdx, $row)->setValueExplicit((string) $val, $dt);
+            }
+
             if ($row % 2 === 0) {
                 $sheet->getStyle("A{$row}:M{$row}")->applyFromArray([
                     'fill' => ['fillType' => 'solid', 'startColor' => ['argb' => 'FFF0F4F8']],
@@ -271,12 +284,10 @@ class ReportController extends Controller
             $row++;
         }
 
-        // Ajustar anchos automáticamente
         foreach (range('A', 'M') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        // Escribir a buffer y descargar
         $writer   = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $filename = 'reporte_tickets_' . now()->format('Y-m-d') . '.xlsx';
 
@@ -286,5 +297,74 @@ class ReportController extends Controller
             'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
+    }
+
+    /**
+     * Reporte de KPIs por agente de soporte (RF-AD-11 extensión).
+     */
+    public function agentReport()
+    {
+        $priorityWeight = ['critical' => 4, 'high' => 3, 'medium' => 2, 'low' => 1];
+
+        $agents = User::whereIn('role', ['support', 'admin'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->map(function (User $agent) use ($priorityWeight) {
+                $tickets = \App\Models\Ticket::where('assigned_to', $agent->id)->get();
+
+                $attended  = $tickets->count();
+                $resolved  = $tickets->whereNotNull('resolved_at');
+
+                // Tiempo promedio de resolución (horas)
+                $avgResolution = $resolved->count() > 0
+                    ? round($resolved->avg(fn($t) => $t->created_at->diffInMinutes($t->resolved_at)) / 60, 1)
+                    : null;
+
+                // Tiempo promedio de primera respuesta (primer comentario del agente)
+                $firstResponseTimes = \App\Models\TicketComment::where('user_id', $agent->id)
+                    ->whereIn('ticket_id', $tickets->pluck('id'))
+                    ->selectRaw('ticket_id, MIN(created_at) as first_response')
+                    ->groupBy('ticket_id')
+                    ->get();
+
+                $avgFirstResponse = null;
+                if ($firstResponseTimes->count() > 0) {
+                    $times = $firstResponseTimes->map(function ($fr) {
+                        $ticket = \App\Models\Ticket::find($fr->ticket_id);
+                        return $ticket ? $ticket->created_at->diffInMinutes($fr->first_response) : null;
+                    })->filter()->values();
+
+                    $avgFirstResponse = $times->count() > 0
+                        ? round($times->avg() / 60, 1)
+                        : null;
+                }
+
+                // Ticket más tardado en resolver
+                $slowestTicket = $resolved->sortByDesc(fn($t) =>
+                    $t->created_at->diffInMinutes($t->resolved_at)
+                )->first();
+
+                // Puntaje de complejidad promedio (peso por prioridad)
+                $complexityScore = $attended > 0
+                    ? round($tickets->avg(fn($t) => $priorityWeight[$t->priority] ?? 2), 2)
+                    : null;
+
+                return [
+                    'agent'              => $agent,
+                    'attended'           => $attended,
+                    'resolved'           => $resolved->count(),
+                    'open_active'        => $tickets->whereIn('status', ['open','in_progress','pending_user'])->count(),
+                    'avg_resolution_h'   => $avgResolution,
+                    'avg_first_resp_h'   => $avgFirstResponse,
+                    'slowest_ticket'     => $slowestTicket,
+                    'slowest_hours'      => $slowestTicket
+                        ? round($slowestTicket->created_at->diffInMinutes($slowestTicket->resolved_at) / 60, 1)
+                        : null,
+                    'complexity_score'   => $complexityScore,
+                ];
+            });
+
+        return view('admin.reports.agents', compact('agents'));
     }
 }

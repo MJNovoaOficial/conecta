@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\CategoryDepartmentRule;
 use App\Models\Notificacion;
+use App\Models\PriorityRule;
 use App\Models\SlaConfig;
+use App\Models\Subcategoria;
 use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Mail\GuestTicketCreatedMail;
@@ -67,7 +70,10 @@ class TicketController extends Controller
         if (request('date_from'))  $query->whereDate('created_at','>=',request('date_from'));
         if (request('date_to'))    $query->whereDate('created_at','<=',request('date_to'));
 
-        $tickets = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
+        $tickets = $query
+            ->orderByRaw("FIELD(priority, 'critical','high','medium','low')")
+            ->orderBy('created_at', 'desc')
+            ->paginate(15)->withQueryString();
 
         $counts = [
             'total'        => (clone $countQuery)->count(),
@@ -121,28 +127,39 @@ class TicketController extends Controller
             'subcategoria_id'   => 'required|exists:subcategorias,id', // RNG-08: clasificación obligatoria
             'tipo_incidente_id' => 'nullable|exists:tipos_incidente,id',
             'device_type'       => 'required|string|max:100',
-            'priority'          => 'required|in:low,medium,high,critical',
             'department_id'     => 'required|integer|exists:departamentos,id',
             'attachments'       => 'nullable|array|max:5',
             'attachments.*'     => 'file|max:5120',
         ]);
 
+        // Prioridad asignada automáticamente según reglas configuradas
+        $priority = PriorityRule::resolve(
+            (int) $request->subcategoria_id,
+            $request->tipo_incidente_id ? (int) $request->tipo_incidente_id : null
+        );
+
+        // Departamento: usar regla automática si existe, si no el del formulario
+        $subcatCatId = Subcategoria::find($request->subcategoria_id)?->categoria_id;
+        $departmentId = ($subcatCatId && $auto = CategoryDepartmentRule::resolve($subcatCatId))
+            ? $auto
+            : $request->department_id;
+
         // Generar número de ticket único
         $ticketNumber = 'TK-' . date('YmdHis') . '-' . rand(1000, 9999);
 
-        // Calcular SLA deadline según prioridad
-        $sla = SlaConfig::forPriority($request->priority);
+        // Calcular SLA deadline según prioridad auto-asignada
+        $sla = SlaConfig::forPriority($priority);
 
         $ticket = Ticket::create([
             'ticket_number'              => $ticketNumber,
             'user_id'                    => Auth::id(),
-            'department_id'              => $request->department_id,
+            'department_id'              => $departmentId,
             'title'                      => $request->title,
             'description'                => $request->description,
             'subcategoria_id'            => $request->subcategoria_id ?: null,
             'tipo_incidente_id'          => $request->tipo_incidente_id ?: null,
             'device_type'                => $request->device_type,
-            'priority'                   => $request->priority,
+            'priority'                   => $priority,
             'status'                     => Ticket::STATUS_OPEN,
             'sla_response_deadline_at'   => now()->addHours($sla->response_hours),
             'sla_resolution_deadline_at' => now()->addHours($sla->resolution_hours),
@@ -160,11 +177,11 @@ class TicketController extends Controller
             Auth::id(),
             'new_ticket',
             'Ticket ' . $ticketNumber . ' creado exitosamente',
-            'Tu solicitud ha sido registrada y será atendida próximamente.',
+            'Tu solicitud ha sido registrada y será atendida próximamente. Prioridad asignada: ' . ucfirst($priority),
             $ticket->id
         );
 
-        AuditLog::record('ticket.created', 'Ticket', $ticket->id, ['ticket_number' => $ticketNumber]);
+        AuditLog::record('ticket.created', 'Ticket', $ticket->id, ['ticket_number' => $ticketNumber, 'priority' => $priority]);
 
         return redirect()->route('tickets.show', $ticket)
             ->with('success', 'Ticket creado exitosamente: ' . $ticketNumber);
@@ -191,7 +208,6 @@ class TicketController extends Controller
             'subcategoria_id'   => 'required|exists:subcategorias,id', // RNG-08
             'tipo_incidente_id' => 'nullable|exists:tipos_incidente,id',
             'device_type'       => 'required|string|max:100',
-            'priority'          => 'required|in:low,medium,high,critical',
             'department_id'     => 'required|integer|exists:departamentos,id',
             'attachments'       => 'nullable|array|max:5',
             'attachments.*'     => 'file|max:5120',
@@ -199,18 +215,31 @@ class TicketController extends Controller
 
         $ticketNumber = 'TK-' . date('YmdHis') . '-' . rand(1000, 9999);
         $guestToken   = Str::random(40);
-        $sla          = SlaConfig::forPriority($request->priority);
+
+        // Prioridad asignada automáticamente
+        $priority = PriorityRule::resolve(
+            (int) $request->subcategoria_id,
+            $request->tipo_incidente_id ? (int) $request->tipo_incidente_id : null
+        );
+
+        // Departamento automático si hay regla
+        $subcatCatId = Subcategoria::find($request->subcategoria_id)?->categoria_id;
+        $departmentId = ($subcatCatId && $auto = CategoryDepartmentRule::resolve($subcatCatId))
+            ? $auto
+            : $request->department_id;
+
+        $sla = SlaConfig::forPriority($priority);
 
         $ticket = Ticket::create([
             'ticket_number'              => $ticketNumber,
             'user_id'                    => null,
-            'department_id'              => $request->department_id,
+            'department_id'              => $departmentId,
             'title'                      => $request->title,
             'description'                => $request->description,
             'subcategoria_id'            => $request->subcategoria_id,
             'tipo_incidente_id'          => $request->tipo_incidente_id ?: null,
             'device_type'                => $request->device_type,
-            'priority'                   => $request->priority,
+            'priority'                   => $priority,
             'status'                     => Ticket::STATUS_OPEN,
             'sla_response_deadline_at'   => now()->addHours($sla->response_hours),
             'sla_resolution_deadline_at' => now()->addHours($sla->resolution_hours),

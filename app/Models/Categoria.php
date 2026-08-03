@@ -15,8 +15,4 @@ class Categoria extends Model
         return $this->hasMany(Subcategoria::class, 'categoria_id');
     }
 
-    public function tickets()
-    {
-        return $this->hasMany(Ticket::class, 'categoria_id');
-    }
 }

@@ -112,10 +112,7 @@ class AuthController extends Controller
 
         if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, $maxAttempts)) {
             $seconds = \Illuminate\Support\Facades\RateLimiter::availableIn($throttleKey);
-            throw new \Illuminate\Validation\ValidationException(
-                \Illuminate\Validation\Validator::make([], [])->errors(),
-                response()->view('auth.throttle', ['seconds' => $seconds], 429)
-            );
+            abort(response()->view('auth.throttle', ['seconds' => $seconds], 429));
         }
 
         \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, $decayMinutes * 60);
@@ -129,10 +126,7 @@ class AuthController extends Controller
 
         if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, $maxAttempts)) {
             $seconds = \Illuminate\Support\Facades\RateLimiter::availableIn($throttleKey);
-            throw new \Illuminate\Validation\ValidationException(
-                \Illuminate\Validation\Validator::make([], [])->errors(),
-                response()->view('auth.throttle', ['seconds' => $seconds], 429)
-            );
+            abort(response()->view('auth.throttle', ['seconds' => $seconds], 429));
         }
 
         \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, $decayHours * 3600);

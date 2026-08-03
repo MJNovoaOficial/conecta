@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PriorityRuleController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\AdminController;
@@ -56,46 +57,55 @@ Route::middleware('auth')->group(function () {
 
     // ── Admin ─────────────────────────────────────────────────────────
     Route::middleware('admin')->prefix('admin')->group(function () {
-        Route::get('/dashboard',            [AdminController::class, 'dashboard'])->name('admin.dashboard');
+        Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
 
         // Usuarios
-        Route::get('/users',                [AdminController::class, 'users'])->name('admin.users');
-        Route::get('/users/create',         [AdminController::class, 'createUser'])->name('admin.users.create');
-        Route::post('/users',               [AdminController::class, 'storeUser'])->name('admin.users.store');
-        Route::get('/users/{user}/edit',    [AdminController::class, 'editUser'])->name('admin.users.edit');
-        Route::put('/users/{user}',         [AdminController::class, 'updateUser'])->name('admin.users.update');
+        Route::get('/users',             [AdminController::class, 'users'])->name('admin.users.index');
+        Route::get('/users/create',      [AdminController::class, 'createUser'])->name('admin.users.create');
+        Route::post('/users',            [AdminController::class, 'storeUser'])->name('admin.users.store');
+        Route::get('/users/{user}/edit', [AdminController::class, 'editUser'])->name('admin.users.edit');
+        Route::put('/users/{user}',      [AdminController::class, 'updateUser'])->name('admin.users.update');
 
         // Departamentos
-        Route::get('/departments',          [AdminController::class, 'departments'])->name('admin.departments');
-        Route::get('/departments/create',   [AdminController::class, 'createDepartment'])->name('admin.departments.create');
-        Route::post('/departments',         [AdminController::class, 'storeDepartment'])->name('admin.departments.store');
+        Route::get('/departments',        [AdminController::class, 'departments'])->name('admin.departments.index');
+        Route::get('/departments/create', [AdminController::class, 'createDepartment'])->name('admin.departments.create');
+        Route::post('/departments',       [AdminController::class, 'storeDepartment'])->name('admin.departments.store');
 
         // Categorías / Subcategorías / Tipos de Incidente
-        Route::get('/categories',                                             [CategoryController::class, 'index'])->name('admin.categories');
-        Route::post('/categories',                                            [CategoryController::class, 'store'])->name('admin.categories.store');
-        Route::put('/categories/{categoria}',                                 [CategoryController::class, 'update'])->name('admin.categories.update');
-        Route::delete('/categories/{categoria}',                              [CategoryController::class, 'destroy'])->name('admin.categories.destroy');
-        Route::post('/categories/{categoria}/subcategorias',                  [CategoryController::class, 'storeSubcategoria'])->name('admin.subcategorias.store');
-        Route::put('/subcategorias/{subcategoria}',                           [CategoryController::class, 'updateSubcategoria'])->name('admin.subcategorias.update');
-        Route::delete('/subcategorias/{subcategoria}',                        [CategoryController::class, 'destroySubcategoria'])->name('admin.subcategorias.destroy');
-        Route::post('/subcategorias/{subcategoria}/tipos',                    [CategoryController::class, 'storeTipo'])->name('admin.tipos.store');
-        Route::delete('/tipos/{tipo}',                                        [CategoryController::class, 'destroyTipo'])->name('admin.tipos.destroy');
+        Route::get('/categories',                                    [CategoryController::class, 'index'])->name('admin.categories.index');
+        Route::post('/categories',                                   [CategoryController::class, 'store'])->name('admin.categories.store');
+        Route::put('/categories/{categoria}',                        [CategoryController::class, 'update'])->name('admin.categories.update');
+        Route::delete('/categories/{categoria}',                     [CategoryController::class, 'destroy'])->name('admin.categories.destroy');
+        Route::post('/categories/{categoria}/subcategorias',         [CategoryController::class, 'storeSubcategoria'])->name('admin.subcategorias.store');
+        Route::put('/subcategorias/{subcategoria}',                  [CategoryController::class, 'updateSubcategoria'])->name('admin.subcategorias.update');
+        Route::delete('/subcategorias/{subcategoria}',               [CategoryController::class, 'destroySubcategoria'])->name('admin.subcategorias.destroy');
+        Route::post('/subcategorias/{subcategoria}/tipos',           [CategoryController::class, 'storeTipo'])->name('admin.tipos.store');
+        Route::delete('/tipos/{tipo}',                               [CategoryController::class, 'destroyTipo'])->name('admin.tipos.destroy');
+        // Regla departamento automático por categoría
+        Route::post('/categories/{categoria}/dept-rule',             [CategoryController::class, 'storeDeptRule'])->name('admin.categories.deptRule');
+        Route::delete('/categories/{categoria}/dept-rule',           [CategoryController::class, 'destroyDeptRule'])->name('admin.categories.deptRule.destroy');
 
         // SLA
-        Route::get('/sla',                  [CategoryController::class, 'sla'])->name('admin.sla');
-        Route::put('/sla',                  [CategoryController::class, 'updateSla'])->name('admin.sla.update');
+        Route::get('/sla',  [CategoryController::class, 'sla'])->name('admin.sla.index');
+        Route::put('/sla',  [CategoryController::class, 'updateSla'])->name('admin.sla.update');
 
         // Reportes
-        Route::get('/reports',              [ReportController::class, 'index'])->name('admin.reports');
+        Route::get('/reports',              [ReportController::class, 'index'])->name('admin.reports.index');
         Route::get('/reports/export',       [ReportController::class, 'export'])->name('admin.reports.export');
         Route::get('/reports/export-pdf',   [ReportController::class, 'exportPdf'])->name('admin.reports.exportPdf');
         Route::get('/reports/export-excel', [ReportController::class, 'exportExcel'])->name('admin.reports.exportExcel');
+        Route::get('/reports/agents',       [ReportController::class, 'agentReport'])->name('admin.reports.agents');
+
+        // Reglas de Prioridad Automática
+        Route::get('/priority-rules',                    [PriorityRuleController::class, 'index'])->name('admin.priority-rules.index');
+        Route::post('/priority-rules',                   [PriorityRuleController::class, 'store'])->name('admin.priority-rules.store');
+        Route::delete('/priority-rules/{priorityRule}',  [PriorityRuleController::class, 'destroy'])->name('admin.priority-rules.destroy');
 
         // Auditoría
-        Route::get('/audit',                [AdminController::class, 'audit'])->name('admin.audit');
+        Route::get('/audit',    [AdminController::class, 'audit'])->name('admin.audit.index');
 
-        // Configuración del Sistema (RF-AD-13, RF-AD-14)
-        Route::get('/settings',             [AdminController::class, 'settings'])->name('admin.settings');
-        Route::post('/settings',            [AdminController::class, 'updateSettings'])->name('admin.settings.update');
+        // Configuración del Sistema
+        Route::get('/settings',  [AdminController::class, 'settings'])->name('admin.settings.index');
+        Route::post('/settings', [AdminController::class, 'updateSettings'])->name('admin.settings.update');
     });
 });

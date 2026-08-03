@@ -17,8 +17,22 @@ use Illuminate\Support\Facades\Auth;
 
 class AdminController extends Controller
 {
-    public function dashboard()
+    public function dashboard(Request $request)
     {
+        // Filtro de tiempo
+        $period = $request->get('period', '30d');
+        $periodMap = [
+            '7d'  => ['days' => 7,   'label' => 'Últimos 7 días',   'months' => null, 'dbformat' => '%Y-%m-%d'],
+            '30d' => ['days' => 30,  'label' => 'Últimos 30 días',  'months' => null, 'dbformat' => '%Y-%m-%d'],
+            '3m'  => ['days' => 90,  'label' => 'Últimos 3 meses',  'months' => 3,    'dbformat' => '%Y-%m'],
+            '6m'  => ['days' => 180, 'label' => 'Últimos 6 meses',  'months' => 6,    'dbformat' => '%Y-%m'],
+            '12m' => ['days' => 365, 'label' => 'Últimos 12 meses', 'months' => 12,   'dbformat' => '%Y-%m'],
+        ];
+        $pCfg = $periodMap[$period] ?? $periodMap['30d'];
+        $since = now()->subDays($pCfg['days']);
+        $dbformat = $pCfg['dbformat'];
+        $periodLabel = $pCfg['label'];
+
         $totalUsers        = User::count();
         $activeUsers       = User::where('is_active', true)->count();
         $totalTickets      = Ticket::count();
@@ -29,16 +43,17 @@ class AdminController extends Controller
         $closedTickets     = Ticket::where('status', 'closed')->count();
         $totalDepts        = Department::count();
 
-        // Tickets por prioridad
+        // Tickets por prioridad (filtrado por período)
         $byPriority = Ticket::select('priority', DB::raw('count(*) as total'))
-            ->whereNotIn('status', ['closed'])
+            ->where('created_at', '>=', $since)
             ->groupBy('priority')
             ->pluck('total', 'priority');
 
-        // Tickets por categoría (top 5) — vía subcategoria JOIN
+        // Tickets por categoría (top 5, filtrado por período)
         $byCategory = \App\Models\Categoria::withCount([
                 'subcategorias as ticket_count' => fn($q) => $q
                     ->join('tickets', 'tickets.subcategoria_id', '=', 'subcategorias.id')
+                    ->where('tickets.created_at', '>=', $since)
                     ->select(DB::raw('COUNT(tickets.id)'))
             ])
             ->orderByDesc('ticket_count')
@@ -46,7 +61,7 @@ class AdminController extends Controller
             ->get()
             ->pluck('ticket_count', 'name');
 
-        // Tickets por técnico (activos)
+        // Tickets por técnico (activos — sin filtro de tiempo)
         $byAgent = User::where(function($q) {
                 $q->where('role', 'support')->orWhere('role', 'admin');
             })
@@ -56,18 +71,19 @@ class AdminController extends Controller
             ->orderByDesc('active_count')
             ->get();
 
-        // Tendencia mensual (últimos 6 meses)
+        // Tendencia (agrupado según período)
         $monthly = Ticket::select(
-                DB::raw('DATE_FORMAT(created_at, "%Y-%m") as month'),
+                DB::raw("DATE_FORMAT(created_at, \"{$dbformat}\") as month"),
                 DB::raw('count(*) as total')
             )
-            ->where('created_at', '>=', now()->subMonths(6))
+            ->where('created_at', '>=', $since)
             ->groupBy('month')
             ->orderBy('month')
             ->get();
 
         // Tickets recientes
         $recentTickets = Ticket::with(['user','assignedTo'])
+            ->orderByRaw("FIELD(priority, 'critical','high','medium','low')")
             ->orderByDesc('created_at')
             ->take(8)
             ->get();
@@ -81,6 +97,7 @@ class AdminController extends Controller
 
         // Tiempo promedio de resolución (horas) (RN-24)
         $avgResolutionHours = Ticket::whereNotNull('resolved_at')
+            ->where('created_at', '>=', $since)
             ->select(DB::raw('AVG(TIMESTAMPDIFF(HOUR, created_at, resolved_at)) as avg_h'))
             ->value('avg_h');
 
@@ -92,14 +109,15 @@ class AdminController extends Controller
             ->count();
         $slaCompliance = $totalResolved > 0 ? round(($resolvedInSla / $totalResolved) * 100, 1) : null;
 
-        Log::info('Panel de admin accedido', ['user_id' => Auth::id()]);
+        Log::info('Panel de admin accedido', ['user_id' => Auth::id(), 'period' => $period]);
 
         return view('admin.dashboard', compact(
             'totalUsers', 'activeUsers', 'totalTickets',
             'openTickets', 'inProgressTickets', 'pendingTickets',
             'resolvedTickets', 'closedTickets', 'totalDepts',
             'byPriority', 'byCategory', 'byAgent', 'monthly', 'recentTickets',
-            'topRequesters', 'avgResolutionHours', 'slaCompliance'
+            'topRequesters', 'avgResolutionHours', 'slaCompliance',
+            'period', 'periodLabel'
         ));
     }
 
