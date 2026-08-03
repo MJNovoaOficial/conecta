@@ -22,3 +22,9 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Scripts de desarrollo local
+*.ps1
+
+# Archivos temporales de exportación
+/tmp
