@@ -248,20 +248,24 @@ table.rp-tbl tbody tr:hover td { background:#fafbff; }
                 <label>Hasta</label>
                 <input type="date" name="date_to" style="width:130px;" value="{{ request('date_to') }}">
             </div>
-            <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;">
+            <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;align-items:flex-end;">
                 <button type="submit" class="btn-filter btn-f-apply"><i class="fas fa-filter"></i> Filtrar</button>
                 <a href="{{ route('admin.reports.index') }}" class="btn-filter btn-f-clear"><i class="fas fa-times"></i> Limpiar</a>
-                <a href="{{ route('admin.reports.export') }}?{{ http_build_query(request()->all()) }}" class="btn-filter btn-f-csv" title="Exportar CSV">
+                <button type="button" id="btn-csv"
+                    onclick="downloadReport('{{ route('admin.reports.export') }}?{{ http_build_query(request()->except('page')) }}','reporte_tickets_{{ now()->format('Y-m-d') }}.csv','btn-csv')"
+                    class="btn-filter btn-f-csv" title="Exportar CSV">
                     <i class="fas fa-file-csv"></i> CSV
-                </a>
-                @if(Route::has('admin.reports.exportExcel'))
-                <a href="{{ route('admin.reports.exportExcel') }}?{{ http_build_query(request()->all()) }}" class="btn-filter btn-f-excel" title="Exportar Excel">
+                </button>
+                <button type="button" id="btn-excel"
+                    onclick="downloadReport('{{ route('admin.reports.exportExcel') }}?{{ http_build_query(request()->except('page')) }}','reporte_tickets_{{ now()->format('Y-m-d') }}.xlsx','btn-excel')"
+                    class="btn-filter btn-f-excel" title="Exportar Excel">
                     <i class="fas fa-file-excel"></i> Excel
-                </a>
-                @endif
-                <a href="{{ route('admin.reports.exportPdf') }}?{{ http_build_query(request()->all()) }}" class="btn-filter btn-f-pdf" title="Exportar PDF">
+                </button>
+                <button type="button" id="btn-pdf"
+                    onclick="downloadReport('{{ route('admin.reports.exportPdf') }}?{{ http_build_query(request()->except('page')) }}','reporte_tickets_{{ now()->format('Y-m-d') }}.pdf','btn-pdf')"
+                    class="btn-filter btn-f-pdf" title="Exportar PDF">
                     <i class="fas fa-file-pdf"></i> PDF
-                </a>
+                </button>
             </div>
         </form>
     </div>
@@ -376,4 +380,61 @@ table.rp-tbl tbody tr:hover td { background:#fafbff; }
 
 </div>{{-- /admin-content --}}
 </div>{{-- /admin-layout --}}
+
+@push('scripts')
+<script>
+/**
+ * Descarga un archivo generado por el servidor usando fetch + Blob.
+ * Esto garantiza que el archivo se guarda con el nombre correcto en todos
+ * los navegadores (Edge, Chrome, Firefox), sin depender del Content-Disposition.
+ */
+async function downloadReport(url, filename, btnId) {
+    const btn = document.getElementById(btnId);
+    const icon = btn.querySelector('i');
+    const originalIcon = icon.className;
+    const originalText = btn.innerHTML;
+
+    // Estado de carga
+    btn.disabled = true;
+    icon.className = 'fas fa-spinner fa-spin';
+    btn.querySelector('i').nextSibling.textContent = ' Generando...';
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+
+        if (!response.ok) {
+            throw new Error('El servidor devolvió un error ' + response.status);
+        }
+
+        // Obtener el contenido como Blob
+        const blob = await response.blob();
+
+        // Crear URL temporal y disparar descarga
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;   // ← el navegador usa ESTE nombre, no los headers HTTP
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        // Liberar memoria
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+
+    } catch (err) {
+        console.error('Error al descargar:', err);
+        alert('Error al generar el archivo: ' + err.message);
+    } finally {
+        // Restaurar botón
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+</script>
+@endpush
 @endsection
