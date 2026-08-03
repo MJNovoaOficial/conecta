@@ -45,13 +45,13 @@
         <div class="card" style="margin-top:1rem;margin-bottom:0;">
             <div class="card-body" style="padding:.75rem 1rem;">
                 <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:.5rem;font-weight:600;">ACCESOS RÁPIDOS</p>
-                <a href="{{ route('admin.sla') }}" class="quick-link">
+                <a href="{{ route('admin.sla.index') }}" class="quick-link">
                     <i class="bi bi-clock-history"></i> Configurar SLA
                 </a>
-                <a href="{{ route('admin.reports') }}" class="quick-link">
+                <a href="{{ route('admin.reports.index') }}" class="quick-link">
                     <i class="bi bi-bar-chart-line"></i> Ver Reportes
                 </a>
-                <a href="{{ route('admin.audit') }}" class="quick-link">
+                <a href="{{ route('admin.audit.index') }}" class="quick-link">
                     <i class="bi bi-shield-check"></i> Auditoría
                 </a>
             </div>

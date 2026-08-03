@@ -40,14 +40,14 @@ class PriorityRuleController extends Controller
             'categoria_id', 'subcategoria_id', 'tipo_incidente_id', 'priority', 'description'
         ));
 
-        AuditLog::log('Regla de prioridad creada', "Prioridad '{$rule->priority}' para cat. ID {$rule->categoria_id}");
+        AuditLog::record('priority_rule.created', 'PriorityRule', $rule->id, ['priority' => $rule->priority, 'categoria_id' => $rule->categoria_id]);
 
         return back()->with('success', 'Regla de prioridad creada correctamente.');
     }
 
     public function destroy(PriorityRule $priorityRule)
     {
-        AuditLog::log('Regla de prioridad eliminada', "ID {$priorityRule->id}");
+        AuditLog::record('priority_rule.deleted', 'PriorityRule', $priorityRule->id);
         $priorityRule->delete();
         return back()->with('success', 'Regla eliminada.');
     }

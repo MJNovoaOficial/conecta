@@ -163,7 +163,7 @@
             </div>
             <div style="padding:12px 18px;background:#fff7ed;border:1px solid #fde68a;border-radius:8px;font-size:.82rem;color:#92400e;">
                 <i class="fas fa-info-circle me-1"></i>
-                Los tiempos de atención y resolución por prioridad se gestionan en <a href="{{ route('admin.sla') }}" style="color:#92400e;font-weight:600;">Configuración de SLA</a>.
+                Los tiempos de atención y resolución por prioridad se gestionan en <a href="{{ route('admin.sla.index') }}" style="color:#92400e;font-weight:600;">Configuración de SLA</a>.
             </div>
         </div>
 

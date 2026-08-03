@@ -210,8 +210,8 @@
                             @foreach($rules as $rule)
                             <tr>
                                 <td><strong>{{ $rule->categoria?->name ?? '—' }}</strong></td>
-                                <td>{{ $rule->subcategoria?->name ?? <span class="hljs-string" style="color:#94a3b8;">Todas</span> }}</td>
-                                <td>{{ $rule->tipoIncidente?->name ?? <span class="hljs-string" style="color:#94a3b8;">Todos</span> }}</td>
+                                <td style="color:{{ $rule->subcategoria ? '#374151' : '#94a3b8' }};">{{ $rule->subcategoria?->name ?? 'Todas' }}</td>
+                                <td style="color:{{ $rule->tipoIncidente ? '#374151' : '#94a3b8' }};">{{ $rule->tipoIncidente?->name ?? 'Todos' }}</td>
                                 <td>
                                     <span class="prio-badge prio-{{ $rule->priority }}">
                                         {{ ['critical'=>'Crítica','high'=>'Alta','medium'=>'Media','low'=>'Baja'][$rule->priority] }}

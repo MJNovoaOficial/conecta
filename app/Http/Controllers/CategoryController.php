@@ -232,7 +232,7 @@ class CategoryController extends Controller
             ['department_id' => $request->department_id]
         );
 
-        AuditLog::log('Regla de departamento configurada', "Categoría '{$categoria->name}' → Dpto ID {$request->department_id}");
+        AuditLog::record('dept_rule.created', 'Categoria', $categoria->id, ['department_id' => $request->department_id]);
 
         return back()->with('success', "Derivación automática configurada para '{$categoria->name}'.");
     }
@@ -240,7 +240,7 @@ class CategoryController extends Controller
     public function destroyDeptRule(Categoria $categoria)
     {
         CategoryDepartmentRule::where('categoria_id', $categoria->id)->delete();
-        AuditLog::log('Regla de departamento eliminada', "Categoría '{$categoria->name}'");
+        AuditLog::record('dept_rule.deleted', 'Categoria', $categoria->id);
         return back()->with('success', 'Regla de derivación eliminada.');
     }
 }

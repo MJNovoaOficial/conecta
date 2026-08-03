@@ -148,7 +148,7 @@
 
             {{-- Footer --}}
             <div style="border-top: 1px solid #f0f2f5; background: #f7f9fc; padding: 13px 22px; text-align: center;">
-                <a href="{{ route('admin.users') }}" style="font-size: 0.82rem; color: #718096; text-decoration: none;">
+                <a href="{{ route('admin.users.index') }}" style="font-size: 0.82rem; color: #718096; text-decoration: none;">
                     <i class="fas fa-arrow-left me-1"></i> Volver a Usuarios
                 </a>
             </div>

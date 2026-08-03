@@ -105,14 +105,13 @@
                             @error('department_id')<div style="color:#e74c3c;font-size:0.76rem;margin-top:3px;">{{ $message }}</div>@enderror
                         </div>
                         <div>
-                            <label class="form-label-custom">Prioridad *</label>
-                            <select name="priority" class="form-control-custom @error('priority') is-invalid @enderror" required>
-                                <option value="low"      {{ old('priority') == 'low'      ? 'selected' : '' }}>Baja</option>
-                                <option value="medium"   {{ old('priority', 'medium') == 'medium' ? 'selected' : '' }}>Media</option>
-                                <option value="high"     {{ old('priority') == 'high'     ? 'selected' : '' }}>Alta</option>
-                                <option value="critical" {{ old('priority') == 'critical' ? 'selected' : '' }}>Crítica</option>
-                            </select>
-                            @error('priority')<div style="color:#e74c3c;font-size:0.76rem;margin-top:3px;">{{ $message }}</div>@enderror
+                            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:.8rem;color:#1d4ed8;display:flex;align-items:center;gap:8px;margin-top:4px;">
+                                <i class="fas fa-magic"></i>
+                                <div>
+                                    <div style="font-weight:700;">Prioridad automática</div>
+                                    <div style="color:#3b82f6;">El sistema asignará la prioridad según la categoría del problema.</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

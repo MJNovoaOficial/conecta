@@ -102,16 +102,13 @@
                             @enderror
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label-custom">Prioridad *</label>
-                            <select name="priority" class="form-control-custom @error('priority') is-invalid @enderror" required>
-                                <option value="low"    {{ old('priority') == 'low'    ? 'selected' : '' }}>Baja</option>
-                                <option value="medium" {{ old('priority', 'medium') == 'medium' ? 'selected' : '' }}>Media</option>
-                                <option value="high"   {{ old('priority') == 'high'   ? 'selected' : '' }}>Alta</option>
-                                <option value="critical" {{ old('priority') == 'critical' ? 'selected' : '' }}>Crítica</option>
-                            </select>
-                            @error('priority')
-                                <div style="color:#e74c3c; font-size:0.78rem; margin-top:4px;">{{ $message }}</div>
-                            @enderror
+                            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;font-size:.8rem;color:#1d4ed8;display:flex;align-items:center;gap:8px;">
+                                <i class="fas fa-magic" style="font-size:.9rem;"></i>
+                                <div>
+                                    <div style="font-weight:700;margin-bottom:2px;">Prioridad automática</div>
+                                    <div style="color:#3b82f6;">El sistema la asignará según la categoría seleccionada.</div>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label-custom">Tipo de Dispositivo *</label>

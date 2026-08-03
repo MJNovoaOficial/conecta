@@ -73,7 +73,7 @@
         {{-- Filtros --}}
         <div class="card" style="margin-bottom:1rem;">
             <div class="card-body" style="padding:1rem;">
-                <form method="GET" action="{{ route('admin.reports') }}" style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;">
+                <form method="GET" action="{{ route('admin.reports.index') }}" style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;">
                     <div>
                         <label class="form-label" style="font-size:.8rem;">Estado</label>
                         <select name="status" class="form-control" style="width:130px;height:36px;font-size:.85rem;">
@@ -134,7 +134,7 @@
                         <button type="submit" class="btn btn-primary" style="height:36px;font-size:.85rem;">
                             <i class="bi bi-funnel"></i> Filtrar
                         </button>
-                        <a href="{{ route('admin.reports') }}" class="btn btn-outline" style="height:36px;font-size:.85rem;">Limpiar</a>
+                        <a href="{{ route('admin.reports.index') }}" class="btn btn-outline" style="height:36px;font-size:.85rem;">Limpiar</a>
                         <a href="{{ route('admin.reports.export') }}?{{ http_build_query(request()->all()) }}" class="btn btn-outline" style="height:36px;font-size:.85rem;color:#22c55e;">
                             <i class="fas fa-file-csv me-1"></i> CSV
                         </a>
