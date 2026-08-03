@@ -109,8 +109,6 @@ class AdminController extends Controller
             ->count();
         $slaCompliance = $totalResolved > 0 ? round(($resolvedInSla / $totalResolved) * 100, 1) : null;
 
-        Log::info('Panel de admin accedido', ['user_id' => Auth::id(), 'period' => $period]);
-
         return view('admin.dashboard', compact(
             'totalUsers', 'activeUsers', 'totalTickets',
             'openTickets', 'inProgressTickets', 'pendingTickets',

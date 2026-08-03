@@ -2,14 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 
 class Ticket extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'ticket_number',
         'user_id',
@@ -75,7 +72,6 @@ class Ticket extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
-
     public function subcategoria()
     {
         return $this->belongsTo(Subcategoria::class, 'subcategoria_id');
@@ -131,21 +127,6 @@ class Ticket extends Model
         return $this->user->department->name ?? 'N/A';
     }
 
-    // Colores de estado según el PDF:
-    // 🟢 Abierto (verde), 🟡 En Proceso (amarillo), 🟠 Pendiente Usuario (naranja),
-    // 🔵 Derivado (azul), ✅ Resuelto (verde check), ⚫ Cerrado (negro)
-    public function getStatusBadgeClass()
-    {
-        return match($this->status) {
-            self::STATUS_OPEN => 'badge bg-success',
-            self::STATUS_IN_PROGRESS => 'badge bg-warning text-dark',
-            self::STATUS_PENDING_USER => 'badge badge-orange',
-            self::STATUS_FORWARDED => 'badge bg-primary',
-            self::STATUS_RESOLVED => 'badge badge-resolved',
-            self::STATUS_CLOSED => 'badge bg-dark',
-            default => 'badge bg-secondary',
-        };
-    }
 
     public function getStatusLabel()
     {
@@ -160,7 +141,6 @@ class Ticket extends Model
         };
     }
 
-
     public function getPriorityLabel()
     {
         return match($this->priority) {
@@ -169,17 +149,6 @@ class Ticket extends Model
             'high' => 'Alta',
             'critical' => 'Crítica',
             default => ucfirst($this->priority),
-        };
-    }
-
-    public function getPriorityBadgeClass()
-    {
-        return match($this->priority) {
-            'critical' => 'badge bg-danger',
-            'high' => 'badge bg-warning text-dark',
-            'medium' => 'badge bg-info',
-            'low' => 'badge bg-secondary',
-            default => 'badge bg-secondary',
         };
     }
 

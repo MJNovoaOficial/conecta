@@ -52,7 +52,6 @@ class ReportController extends Controller
         $requesters = User::where('role', 'user')->orderBy('name')->get();
 
         // ── Resumen estadístico ───────────────────────────────────
-        $baseQuery = clone $query->getQuery();
         $summary = [
             'total'         => Ticket::count(),
             'open'          => Ticket::where('status', 'open')->count(),
