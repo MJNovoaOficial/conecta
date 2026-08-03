@@ -75,7 +75,7 @@
     <div class="admin-content">
         <div class="page-header">
             <div class="page-title">
-                <i class="fas fa-user-chart"></i>
+                <i class="fas fa-user-clock"></i>
                 KPIs por Agente de Soporte
             </div>
             <a href="{{ route('admin.reports.index') }}" style="color:#64748b;font-size:.84rem;text-decoration:none;">

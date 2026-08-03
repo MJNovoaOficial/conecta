@@ -59,6 +59,14 @@
 @endsection
 
 @section('content')
+<style>
+.admin-layout { display:flex; gap:0; min-height:calc(100vh - 60px); }
+.admin-content-wrap { flex:1; background:#f5f7fa; min-width:0; overflow-x:hidden; }
+.config-wrapper { max-width:900px; margin:0 auto; padding:28px 24px 60px; }
+</style>
+<div class="admin-layout">
+@include('layouts.admin_sidebar', ['active' => 'settings'])
+<div class="admin-content-wrap">
 <div class="config-wrapper">
 
     <div class="config-header">
@@ -215,7 +223,9 @@
             <button type="submit" class="btn-save"><i class="fas fa-save me-1"></i> Guardar configuración</button>
         </div>
     </form>
-</div>
+</div>{{-- /config-wrapper --}}
+</div>{{-- /admin-content-wrap --}}
+</div>{{-- /admin-layout --}}
 @endsection
 
 @push('scripts')

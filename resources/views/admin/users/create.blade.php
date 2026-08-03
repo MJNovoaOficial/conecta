@@ -26,8 +26,14 @@
 @endsection
 
 @section('content')
-<div style="min-height: calc(100vh - 52px); display: flex; align-items: center; justify-content: center; padding: 24px;">
-    <div style="width: 100%; max-width: 480px;">
+<style>
+.admin-layout { display:flex; gap:0; min-height:calc(100vh - 60px); }
+.admin-content-wrap { flex:1; background:#f5f7fa; display:flex; align-items:flex-start; justify-content:center; padding:40px 24px; min-width:0; }
+</style>
+<div class="admin-layout">
+@include('layouts.admin_sidebar', ['active' => 'users'])
+<div class="admin-content-wrap">
+<div style="width:100%; max-width:480px;">
 
         {{-- Header --}}
         <div style="text-align: center; margin-bottom: 28px;">
@@ -157,8 +163,9 @@
         <p style="text-align: center; color: #a0aec0; font-size: 0.75rem; margin-top: 20px;">
             Conecta © {{ date('Y') }} · Mesa de Ayuda
         </p>
-    </div>
-</div>
+</div>{{-- /card --}}
+</div>{{-- /admin-content-wrap --}}
+</div>{{-- /admin-layout --}}
 @endsection
 
 @section('scripts')

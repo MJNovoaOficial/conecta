@@ -69,7 +69,7 @@
                     Mis Tickets
                 </div>
             </a>
-            <a href="#" class="sidebar-item" data-bs-toggle="modal" data-bs-target="#newTicketModal" onclick="return false;">
+            <a href="{{ route('tickets.create') }}" class="sidebar-item">
                 <div class="item-left">
                     <span class="item-icon"><i class="fas fa-plus-circle"></i></span>
                     Abrir Ticket
@@ -235,8 +235,7 @@
                 <div class="empty-icon"><i class="fas fa-inbox"></i></div>
                 <h5>No hay tickets</h5>
                 <p>No tienes tickets de soporte aún.</p>
-                <a href="#" class="btn-submit-ticket" style="text-decoration:none; display:inline-block; margin-top:8px;"
-                   data-bs-toggle="modal" data-bs-target="#newTicketModal" onclick="return false;">
+                <a href="{{ route('tickets.create') }}" class="btn-submit-ticket" style="text-decoration:none; display:inline-block; margin-top:8px;">
                     <i class="fas fa-plus me-1"></i> Abrir primer ticket
                 </a>
             </div>
