@@ -251,22 +251,28 @@ table.rp-tbl tbody tr:hover td { background:#fafbff; }
             <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap;align-items:flex-end;">
                 <button type="submit" class="btn-filter btn-f-apply"><i class="fas fa-filter"></i> Filtrar</button>
                 <a href="{{ route('admin.reports.index') }}" class="btn-filter btn-f-clear"><i class="fas fa-times"></i> Limpiar</a>
-                <button type="button" id="btn-csv"
-                    onclick="downloadReport('{{ route('admin.reports.export') }}?{{ http_build_query(request()->except('page')) }}','reporte_tickets_{{ now()->format('Y-m-d') }}.csv','btn-csv')"
-                    class="btn-filter btn-f-csv" title="Exportar CSV">
+                @php
+                    $dlDate    = now()->format('Y-m-d');
+                    $dlParams  = http_build_query(request()->except('page'));
+                    $dlPrefix  = 'reporte_tickets_' . $dlDate;
+                @endphp
+                <a href="{{ url('admin/reports/download/' . $dlPrefix) }}.csv?{{ $dlParams }}"
+                   download="{{ $dlPrefix }}.csv"
+                   class="btn-filter btn-f-csv" title="Exportar CSV">
                     <i class="fas fa-file-csv"></i> CSV
-                </button>
-                <button type="button" id="btn-excel"
-                    onclick="downloadReport('{{ route('admin.reports.exportExcel') }}?{{ http_build_query(request()->except('page')) }}','reporte_tickets_{{ now()->format('Y-m-d') }}.xlsx','btn-excel')"
-                    class="btn-filter btn-f-excel" title="Exportar Excel">
+                </a>
+                <a href="{{ url('admin/reports/download/' . $dlPrefix) }}.xlsx?{{ $dlParams }}"
+                   download="{{ $dlPrefix }}.xlsx"
+                   class="btn-filter btn-f-excel" title="Exportar Excel">
                     <i class="fas fa-file-excel"></i> Excel
-                </button>
-                <button type="button" id="btn-pdf"
-                    onclick="downloadReport('{{ route('admin.reports.exportPdf') }}?{{ http_build_query(request()->except('page')) }}','reporte_tickets_{{ now()->format('Y-m-d') }}.pdf','btn-pdf')"
-                    class="btn-filter btn-f-pdf" title="Exportar PDF">
+                </a>
+                <a href="{{ url('admin/reports/download/' . $dlPrefix) }}.pdf?{{ $dlParams }}"
+                   download="{{ $dlPrefix }}.pdf"
+                   class="btn-filter btn-f-pdf" title="Exportar PDF">
                     <i class="fas fa-file-pdf"></i> PDF
-                </button>
+                </a>
             </div>
+
         </form>
     </div>
 

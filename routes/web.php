@@ -90,11 +90,15 @@ Route::middleware('auth')->group(function () {
         Route::put('/sla',  [CategoryController::class, 'updateSla'])->name('admin.sla.update');
 
         // Reportes
-        Route::get('/reports',              [ReportController::class, 'index'])->name('admin.reports.index');
-        Route::get('/reports/export',       [ReportController::class, 'export'])->name('admin.reports.export');
-        Route::get('/reports/export-pdf',   [ReportController::class, 'exportPdf'])->name('admin.reports.exportPdf');
-        Route::get('/reports/export-excel', [ReportController::class, 'exportExcel'])->name('admin.reports.exportExcel');
-        Route::get('/reports/agents',       [ReportController::class, 'agentReport'])->name('admin.reports.agents');
+        Route::get('/reports',                           [ReportController::class, 'index'])->name('admin.reports.index');
+        Route::get('/reports/export',                    [ReportController::class, 'export'])->name('admin.reports.export');
+        Route::get('/reports/export-pdf',                [ReportController::class, 'exportPdf'])->name('admin.reports.exportPdf');
+        Route::get('/reports/export-excel',              [ReportController::class, 'exportExcel'])->name('admin.reports.exportExcel');
+        Route::get('/reports/agents',                    [ReportController::class, 'agentReport'])->name('admin.reports.agents');
+        // Rutas con filename en el path (para compatibilidad con Edge/Chrome)
+        Route::get('/reports/download/{filename}.csv',   [ReportController::class, 'export'])->name('admin.reports.downloadCsv');
+        Route::get('/reports/download/{filename}.xlsx',  [ReportController::class, 'exportExcel'])->name('admin.reports.downloadXlsx');
+        Route::get('/reports/download/{filename}.pdf',   [ReportController::class, 'exportPdf'])->name('admin.reports.downloadPdf');
 
         // Reglas de Prioridad Automática
         Route::get('/priority-rules',                    [PriorityRuleController::class, 'index'])->name('admin.priority-rules.index');
