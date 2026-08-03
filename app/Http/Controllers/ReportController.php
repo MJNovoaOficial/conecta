@@ -94,52 +94,52 @@ class ReportController extends Controller
     }
 
     /**
-     * Exportar reporte como CSV simple (compatible sin librerías externas).
+     * Exportar reporte como CSV — usa archivo temporal para máxima compatibilidad de navegador.
      */
     public function export(Request $request)
     {
         $query = Ticket::with(['assignedTo', 'subcategoria.categoria', 'tipoIncidente', 'user'])
             ->orderBy('created_at', 'desc');
 
-        if ($request->filled('status'))     $query->where('status', $request->status);
-        if ($request->filled('priority'))   $query->where('priority', $request->priority);
-        if ($request->filled('agent_id'))   $query->where('assigned_to', $request->agent_id);
-        if ($request->filled('user_id'))    $query->where('user_id', $request->user_id);
-        if ($request->filled('date_from'))  $query->whereDate('created_at', '>=', $request->date_from);
-        if ($request->filled('date_to'))    $query->whereDate('created_at', '<=', $request->date_to);
+        if ($request->filled('status'))    $query->where('status', $request->status);
+        if ($request->filled('priority'))  $query->where('priority', $request->priority);
+        if ($request->filled('agent_id'))  $query->where('assigned_to', $request->agent_id);
+        if ($request->filled('user_id'))   $query->where('user_id', $request->user_id);
+        if ($request->filled('date_from')) $query->whereDate('created_at', '>=', $request->date_from);
+        if ($request->filled('date_to'))   $query->whereDate('created_at', '<=', $request->date_to);
 
-        $tickets = $query->get();
-
+        $tickets  = $query->get();
         $filename = 'reporte_tickets_' . now()->format('Y-m-d') . '.csv';
+        $tmpPath  = tempnam(sys_get_temp_dir(), 'conecta_csv_');
 
-        return response()->streamDownload(function () use ($tickets) {
-            $file = fopen('php://output', 'w');
-            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM UTF-8
+        // Escribir CSV al disco temporal
+        $file = fopen($tmpPath, 'w');
+        fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM UTF-8 para Excel
+        fputcsv($file, [
+            'N° Ticket','Título','Solicitante','Estado','Prioridad',
+            'Categoría','Subcategoría','Tipo de Incidente',
+            'Técnico Asignado','Fecha Creación','Fecha Cierre',
+        ], ';');
+        foreach ($tickets as $t) {
+            fputcsv($file, [
+                $t->ticket_number,
+                $t->title,
+                $t->getCreatorName(),
+                $t->getStatusLabel(),
+                $t->getPriorityLabel(),
+                $t->subcategoria?->categoria?->name ?? '',
+                $t->subcategoria?->name ?? '',
+                $t->tipoIncidente?->name ?? '',
+                $t->assignedTo?->name ?? 'Sin asignar',
+                $t->created_at->format('d/m/Y H:i'),
+                $t->closed_at?->format('d/m/Y H:i') ?? '',
+            ], ';');
+        }
+        fclose($file);
 
-            fputcsv($file, ['N° Ticket', 'Título', 'Solicitante', 'Estado', 'Prioridad',
-                            'Categoría', 'Subcategoría', 'Tipo de Incidente',
-                            'Técnico Asignado', 'Fecha Creación', 'Fecha Cierre'], ';');
-
-            foreach ($tickets as $t) {
-                fputcsv($file, [
-                    $t->ticket_number,
-                    $t->title,
-                    $t->getCreatorName(),
-                    $t->getStatusLabel(),
-                    $t->getPriorityLabel(),
-                    $t->subcategoria?->categoria?->name ?? $t->category ?? '',
-                    $t->subcategoria?->name ?? '',
-                    $t->tipoIncidente?->name ?? '',
-                    $t->assignedTo?->name ?? 'Sin asignar',
-                    $t->created_at->format('d/m/Y H:i'),
-                    $t->closed_at?->format('d/m/Y H:i') ?? '',
-                ], ';');
-            }
-
-            fclose($file);
-        }, $filename, [
+        return response()->download($tmpPath, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
+        ])->deleteFileAfterSend(true);
     }
 
     /**
@@ -184,10 +184,15 @@ class ReportController extends Controller
             'assignedTickets as resolved_tickets'   => fn($q) => $q->whereIn('status', ['resolved', 'closed']),
         ])->orderByDesc('total_tickets')->get();
 
-        $pdf = Pdf::loadView('admin.reports.pdf', compact('tickets', 'summary', 'slaCompliance', 'byAgent'))
-                  ->setPaper('a4', 'landscape');
+        $pdf      = Pdf::loadView('admin.reports.pdf', compact('tickets', 'summary', 'slaCompliance', 'byAgent'))
+                       ->setPaper('a4', 'landscape');
+        $filename = 'reporte_tickets_' . now()->format('Y-m-d') . '.pdf';
+        $tmpPath  = tempnam(sys_get_temp_dir(), 'conecta_pdf_') . '.pdf';
+        $pdf->save($tmpPath);
 
-        return $pdf->download('reporte_tickets_' . now()->format('Y-m-d') . '.pdf');
+        return response()->download($tmpPath, $filename, [
+            'Content-Type' => 'application/pdf',
+        ])->deleteFileAfterSend(true);
     }
 
     /**
@@ -283,13 +288,12 @@ class ReportController extends Controller
 
         $writer   = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $filename = 'reporte_tickets_' . now()->format('Y-m-d') . '.xlsx';
+        $tmpPath  = tempnam(sys_get_temp_dir(), 'conecta_xlsx_') . '.xlsx';
+        $writer->save($tmpPath);
 
-        return response()->streamDownload(function () use ($writer) {
-            $writer->save('php://output');
-        }, $filename, [
-            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        return response()->download($tmpPath, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 
     /**
