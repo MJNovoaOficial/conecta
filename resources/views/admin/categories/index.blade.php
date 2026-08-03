@@ -2,7 +2,16 @@
 @section('title', 'Gestión de Categorías')
 
 @section('content')
-<div class="page-header">
+<style>
+.admin-layout { display:flex; gap:0; min-height:calc(100vh - 60px); }
+.admin-content { flex:1; padding:24px 28px 48px; background:#f5f7fa; min-width:0; overflow-x:hidden; }
+</style>
+
+<div class="admin-layout">
+@include('layouts.admin_sidebar', ['active' => 'categories'])
+<div class="admin-content">
+
+<div class="page-header" style="margin-bottom:20px;">
     <div class="breadcrumb-nav">
         <a href="{{ route('admin.dashboard') }}">Dashboard</a>
         <span class="breadcrumb-sep">›</span>
@@ -12,7 +21,7 @@
     <p class="page-subtitle">Administra la jerarquía Categoría → Subcategoría → Tipo de Incidente</p>
 </div>
 
-<div style="display:grid;grid-template-columns:380px 1fr;gap:1.5rem;align-items:start;">
+<div style="display:grid;grid-template-columns:360px 1fr;gap:1.5rem;align-items:start;">
 
     {{-- Panel izquierdo: Crear categoría --}}
     <div>
@@ -201,7 +210,10 @@
             </form>
         </div>
     </div>
-</div>
+</div>{{-- /modal-add-tipo --}}
+
+</div>{{-- /admin-content --}}
+</div>{{-- /admin-layout --}}
 @endsection
 
 @push('styles')

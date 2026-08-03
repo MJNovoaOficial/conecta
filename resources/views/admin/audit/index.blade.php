@@ -1,7 +1,14 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 @section('title', 'Auditoría del Sistema')
 
 @section('content')
+<style>
+.admin-layout { display:flex; gap:0; min-height:calc(100vh - 60px); }
+.admin-content { flex:1; padding:24px 28px 48px; background:#f5f7fa; min-width:0; overflow-x:hidden; }
+</style>
+<div class="admin-layout">
+@include('layouts.admin_sidebar', ['active' => 'audit'])
+<div class="admin-content">
 <div class="page-header">
     <div class="breadcrumb-nav">
         <a href="{{ route('admin.dashboard') }}">Dashboard</a>
@@ -66,4 +73,8 @@
         @endif
     </div>
 </div>
+
+</div>{{-- /admin-content --}}
+</div>{{-- /admin-layout --}}
 @endsection
+
