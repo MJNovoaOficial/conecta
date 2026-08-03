@@ -381,60 +381,54 @@ table.rp-tbl tbody tr:hover td { background:#fafbff; }
 </div>{{-- /admin-content --}}
 </div>{{-- /admin-layout --}}
 
-@push('scripts')
 <script>
 /**
- * Descarga un archivo generado por el servidor usando fetch + Blob.
- * Esto garantiza que el archivo se guarda con el nombre correcto en todos
- * los navegadores (Edge, Chrome, Firefox), sin depender del Content-Disposition.
+ * Descarga un archivo via fetch + Blob para garantizar nombre correcto
+ * en Edge, Chrome y Firefox (no depende de Content-Disposition HTTP).
  */
 async function downloadReport(url, filename, btnId) {
     const btn = document.getElementById(btnId);
-    const icon = btn.querySelector('i');
-    const originalIcon = icon.className;
-    const originalText = btn.innerHTML;
+    const originalHTML = btn.innerHTML;
 
-    // Estado de carga
+    // Mostrar estado de carga
     btn.disabled = true;
-    icon.className = 'fas fa-spinner fa-spin';
-    btn.querySelector('i').nextSibling.textContent = ' Generando...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
 
     try {
-        const response = await fetch(url, {
+        const resp = await fetch(url, {
             method: 'GET',
-            credentials: 'same-origin',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            credentials: 'same-origin'
         });
 
-        if (!response.ok) {
-            throw new Error('El servidor devolvió un error ' + response.status);
+        if (!resp.ok) {
+            throw new Error('Error del servidor: ' + resp.status);
         }
 
-        // Obtener el contenido como Blob
-        const blob = await response.blob();
+        const blob = await resp.blob();
 
-        // Crear URL temporal y disparar descarga
+        // Verificar que no sea HTML (redirección a login)
+        if (blob.type && blob.type.includes('text/html')) {
+            throw new Error('Sesión expirada. Recarga la página e inicia sesión.');
+        }
+
+        // Disparar descarga con nombre correcto
         const blobUrl = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = filename;   // ← el navegador usa ESTE nombre, no los headers HTTP
+        const a       = document.createElement('a');
+        a.href        = blobUrl;
+        a.download    = filename;
         a.style.display = 'none';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-
-        // Liberar memoria
         setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
 
     } catch (err) {
-        console.error('Error al descargar:', err);
-        alert('Error al generar el archivo: ' + err.message);
+        console.error('[downloadReport]', err);
+        alert('No se pudo descargar el archivo:\n' + err.message);
     } finally {
-        // Restaurar botón
-        btn.disabled = false;
-        btn.innerHTML = originalText;
+        btn.disabled  = false;
+        btn.innerHTML = originalHTML;
     }
 }
 </script>
-@endpush
 @endsection
