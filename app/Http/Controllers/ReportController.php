@@ -243,11 +243,10 @@ class ReportController extends Controller
             'alignment' => ['horizontal' => 'center', 'vertical' => 'center'],
         ];
 
+        // Usar getCell($col.$row) en lugar del deprecado getCellByColumnAndRow()
         foreach ($headers as $col => $label) {
             $cell = $col . '1';
-            $sheet->getCellByColumnAndRow(
-                \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($col), 1
-            )->setValueExplicit($label, $dt);
+            $sheet->getCell($cell)->setValueExplicit($label, $dt);
             $sheet->getStyle($cell)->applyFromArray($headerStyle);
         }
         $sheet->getRowDimension(1)->setRowHeight(18);
@@ -272,8 +271,7 @@ class ReportController extends Controller
             ];
 
             foreach ($rowData as $col => $val) {
-                $colIdx = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($col);
-                $sheet->getCellByColumnAndRow($colIdx, $row)->setValueExplicit((string) $val, $dt);
+                $sheet->getCell($col . $row)->setValueExplicit((string) $val, $dt);
             }
 
             if ($row % 2 === 0) {
