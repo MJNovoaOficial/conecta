@@ -112,12 +112,7 @@ class ReportController extends Controller
 
         $filename = 'reporte_tickets_' . now()->format('Y-m-d') . '.csv';
 
-        $headers = [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ];
-
-        $callback = function () use ($tickets) {
+        return response()->streamDownload(function () use ($tickets) {
             $file = fopen('php://output', 'w');
             fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM UTF-8
 
@@ -142,9 +137,9 @@ class ReportController extends Controller
             }
 
             fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 
     /**
