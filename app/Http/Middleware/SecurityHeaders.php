@@ -26,7 +26,10 @@ class SecurityHeaders
             'X-XSS-Protection'        => '1; mode=block',
             'Referrer-Policy'         => 'strict-origin-when-cross-origin',
             'Permissions-Policy'      => 'geolocation=(), microphone=(), camera=()',
-            'Content-Security-Policy' => "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net fonts.googleapis.com; font-src 'self' cdn.jsdelivr.net fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'self'",
+            // cdnjs.cloudflare.com sirve Font Awesome (hoja de estilos + webfonts).
+            // Sin el dominio en style-src y font-src el navegador bloquea la carga
+            // y el sistema queda sin ningun icono.
+            'Content-Security-Policy' => "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com fonts.googleapis.com; font-src 'self' cdn.jsdelivr.net cdnjs.cloudflare.com fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'self'",
         ];
 
         foreach ($securityHeaders as $key => $value) {
