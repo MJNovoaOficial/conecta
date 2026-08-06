@@ -17,6 +17,7 @@ use App\Models\Department;
 use App\Models\TicketHistory;
 use App\Models\User;
 use App\Notifications\NewTicketNotification;
+use App\Notifications\TicketCreatedNotification;
 use App\Notifications\TicketUpdatedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -180,6 +181,15 @@ class TicketController extends Controller
             'Tu solicitud ha sido registrada y será atendida próximamente. Prioridad asignada: ' . ucfirst($priority),
             $ticket->id
         );
+
+        // Correo de confirmacion al creador, con numero de ticket y enlace (RF-RI-11).
+        // Va en try/catch para que un fallo del servidor de correo no impida crear
+        // el ticket: el ticket ya esta guardado y es lo importante.
+        try {
+            Auth::user()->notify(new TicketCreatedNotification($ticket));
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo encolar el correo de confirmacion del ticket ' . $ticketNumber . ': ' . $e->getMessage());
+        }
 
         AuditLog::record('ticket.created', 'Ticket', $ticket->id, ['ticket_number' => $ticketNumber, 'priority' => $priority]);
 
