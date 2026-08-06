@@ -826,6 +826,82 @@ document.addEventListener('DOMContentLoaded', function () {
     setInterval(updateBadge, 60000);
 })();
 @endauth
+
+// ── Modal de nuevo ticket (global) ───────────────────────────────────────────
+window.mfmt = function(cmd) {
+    var ed = document.getElementById('modalEditor');
+    if (ed) { ed.focus(); document.execCommand(cmd, false, null); syncModalEditor(); }
+};
+window.syncModalEditor = function() {
+    var ed = document.getElementById('modalEditor');
+    var ta = document.getElementById('modalDescField');
+    if (ed && ta) ta.value = ed.innerHTML;
+};
+window.submitModalTicket = function() {
+    syncModalEditor();
+    var ed = document.getElementById('modalEditor');
+    if (ed && !ed.innerText.trim()) document.getElementById('modalDescField').value = '';
+    var form = document.getElementById('modalTicketForm');
+    if (form) form.submit();
+};
+window.loadModalSubcats = function(catId) {
+    var subSel  = document.getElementById('modalSubcatSelect');
+    var tipoSel = document.getElementById('modalTipoSelect');
+    if (!subSel) return;
+    subSel.innerHTML  = '<option value="">Cargando...</option>';
+    subSel.disabled   = true;
+    tipoSel.innerHTML = '<option value="">Seleccionar tipo (opcional)...</option>';
+    tipoSel.disabled  = true;
+    if (!catId) { subSel.innerHTML = '<option value="">Primero selecciona categoría...</option>'; return; }
+    fetch('/api/categorias/' + catId + '/subcategorias')
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
+            subSel.innerHTML = '<option value="">Seleccionar subcategoría...</option>';
+            data.forEach(function(s) {
+                var o = document.createElement('option');
+                o.value = s.id; o.textContent = s.name;
+                subSel.appendChild(o);
+            });
+            subSel.disabled = false;
+        });
+};
+window.loadModalTipos = function(subId) {
+    var tipoSel = document.getElementById('modalTipoSelect');
+    if (!tipoSel) return;
+    tipoSel.innerHTML = '<option value="">Cargando...</option>';
+    tipoSel.disabled  = true;
+    if (!subId) { tipoSel.innerHTML = '<option value="">Seleccionar tipo (opcional)...</option>'; return; }
+    fetch('/api/subcategorias/' + subId + '/tipos')
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
+            tipoSel.innerHTML = '<option value="">Seleccionar tipo (opcional)...</option>';
+            data.forEach(function(t) {
+                var o = document.createElement('option');
+                o.value = t.id; o.textContent = t.name;
+                tipoSel.appendChild(o);
+            });
+            tipoSel.disabled = false;
+        });
+};
+// Reset al cerrar el modal
+document.addEventListener('DOMContentLoaded', function() {
+    var modalEl = document.getElementById('newTicketModal');
+    if (!modalEl) return;
+    modalEl.addEventListener('hidden.bs.modal', function() {
+        var form = document.getElementById('modalTicketForm');
+        if (form) form.reset();
+        var ed = document.getElementById('modalEditor');
+        if (ed) ed.innerHTML = '';
+        var ta = document.getElementById('modalDescField');
+        if (ta) ta.value = '';
+        var fn = document.getElementById('modalFileNames');
+        if (fn) fn.textContent = '';
+        var sub = document.getElementById('modalSubcatSelect');
+        if (sub) { sub.innerHTML = '<option value="">Primero selecciona categoría...</option>'; sub.disabled = true; }
+        var tip = document.getElementById('modalTipoSelect');
+        if (tip) { tip.innerHTML = '<option value="">Seleccionar tipo (opcional)...</option>'; tip.disabled = true; }
+    });
+});
 </script>
 </body>
 </html>

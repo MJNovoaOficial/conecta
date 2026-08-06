@@ -1,4 +1,4 @@
-﻿@extends("layouts.app")
+@extends("layouts.app")
 @section("title", "Mi Rendimiento - Conecta")
 @section("content")
 <div class="page-wrapper">
@@ -18,7 +18,7 @@
             <a href="{{ route("tickets.my-stats") }}" class="sidebar-item active">
                 <div class="item-left"><span class="item-icon"><i class="fas fa-chart-bar"></i></span>Mi Rendimiento</div>
             </a>
-            <a href="{{ route("tickets.create") }}" class="sidebar-item">
+            <a href="#" class="sidebar-item" data-bs-toggle="modal" data-bs-target="#newTicketModal" onclick="this.blur()">
                 <div class="item-left"><span class="item-icon"><i class="fas fa-plus-circle"></i></span>Abrir Ticket</div>
             </a>
         </div>
@@ -142,3 +142,5 @@ new Chart(ctx, {
 @endif
 </script>
 @endsection
+
+@include('partials.create_ticket_modal')

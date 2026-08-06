@@ -192,7 +192,9 @@ class TicketController extends Controller
             $values[] = $monthly[$key] ?? 0;
         }
 
-        return view('tickets.my_stats', compact('stats', 'avgHours', 'labels', 'values'));
+        $departments = Department::where('is_active', true)->get();
+
+        return view('tickets.my_stats', compact('stats', 'avgHours', 'labels', 'values', 'departments'));
     }
 
     public function create()
