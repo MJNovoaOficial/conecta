@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\Categoria;
 use App\Models\CategoryDepartmentRule;
 use App\Models\Notificacion;
 use App\Models\PriorityRule;
@@ -63,6 +64,20 @@ class TicketController extends Controller
         if (request('status'))     $query->where('status', request('status'));
         if (request('priority'))   $query->where('priority', request('priority'));
         if (request('agent_id'))   $query->where('assigned_to', request('agent_id'));
+
+        // RF-RI-09 / RF-ST-12: filtro por categoria.
+        // El ticket no guarda la categoria directamente: cuelga de la subcategoria,
+        // por eso se filtra con whereHas sobre la relacion.
+        if (request('categoria_id')) {
+            $query->whereHas('subcategoria', fn($q) => $q->where('categoria_id', request('categoria_id')));
+        }
+
+        // RF-ST-12: filtro por solicitante.
+        // Solo aplica a soporte/admin: un usuario normal ya ve unicamente sus tickets.
+        if (request('requester_id') && ($user->isSupport() || $user->isAdmin())) {
+            $query->where('user_id', request('requester_id'));
+        }
+
         if (request('search')) {
             $s = request('search');
             $query->where(fn($q) => $q->where('ticket_number','like',"%{$s}%")->orWhere('title','like',"%{$s}%"));
@@ -86,11 +101,18 @@ class TicketController extends Controller
         ];
 
         $departments  = Department::where('is_active', true)->get();
+        $categorias   = Categoria::orderBy('name')->get();
         $supportUsers = ($user->isSupport() || $user->isAdmin())
             ? User::whereIn('role',['support','admin'])->where('is_active',true)->orderBy('name')->get()
             : collect();
 
-        return view('tickets.index', compact('tickets', 'counts', 'departments', 'supportUsers'));
+        // Solo usuarios que efectivamente han creado tickets, para no llenar
+        // el desplegable con gente que nunca abrio ninguno.
+        $requesters = ($user->isSupport() || $user->isAdmin())
+            ? User::whereHas('tickets')->orderBy('name')->get(['id', 'name'])
+            : collect();
+
+        return view('tickets.index', compact('tickets', 'counts', 'departments', 'categorias', 'supportUsers', 'requesters'));
     }
 
     public function create()

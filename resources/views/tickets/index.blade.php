@@ -130,6 +130,49 @@
                         <option value="critical" {{ request('priority')=='critical' ?'selected':'' }}>🔴 Crítica</option>
                     </select>
                 </div>
+                {{-- RF-RI-09 / RF-ST-12: filtro por categoria --}}
+                <div style="min-width:150px;">
+                    <label style="font-size:.72rem;font-weight:600;color:#718096;display:block;margin-bottom:3px;">Categoría</label>
+                    <select name="categoria_id" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:.83rem;">
+                        <option value="">Todas</option>
+                        @foreach($categorias as $categoria)
+                            <option value="{{ $categoria->id }}" {{ request('categoria_id') == $categoria->id ? 'selected' : '' }}>
+                                {{ $categoria->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- RF-ST-12: filtro por tecnico responsable (solo soporte/admin) --}}
+                @if($supportUsers->isNotEmpty())
+                <div style="min-width:150px;">
+                    <label style="font-size:.72rem;font-weight:600;color:#718096;display:block;margin-bottom:3px;">Técnico</label>
+                    <select name="agent_id" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:.83rem;">
+                        <option value="">Todos</option>
+                        @foreach($supportUsers as $agente)
+                            <option value="{{ $agente->id }}" {{ request('agent_id') == $agente->id ? 'selected' : '' }}>
+                                {{ $agente->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
+
+                {{-- RF-ST-12: filtro por solicitante (solo soporte/admin) --}}
+                @if($requesters->isNotEmpty())
+                <div style="min-width:150px;">
+                    <label style="font-size:.72rem;font-weight:600;color:#718096;display:block;margin-bottom:3px;">Solicitante</label>
+                    <select name="requester_id" style="width:100%;padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:.83rem;">
+                        <option value="">Todos</option>
+                        @foreach($requesters as $solicitante)
+                            <option value="{{ $solicitante->id }}" {{ request('requester_id') == $solicitante->id ? 'selected' : '' }}>
+                                {{ $solicitante->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
+
                 <div style="min-width:120px;">
                     <label style="font-size:.72rem;font-weight:600;color:#718096;display:block;margin-bottom:3px;">Desde</label>
                     <input type="date" name="date_from" value="{{ request('date_from') }}"
@@ -144,7 +187,7 @@
                     <button type="submit" style="padding:7px 16px;background:#3498db;color:#fff;border:none;border-radius:6px;font-size:.83rem;font-weight:600;cursor:pointer;white-space:nowrap;">
                         <i class="fas fa-search me-1"></i> Filtrar
                     </button>
-                    @if(request()->hasAny(['search','priority','date_from','date_to']))
+                    @if(request()->hasAny(['search','priority','categoria_id','agent_id','requester_id','date_from','date_to']))
                     <a href="{{ route('tickets.index', request()->only('status')) }}" style="padding:7px 12px;background:#e2e8f0;color:#4a5568;border-radius:6px;font-size:.83rem;text-decoration:none;white-space:nowrap;">
                         <i class="fas fa-times me-1"></i> Limpiar
                     </a>
