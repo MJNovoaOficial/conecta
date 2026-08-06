@@ -170,6 +170,7 @@
                             <th>Asunto <span class="sort-icon">⇅</span></th>
                             <th>Estado <span class="sort-icon">⇅</span></th>
                             <th>Prioridad</th>
+                            <th>SLA</th>
                             <th>Asignado</th>
                             <th>Última Actualización <span class="sort-icon">⇅</span></th>
                         </tr>
@@ -211,6 +212,27 @@
                                     $priCls = $priClasses[$ticket->priority] ?? 'priority-medium';
                                 @endphp
                                 <span class="priority-badge {{ $priCls }}">{{ $ticket->getPriorityLabel() }}</span>
+                            </td>
+                            <td>
+                                {{-- RN-17 / RF-ST-11: semaforo de cumplimiento del SLA de resolucion.
+                                     Solo se muestra en tickets activos: uno cerrado ya no corre riesgo. --}}
+                                @php
+                                    $finalizado = in_array($ticket->status, ['resolved', 'closed']);
+                                    $slaEstado  = $finalizado ? null : $ticket->getSlaResolutionStatus();
+                                    $slaMapa = [
+                                        'ok'       => ['texto' => 'En plazo',   'fondo' => '#e6f7ed', 'color' => '#1a7f43'],
+                                        'warning'  => ['texto' => 'Por vencer', 'fondo' => '#fff4e0', 'color' => '#a86a00'],
+                                        'exceeded' => ['texto' => 'Vencido',    'fondo' => '#fdecea', 'color' => '#b3261e'],
+                                    ];
+                                @endphp
+                                @if (isset($slaMapa[$slaEstado]))
+                                    <span style="display:inline-block;padding:.15rem .55rem;border-radius:999px;font-size:.72rem;font-weight:600;white-space:nowrap;background:{{ $slaMapa[$slaEstado]['fondo'] }};color:{{ $slaMapa[$slaEstado]['color'] }};"
+                                          title="Límite de resolución: {{ $ticket->sla_resolution_deadline_at?->format('d/m/Y H:i') }}">
+                                        {{ $slaMapa[$slaEstado]['texto'] }}
+                                    </span>
+                                @else
+                                    <span style="color:#cbd5e0;font-size:.8rem;">—</span>
+                                @endif
                             </td>
                             <td style="font-size:0.8rem; color:#718096;">
                                 {{ $ticket->assignedTo->name ?? '—' }}
