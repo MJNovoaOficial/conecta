@@ -1,4 +1,4 @@
-﻿{{--
+{{--
   Partial reutilizable: Modal para abrir nuevo ticket.
   Requiere que $departments esté disponible en la vista que lo incluya.
   JS: mfmt(), syncModalEditor(), submitModalTicket(), loadModalSubcats(), loadModalTipos()
@@ -39,14 +39,15 @@
                 @endforeach
               </select>
             </div>
-            <div class="col-md-3">
-              <label class="form-label fw-semibold" style="font-size:0.85rem;color:#2d3748;">Prioridad *</label>
-              <select name="priority" class="form-select" style="border-radius:7px;border-color:#e2e8f0;font-size:0.87rem;">
-                <option value="low">Baja</option>
-                <option value="medium" selected>Media</option>
-                <option value="high">Alta</option>
-                <option value="critical">Crítica</option>
-              </select>
+            <div class="col-md-4">
+              {{-- Prioridad automática: solo el admin puede configurarla --}}
+              <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;font-size:.8rem;color:#1d4ed8;display:flex;align-items:center;gap:8px;height:100%;margin-top:auto;">
+                <i class="fas fa-magic" style="font-size:.9rem;flex-shrink:0;"></i>
+                <div>
+                  <div style="font-weight:700;margin-bottom:2px;">Prioridad automática</div>
+                  <div style="color:#3b82f6;font-size:.75rem;">El sistema la asigna según la categoría.</div>
+                </div>
+              </div>
             </div>
             <div class="col-md-4">
               <label class="form-label fw-semibold" style="font-size:0.85rem;color:#2d3748;">Dispositivo *</label>
