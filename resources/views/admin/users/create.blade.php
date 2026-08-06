@@ -127,7 +127,7 @@
                                    class="form-control-custom @error('password') is-invalid @enderror"
                                    style="padding-left: 32px; padding-right: 38px;"
                                    placeholder="Mínimo 8 caracteres" required>
-                            <button type="button" onclick="togglePass()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#a0aec0;cursor:pointer;padding:0;font-size:0.82rem;">
+                            <button type="button" onclick="togglePass(this)" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:#5a6a7d;cursor:pointer;padding:6px;font-size:0.95rem;line-height:1;border-radius:4px;" aria-label="Mostrar contraseña" aria-pressed="false" title="Mostrar contraseña">
                                 <i class="fas fa-eye" id="passIcon"></i>
                             </button>
                         </div>
@@ -170,11 +170,27 @@
 
 @section('scripts')
 <script>
-function togglePass() {
+function togglePass(btn) {
     const f = document.getElementById('passField');
     const i = document.getElementById('passIcon');
-    if (f.type === 'password') { f.type = 'text'; i.classList.replace('fa-eye','fa-eye-slash'); }
-    else { f.type = 'password'; i.classList.replace('fa-eye-slash','fa-eye'); }
+    if (f.type === 'password') {
+        f.type = 'text';
+        i.classList.replace('fa-eye','fa-eye-slash');
+        etiquetarToggle(btn, true);
+    } else {
+        f.type = 'password';
+        i.classList.replace('fa-eye-slash','fa-eye');
+        etiquetarToggle(btn, false);
+    }
+}
+
+// Mantiene la etiqueta accesible del boton sincronizada con su estado (RNF-15).
+function etiquetarToggle(btn, visible) {
+    if (!btn) return;
+    const texto = visible ? 'Ocultar contraseña' : 'Mostrar contraseña';
+    btn.setAttribute('aria-label', texto);
+    btn.setAttribute('title', texto);
+    btn.setAttribute('aria-pressed', visible ? 'true' : 'false');
 }
 </script>
 @endsection
