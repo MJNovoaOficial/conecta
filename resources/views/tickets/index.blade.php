@@ -59,14 +59,31 @@
         </div>
 
         {{-- Navegación de soporte --}}
+        @if(Auth::user()->isSupport() || Auth::user()->isAdmin())
         <div class="sidebar-section">
             <div class="sidebar-section-header">
                 <span><i class="fas fa-headset me-2"></i>Soporte</span>
             </div>
-            <a href="{{ route('tickets.index') }}" class="sidebar-item active">
+            <a href="{{ route('tickets.index') }}" class="sidebar-item {{ !request('agent_id') ? 'active' : '' }}">
                 <div class="item-left">
                     <span class="item-icon"><i class="fas fa-ticket-alt"></i></span>
+                    Todos los Tickets
+                </div>
+                <span class="sidebar-badge">{{ $counts['total'] ?? 0 }}</span>
+            </a>
+            <a href="{{ route('tickets.index', ['agent_id' => Auth::id()]) }}" class="sidebar-item {{ request('agent_id') == Auth::id() ? 'active' : '' }}">
+                <div class="item-left">
+                    <span class="item-icon"><i class="fas fa-user-check"></i></span>
                     Mis Tickets
+                </div>
+                @if($myTicketsCount > 0)
+                    <span class="sidebar-badge badge-open">{{ $myTicketsCount }}</span>
+                @endif
+            </a>
+            <a href="{{ route('tickets.my-stats') }}" class="sidebar-item">
+                <div class="item-left">
+                    <span class="item-icon"><i class="fas fa-chart-bar"></i></span>
+                    Mi Rendimiento
                 </div>
             </a>
             <a href="{{ route('tickets.create') }}" class="sidebar-item">
@@ -84,6 +101,33 @@
             </a>
             @endif
         </div>
+        @else
+        {{-- Navegación para usuario común --}}
+        <div class="sidebar-section">
+            <div class="sidebar-section-header">
+                <span><i class="fas fa-user me-2"></i>Mi Cuenta</span>
+            </div>
+            <a href="{{ route('tickets.index') }}" class="sidebar-item active">
+                <div class="item-left">
+                    <span class="item-icon"><i class="fas fa-ticket-alt"></i></span>
+                    Mis Tickets
+                </div>
+                <span class="sidebar-badge">{{ $counts['total'] ?? 0 }}</span>
+            </a>
+            <a href="{{ route('tickets.create') }}" class="sidebar-item">
+                <div class="item-left">
+                    <span class="item-icon"><i class="fas fa-plus-circle"></i></span>
+                    Nuevo Ticket
+                </div>
+            </a>
+            <a href="{{ route('profile.index') }}" class="sidebar-item">
+                <div class="item-left">
+                    <span class="item-icon"><i class="fas fa-user-cog"></i></span>
+                    Mi Perfil
+                </div>
+            </a>
+        </div>
+        @endif
 
     </aside>
 

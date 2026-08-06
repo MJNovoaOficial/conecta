@@ -79,6 +79,9 @@
                             <input type="checkbox" name="remember" style="accent-color: #3498db;">
                             Recuérdame
                         </label>
+                        <a href="{{ route('password.forgot') }}" style="font-size:0.8rem;color:#3498db;text-decoration:none;font-weight:500;">
+                            ¿Olvidaste tu contraseña?
+                        </a>
                     </div>
 
                     <button type="submit" class="btn-submit-ticket" style="width: 100%; justify-content: center; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">

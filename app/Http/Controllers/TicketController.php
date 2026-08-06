@@ -140,7 +140,59 @@ class TicketController extends Controller
             ? User::whereHas('tickets')->orderBy('name')->get(['id', 'name'])
             : collect();
 
-        return view('tickets.index', compact('tickets', 'counts', 'departments', 'categorias', 'supportUsers', 'requesters'));
+        // Cantidad de tickets asignados al agente actual (para badge "Mis Tickets")
+        $myTicketsCount = ($user->isSupport() || $user->isAdmin())
+            ? Ticket::where('assigned_to', $user->id)->whereNotIn('status', [Ticket::STATUS_CLOSED])->count()
+            : 0;
+
+        return view('tickets.index', compact('tickets', 'counts', 'departments', 'categorias', 'supportUsers', 'requesters', 'myTicketsCount'));
+    }
+
+    /**
+     * Estadísticas de rendimiento individual del agente autenticado.
+     */
+    public function myStats()
+    {
+        $user = Auth::user();
+        abort_unless($user->isSupport() || $user->isAdmin(), 403);
+
+        $base = Ticket::where('assigned_to', $user->id);
+
+        $stats = [
+            'total'       => (clone $base)->count(),
+            'resolved'    => (clone $base)->where('status', Ticket::STATUS_RESOLVED)->count(),
+            'closed'      => (clone $base)->where('status', Ticket::STATUS_CLOSED)->count(),
+            'in_progress' => (clone $base)->whereIn('status', [Ticket::STATUS_IN_PROGRESS, Ticket::STATUS_PENDING_USER, Ticket::STATUS_FORWARDED])->count(),
+            'open'        => (clone $base)->where('status', Ticket::STATUS_OPEN)->count(),
+        ];
+
+        // Promedio de resolución en horas (solo tickets resueltos con ambos timestamps)
+        $avgHours = (clone $base)
+            ->whereIn('status', [Ticket::STATUS_RESOLVED, Ticket::STATUS_CLOSED])
+            ->whereNotNull('resolved_at')
+            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, resolved_at)) as avg_hours')
+            ->value('avg_hours');
+
+        // Últimos 6 meses: tickets resueltos/cerrados por mes
+        $monthly = (clone $base)
+            ->whereIn('status', [Ticket::STATUS_RESOLVED, Ticket::STATUS_CLOSED])
+            ->whereNotNull('resolved_at')
+            ->where('resolved_at', '>=', now()->subMonths(6)->startOfMonth())
+            ->selectRaw('DATE_FORMAT(resolved_at, "%Y-%m") as mes, COUNT(*) as total')
+            ->groupBy('mes')
+            ->orderBy('mes')
+            ->pluck('total', 'mes');
+
+        // Rellenar meses faltantes con 0
+        $labels  = [];
+        $values  = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $key = now()->subMonths($i)->format('Y-m');
+            $labels[] = now()->subMonths($i)->locale('es')->isoFormat('MMM Y');
+            $values[] = $monthly[$key] ?? 0;
+        }
+
+        return view('tickets.my_stats', compact('stats', 'avgHours', 'labels', 'values'));
     }
 
     public function create()

@@ -3,8 +3,10 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PriorityRuleController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\AdminController;
@@ -23,6 +25,12 @@ Route::post('/login',   [AuthController::class, 'login']);
 Route::get('/register', [AuthController::class, 'showRegisterForm'])->name('register');
 Route::post('/register',[AuthController::class, 'register']);
 
+// Recuperación de contraseña (sin autenticación)
+Route::get('/forgot-password',         [ForgotPasswordController::class, 'showForgotForm'])->name('password.forgot');
+Route::post('/forgot-password',        [ForgotPasswordController::class, 'sendResetLink'])->name('password.forgot.send');
+Route::get('/reset-password/{token}',  [ForgotPasswordController::class, 'showResetForm'])->name('password.reset.form');
+Route::post('/reset-password',         [ForgotPasswordController::class, 'resetPassword'])->name('password.reset.update');
+
 // Tickets de invitados (sin autenticación)
 Route::get('/tickets/guest',         [TicketController::class, 'guestCreate'])->name('tickets.guest.create');
 Route::post('/tickets/guest',        [TicketController::class, 'guestStore'])->name('tickets.guest.store');
@@ -36,7 +44,12 @@ Route::get('/api/subcategorias/{subcategoria}/tipos',   [CategoryController::cla
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+    // Perfil de usuario
+    Route::get('/profile',           [ProfileController::class, 'index'])->name('profile.index');
+    Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+
     // ── Tickets ──────────────────────────────────────────────────────
+    Route::get('/tickets/my-stats',  [TicketController::class, 'myStats'])->name('tickets.my-stats');
     Route::resource('tickets', TicketController::class);
     Route::post('/tickets/{ticket}/comment',     [TicketController::class, 'addComment'])->name('tickets.addComment');
     Route::put('/tickets/{ticket}/status',       [TicketController::class, 'updateStatus'])->name('tickets.updateStatus');

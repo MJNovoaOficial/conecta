@@ -671,6 +671,11 @@
             </div>
         </div>
 
+        <a href="{{ route('profile.index') }}" style="display:flex;align-items:center;gap:6px;font-size:0.82rem;color:rgba(255,255,255,0.8);text-decoration:none;padding:5px 10px;border-radius:6px;transition:background 0.2s;"
+           onmouseenter="this.style.background='rgba(255,255,255,0.1)'" onmouseleave="this.style.background='transparent'">
+            <i class="fas fa-user-cog"></i> Mi Perfil
+        </a>
+
         <form method="POST" action="{{ route('logout') }}" style="margin:0;">
             @csrf
             <button type="submit"><i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión</button>
