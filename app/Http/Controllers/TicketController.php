@@ -70,10 +70,38 @@ class TicketController extends Controller
         if (request('date_from'))  $query->whereDate('created_at','>=',request('date_from'));
         if (request('date_to'))    $query->whereDate('created_at','<=',request('date_to'));
 
-        $tickets = $query
-            ->orderByRaw("FIELD(priority, 'critical','high','medium','low')")
-            ->orderBy('created_at', 'desc')
-            ->paginate(15)->withQueryString();
+        // Ordenamiento por columna (los <th> del listado son clickeables).
+        // IMPORTANTE: el valor llega desde la URL, asi que se resuelve contra una
+        // lista blanca. Nunca pasar request() directo a orderBy: seria inyeccion SQL.
+        $dir = request('dir') === 'asc' ? 'asc' : 'desc';
+
+        switch (request('sort')) {
+            case 'departamento':
+                $query->leftJoin('departamentos', 'departamentos.id', '=', 'tickets.department_id')
+                      ->select('tickets.*')
+                      ->orderBy('departamentos.name', $dir);
+                break;
+
+            case 'asunto':
+                $query->orderBy('title', $dir);
+                break;
+
+            case 'estado':
+                // Orden del flujo de atencion, no alfabetico.
+                $query->orderByRaw("FIELD(status,'open','in_progress','pending_user','forwarded','resolved','closed') {$dir}");
+                break;
+
+            case 'actualizado':
+                $query->orderBy('updated_at', $dir);
+                break;
+
+            default:
+                // Orden por defecto: lo mas urgente primero.
+                $query->orderByRaw("FIELD(priority, 'critical','high','medium','low')")
+                      ->orderBy('created_at', 'desc');
+        }
+
+        $tickets = $query->paginate(15)->withQueryString();
 
         $counts = [
             'total'        => (clone $countQuery)->count(),

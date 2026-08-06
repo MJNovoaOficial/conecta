@@ -164,14 +164,50 @@
             @if($tickets->count() > 0)
             <div style="overflow-x:auto;">
                 <table class="ticket-table" id="ticketTable">
+                    @php
+                        // Ordenamiento de columnas: se conservan los filtros activos y
+                        // se vuelve a la pagina 1 al cambiar el orden.
+                        $ordenActual = request('sort');
+                        $dirActual   = request('dir') === 'asc' ? 'asc' : 'desc';
+
+                        // Si ya se ordena por esa columna, el clic invierte la direccion.
+                        $enlaceOrden = fn ($clave) => request()->fullUrlWithQuery([
+                            'sort' => $clave,
+                            'dir'  => ($ordenActual === $clave && $dirActual === 'asc') ? 'desc' : 'asc',
+                            'page' => null,
+                        ]);
+
+                        $iconoOrden = fn ($clave) => $ordenActual === $clave
+                            ? ($dirActual === 'asc' ? '▲' : '▼')
+                            : '⇅';
+
+                        $estiloOrden = 'color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px;cursor:pointer;';
+                    @endphp
+
                     <thead>
                         <tr>
-                            <th>Departamento <span class="sort-icon">⇅</span></th>
-                            <th>Asunto <span class="sort-icon">⇅</span></th>
-                            <th>Estado <span class="sort-icon">⇅</span></th>
+                            <th>
+                                <a href="{{ $enlaceOrden('departamento') }}" style="{{ $estiloOrden }}" title="Ordenar por departamento">
+                                    Departamento <span class="sort-icon">{{ $iconoOrden('departamento') }}</span>
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ $enlaceOrden('asunto') }}" style="{{ $estiloOrden }}" title="Ordenar por asunto">
+                                    Asunto <span class="sort-icon">{{ $iconoOrden('asunto') }}</span>
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ $enlaceOrden('estado') }}" style="{{ $estiloOrden }}" title="Ordenar por estado">
+                                    Estado <span class="sort-icon">{{ $iconoOrden('estado') }}</span>
+                                </a>
+                            </th>
                             <th>Prioridad</th>
                             <th>Asignado</th>
-                            <th>Última Actualización <span class="sort-icon">⇅</span></th>
+                            <th>
+                                <a href="{{ $enlaceOrden('actualizado') }}" style="{{ $estiloOrden }}" title="Ordenar por fecha de última actualización">
+                                    Última Actualización <span class="sort-icon">{{ $iconoOrden('actualizado') }}</span>
+                                </a>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
