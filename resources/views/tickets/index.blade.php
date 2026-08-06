@@ -86,7 +86,7 @@
                     Mi Rendimiento
                 </div>
             </a>
-            <a href="{{ route('tickets.create') }}" class="sidebar-item">
+            <a href="#" class="sidebar-item" data-bs-toggle="modal" data-bs-target="#newTicketModal" onclick="this.blur()">
                 <div class="item-left">
                     <span class="item-icon"><i class="fas fa-plus-circle"></i></span>
                     Abrir Ticket
@@ -114,7 +114,7 @@
                 </div>
                 <span class="sidebar-badge">{{ $counts['total'] ?? 0 }}</span>
             </a>
-            <a href="{{ route('tickets.create') }}" class="sidebar-item">
+            <a href="#" class="sidebar-item" data-bs-toggle="modal" data-bs-target="#newTicketModal" onclick="this.blur()">
                 <div class="item-left">
                     <span class="item-icon"><i class="fas fa-plus-circle"></i></span>
                     Nuevo Ticket
@@ -380,9 +380,10 @@
                 <div class="empty-icon"><i class="fas fa-inbox"></i></div>
                 <h5>No hay tickets</h5>
                 <p>No tienes tickets de soporte aún.</p>
-                <a href="{{ route('tickets.create') }}" class="btn-submit-ticket" style="text-decoration:none; display:inline-block; margin-top:8px;">
+                <button type="button" data-bs-toggle="modal" data-bs-target="#newTicketModal"
+                        class="btn-submit-ticket" style="border:none;cursor:pointer;margin-top:8px;">
                     <i class="fas fa-plus me-1"></i> Abrir primer ticket
-                </a>
+                </button>
             </div>
             @endif
         </div>
