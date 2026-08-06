@@ -257,14 +257,14 @@
                     <tbody>
                         @foreach($tickets as $ticket)
                         <tr onclick="window.location='{{ route('tickets.show', $ticket) }}'" style="cursor:pointer;">
-                            <td class="ticket-dept">{{ $ticket->department->name ?? 'N/A' }}</td>
-                            <td>
+                            <td class="ticket-dept" data-label="Departamento">{{ $ticket->department->name ?? 'N/A' }}</td>
+                            <td class="celda-asunto">
                                 <a href="{{ route('tickets.show', $ticket) }}" class="ticket-subject-link" onclick="event.stopPropagation();">
                                     #{{ $ticket->ticket_number }}
                                 </a>
                                 <div class="ticket-subject-sub">{{ Str::limit($ticket->title, 55) }}</div>
                             </td>
-                            <td>
+                            <td data-label="Estado">
                                 @php
                                     $statusClasses = [
                                         'open'         => 'status-open',
@@ -280,7 +280,7 @@
                                     {{ $ticket->getStatusLabel() }}
                                 </span>
                             </td>
-                            <td>
+                            <td data-label="Prioridad">
                                 @php
                                     $priClasses = [
                                         'low' => 'priority-low',
@@ -313,10 +313,10 @@
                                     <span style="color:#cbd5e0;font-size:.8rem;">—</span>
                                 @endif
                             </td>
-                            <td style="font-size:0.8rem; color:#718096;">
+                            <td style="font-size:0.8rem; color:#718096;" data-label="Asignado">
                                 {{ $ticket->assignedTo->name ?? '—' }}
                             </td>
-                            <td style="font-size:0.8rem; color:#718096; white-space:nowrap;">
+                            <td style="font-size:0.8rem; color:#718096; white-space:nowrap;" data-label="Actualizado">
                                 {{ $ticket->updated_at->format('d/m/Y (H:i)') }}
                             </td>
                         </tr>

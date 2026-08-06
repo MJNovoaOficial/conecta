@@ -556,7 +556,75 @@
         @media (max-width: 768px) {
             .page-wrapper { flex-direction: column; padding: 12px; }
             .sidebar { width: 100%; }
+
+            /* RNF-03: sin esto .main-content toma el ancho de su contenido (la tabla
+               de tickets, ~850px) porque .page-wrapper usa align-items:flex-start,
+               y la pagina entera se desplaza en horizontal. */
+            .main-content { width: 100%; }
+
             .top-nav-items { display: none; }
+
+            /* La barra superior no cabia en 375px: el bloque de usuario se salia
+               ~33px. Se reduce el padding y se oculta el rol, que es prescindible
+               en movil. El nombre del usuario se mantiene visible.
+               No se usa flex-wrap: .top-navbar tiene height fija de 52px, asi que
+               al envolver el contenido se sale de la caja y se monta sobre la tabla. */
+            .top-navbar { padding: 0 12px; gap: 8px; }
+            .user-menu { gap: 8px; }
+            .nav-user-role,
+            .nav-user-sep { display: none; }
+
+            /* RNF-03: en movil la tabla de tickets no cabe y obliga a desplazarse
+               en horizontal para leer cada fila. Se convierte en una lista de
+               tarjetas: cada fila pasa a bloque y cada celda muestra su etiqueta
+               desde el atributo data-label. La cabecera deja de tener sentido. */
+            .ticket-table thead { display: none; }
+
+            .ticket-table,
+            .ticket-table tbody { display: block; width: 100%; }
+
+            /* flex en columna (en vez de block) para poder reordenar las celdas
+               solo en movil con 'order', sin alterar el orden de las columnas
+               de la tabla en escritorio. */
+            .ticket-table tbody tr {
+                display: flex;
+                flex-direction: column;
+                background: #fff;
+                border: 1px solid #e8ecf0;
+                border-radius: 8px;
+                padding: 12px 14px;
+                margin-bottom: 10px;
+            }
+
+            .ticket-table td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+                padding: 5px 0;
+                border: none;
+            }
+
+            .ticket-table td::before {
+                content: attr(data-label);
+                flex-shrink: 0;
+                font-size: 0.7rem;
+                font-weight: 700;
+                color: #a0aec0;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+            }
+
+            /* El asunto encabeza la tarjeta: se sube al primer lugar con 'order',
+               ocupa todo el ancho y no lleva etiqueta. */
+            .ticket-table td.celda-asunto {
+                order: -1;
+                display: block;
+                padding: 0 0 10px;
+                margin-bottom: 6px;
+                border-bottom: 1px solid #f0f2f5;
+            }
+            .ticket-table td.celda-asunto::before { content: none; }
         }
     </style>
     @yield('styles')
