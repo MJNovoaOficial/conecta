@@ -235,6 +235,36 @@ class Ticket extends Model
     }
 
     /**
+     * Tiempo que falta para la fecha límite de resolución del SLA, o el que lleva
+     * vencido si ya pasó. Formato legible (Xd Yh / Xh Ymin / X min).
+     *
+     * Devuelve null si el ticket no tiene plazo definido o si ya está resuelto o
+     * cerrado, casos en los que una cuenta regresiva no significa nada.
+     */
+    public function getSlaRemainingFormatted(): ?string
+    {
+        if (!$this->sla_resolution_deadline_at) {
+            return null;
+        }
+
+        if (in_array($this->status, [self::STATUS_RESOLVED, self::STATUS_CLOSED])) {
+            return null;
+        }
+
+        $minutos = (int) round(abs(Carbon::now()->diffInMinutes($this->sla_resolution_deadline_at)));
+
+        if ($minutos >= 1440) {
+            $dias  = intdiv($minutos, 1440);
+            $horas = intdiv($minutos % 1440, 60);
+            return $dias . 'd ' . $horas . 'h';
+        }
+        if ($minutos >= 60) {
+            return intdiv($minutos, 60) . 'h ' . ($minutos % 60) . 'min';
+        }
+        return $minutos . ' min';
+    }
+
+    /**
      * Calcula el estado del SLA de resolución.
      * Retorna: 'ok', 'warning' (75% del tiempo usado), 'exceeded'.
      */
