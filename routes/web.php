@@ -62,11 +62,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/tickets/{ticket}/panel',        [TicketController::class, 'panel'])->name('tickets.panel');
 
     // ── Notificaciones ────────────────────────────────────────────────
-    Route::get('/notifications',                     [NotificationController::class, 'index'])->name('notifications.index');
-    Route::get('/notifications/recent',              [NotificationController::class, 'recent'])->name('notifications.recent');
-    Route::get('/notifications/count',               [NotificationController::class, 'count'])->name('notifications.count');
-    Route::post('/notifications/{notificacion}/read',[NotificationController::class, 'markRead'])->name('notifications.read');
-    Route::post('/notifications/read-all',           [NotificationController::class, 'markAllRead'])->name('notifications.readAll');
+    Route::get('/notifications',                         [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/recent',                  [NotificationController::class, 'recent'])->name('notifications.recent');
+    Route::get('/notifications/count',                   [NotificationController::class, 'count'])->name('notifications.count');
+    Route::match(['GET','POST'], '/notifications/{notificacion}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+    Route::post('/notifications/read-all',               [NotificationController::class, 'markAllRead'])->name('notifications.readAll');
 
     // ── Admin ─────────────────────────────────────────────────────────
     Route::middleware('admin')->prefix('admin')->group(function () {

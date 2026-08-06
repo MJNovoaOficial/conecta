@@ -771,8 +771,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     return;
                 }
                 var icons = {new_ticket:'🎫', assigned:'👤', comment:'💬', forwarded:'↗️', closed:'🔒', default:'🔔'};
+                var csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '';
                 list.innerHTML = data.items.map(n => `
-                    <a href="${n.url}" style="display:block;padding:.65rem 1rem;border-bottom:1px solid #f0f2f5;text-decoration:none;background:${n.read?'#fff':'#f0f7ff'};transition:background .15s;" onmouseover="this.style.background='#f7faff'" onmouseout="this.style.background='${n.read?'#fff':'#f0f7ff'}'">
+                    <div data-notif-url="${n.url}" style="display:block;padding:.65rem 1rem;border-bottom:1px solid #f0f2f5;text-decoration:none;background:${n.read?'#fff':'#f0f7ff'};transition:background .15s;cursor:pointer;"
+                         onmouseover="this.style.background='#f7faff'" onmouseout="this.style.background='${n.read?'#fff':'#f0f7ff'}'"
+                         onclick="window._notifClick(this)">
                         <div style="display:flex;align-items:flex-start;gap:.5rem;">
                             <span style="font-size:1rem;margin-top:1px;">${icons[n.type] || icons.default}</span>
                             <div style="flex:1;min-width:0;">
@@ -782,7 +785,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             </div>
                             ${!n.read ? '<span style="width:7px;height:7px;background:#3498db;border-radius:50%;flex-shrink:0;margin-top:5px;"></span>' : ''}
                         </div>
-                    </a>`).join('');
+                    </div>`).join('');
             }).catch(() => {});
     }
 
@@ -792,6 +795,22 @@ document.addEventListener('DOMContentLoaded', function () {
         panelOpen = !panelOpen;
         panel.style.display = panelOpen ? 'block' : 'none';
         if (panelOpen) loadNotifications();
+    };
+
+    // Maneja el click en una notificación del dropdown: hace POST para marcarla como leída
+    // y luego sigue la redirección que devuelve el servidor (al ticket).
+    window._notifClick = function(el) {
+        var url = el.getAttribute('data-notif-url');
+        if (!url || url === '#') return;
+        var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).getAttribute ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '';
+        fetch(url, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+        }).then(function(res) {
+            // El controlador devuelve redirect; seguimos la URL final
+            if (res.redirected) { window.location.href = res.url; }
+            else { window.location.href = res.url || url; }
+        }).catch(function() { window.location.href = url; });
     };
 
     document.addEventListener('click', function(e) {
