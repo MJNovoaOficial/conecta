@@ -274,7 +274,10 @@
     <div class="tk-card">
         <div class="tk-card-header"><i class="fas fa-file-alt"></i> Descripción del Problema</div>
         <div class="tk-card-body">
-            <div class="tk-desc">{!! $ticket->description !!}</div>
+            {{-- Se escapa la descripcion: es texto libre del usuario y con {!! !!}
+                 cualquier HTML que escriba se ejecutaria en el navegador de quien
+                 abra el ticket. Los saltos de linea los conserva white-space:pre-wrap. --}}
+            <div class="tk-desc">{{ $ticket->description }}</div>
             @if($ticket->attachments->where('comment_id', null)->count() > 0)
                 <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid #f0f2f5;">
                     @foreach($ticket->attachments->where('comment_id', null) as $att)

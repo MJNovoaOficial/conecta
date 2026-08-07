@@ -172,7 +172,8 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
   {{-- Descripción --}}
   <div class="pnl-section">
     <div class="pnl-section-title">📄 Descripción</div>
-    <div class="pnl-desc">{!! $ticket->description !!}</div>
+    {{-- Ver nota en tickets/show.blade.php: la descripcion se escapa siempre. --}}
+    <div class="pnl-desc">{{ $ticket->description }}</div>
     @if($ticket->attachments->where('comment_id', null)->count() > 0)
       <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
         @foreach($ticket->attachments->where('comment_id', null) as $att)
