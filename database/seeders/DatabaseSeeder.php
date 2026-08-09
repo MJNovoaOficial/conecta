@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             PriorityRuleSeeder::class,
             TicketSeeder::class,
+            ArticuloSeeder::class,
         ]);
     }
 }

@@ -9,6 +9,7 @@
         ['route' => 'admin.reports.index', 'icon' => 'fas fa-chart-bar', 'label' => 'Reportes', 'key' => 'reports'],
         ['route' => 'admin.reports.agents', 'icon' => 'fas fa-user-clock', 'label' => 'KPIs por Agente', 'key' => 'agents'],
         ['route' => 'admin.priority-rules.index', 'icon' => 'fas fa-sliders-h', 'label' => 'Reglas de Prioridad', 'key' => 'priority_rules'],
+        ['route' => 'admin.articulos.index', 'icon' => 'fas fa-book-open', 'label' => 'Base de Conocimiento', 'key' => 'articulos'],
         ['route' => 'admin.categories.index', 'icon' => 'fas fa-tags', 'label' => 'Categorías', 'key' => 'categories'],
         ['route' => 'admin.sla.index', 'icon' => 'fas fa-clock', 'label' => 'Configurar SLA', 'key' => 'sla'],
         ['route' => 'admin.departments.index', 'icon' => 'fas fa-building', 'label' => 'Departamentos', 'key' => 'departments'],

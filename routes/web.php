@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ArticuloController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ForgotPasswordController;
@@ -90,6 +91,13 @@ Route::middleware('auth')->group(function () {
         Route::delete('/departments/{department}', [AdminController::class, 'destroyDepartment'])->name('admin.departments.destroy');
 
         // Categorías / Subcategorías / Tipos de Incidente
+        // Base de conocimiento (RN-18)
+        Route::get('/articulos',                     [ArticuloController::class, 'index'])->name('admin.articulos.index');
+        Route::post('/articulos',                    [ArticuloController::class, 'store'])->name('admin.articulos.store');
+        Route::get('/articulos/{articulo}/edit',     [ArticuloController::class, 'edit'])->name('admin.articulos.edit');
+        Route::put('/articulos/{articulo}',          [ArticuloController::class, 'update'])->name('admin.articulos.update');
+        Route::patch('/articulos/{articulo}/toggle', [ArticuloController::class, 'toggle'])->name('admin.articulos.toggle');
+
         Route::get('/categories',                                    [CategoryController::class, 'index'])->name('admin.categories.index');
         Route::post('/categories',                                   [CategoryController::class, 'store'])->name('admin.categories.store');
         Route::put('/categories/{categoria}',                        [CategoryController::class, 'update'])->name('admin.categories.update');
