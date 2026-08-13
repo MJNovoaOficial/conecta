@@ -496,5 +496,106 @@ class AdminController extends Controller
             'agentPerformance', 'topRequesters', 'categoryTrend'
         ));
     }
-}
 
+    /**
+     * RF-AD-08: Configuración de estados del flujo de atención de tickets.
+     * Muestra los 6 estados con sus conteos actuales, descripciones y
+     * permite personalizar la etiqueta visible de cada uno.
+     */
+    public function statesConfig()
+    {
+        $stateDefinitions = [
+            'open' => [
+                'default'     => 'Abierto',
+                'icon'        => 'fas fa-folder-open',
+                'color'       => '#22c55e',
+                'description' => 'El ticket fue registrado y está esperando ser atendido por un técnico.',
+                'transitions' => ['En Proceso', 'Cerrado'],
+            ],
+            'in_progress' => [
+                'default'     => 'En Proceso',
+                'icon'        => 'fas fa-spinner',
+                'color'       => '#f59e0b',
+                'description' => 'Un técnico está trabajando activamente en la resolución del ticket.',
+                'transitions' => ['Pendiente Usuario', 'Resuelto', 'Derivado', 'Cerrado'],
+            ],
+            'pending_user' => [
+                'default'     => 'Pendiente Usuario',
+                'icon'        => 'fas fa-hourglass-half',
+                'color'       => '#f97316',
+                'description' => 'Soporte solicitó información adicional. El usuario tiene 2 horas para responder; de lo contrario el ticket se cierra automáticamente.',
+                'transitions' => ['En Proceso', 'Cerrado (automático)'],
+            ],
+            'forwarded' => [
+                'default'     => 'Derivado',
+                'icon'        => 'fas fa-share',
+                'color'       => '#3b82f6',
+                'description' => 'El ticket fue derivado a otro técnico o departamento especializado.',
+                'transitions' => ['En Proceso', 'Resuelto', 'Cerrado'],
+            ],
+            'resolved' => [
+                'default'     => 'Resuelto',
+                'icon'        => 'fas fa-check-circle',
+                'color'       => '#8b5cf6',
+                'description' => 'El técnico documentó la solución. El usuario puede confirmar el cierre o reabrir si el problema persiste.',
+                'transitions' => ['Cerrado', 'En Proceso'],
+            ],
+            'closed' => [
+                'default'     => 'Cerrado',
+                'icon'        => 'fas fa-lock',
+                'color'       => '#64748b',
+                'description' => 'El ticket fue cerrado definitivamente (manual, por el usuario o de forma automática).',
+                'transitions' => [],
+            ],
+        ];
+
+        // Conteo actual de tickets por estado
+        $counts = Ticket::selectRaw('status, COUNT(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        // Etiquetas personalizadas guardadas en SystemSetting
+        $customLabels = [];
+        foreach (array_keys($stateDefinitions) as $key) {
+            $setting = SystemSetting::where('key', 'state_label_' . $key)->first();
+            $customLabels[$key] = $setting?->value ?: $stateDefinitions[$key]['default'];
+        }
+
+        return view('admin.states.index', compact('stateDefinitions', 'counts', 'customLabels'));
+    }
+
+    /**
+     * RF-AD-08: Persiste las etiquetas personalizadas de estados en SystemSetting.
+     */
+    public function updateStates(Request $request)
+    {
+        $request->validate([
+            'labels'   => 'required|array',
+            'labels.*' => 'required|string|max:60',
+        ]);
+
+        $allowed = ['open', 'in_progress', 'pending_user', 'forwarded', 'resolved', 'closed'];
+        $changed = [];
+
+        foreach ($request->labels as $stateKey => $label) {
+            if (!in_array($stateKey, $allowed)) continue;
+
+            SystemSetting::updateOrCreate(
+                ['key' => 'state_label_' . $stateKey],
+                [
+                    'value'       => trim($label),
+                    'type'        => 'string',
+                    'group'       => 'states',
+                    'label'       => 'Etiqueta estado: ' . $stateKey,
+                    'description' => null,
+                ]
+            );
+            $changed[] = $stateKey;
+        }
+
+        AuditLog::record('states.labels_updated', 'SystemSetting', null, ['keys' => $changed]);
+
+        return redirect()->route('admin.states.index')
+            ->with('success', 'Etiquetas de estados actualizadas correctamente.');
+    }
+}

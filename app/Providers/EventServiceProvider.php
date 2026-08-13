@@ -3,25 +3,17 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use App\Listeners\TicketEventSubscriber;
 
 class EventServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
-    public function register()
+    public function register(): void
     {
-        // No bindings needed currently
+        //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
-    public function boot()
+    public function boot(): void
     {
-        // Register the subscriber for ticket events
-        $this->app->events->subscribe(TicketEventSubscriber::class);
+        // La auditoría se registra manualmente con AuditLog::record()
+        // en cada controller. No se necesita un subscriber de eventos.
     }
 }
-?>

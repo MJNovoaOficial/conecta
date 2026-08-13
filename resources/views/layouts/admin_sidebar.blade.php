@@ -2,8 +2,8 @@
 @php
     $sidebarActive = $active ?? '';
     $navItems = [
-        ['route' => 'admin.dashboard', 'icon' => 'fas fa-chart-line', 'label' => 'Dashboard Operativo', 'key' => 'dashboard'],
-        ['route' => 'admin.gerencial',  'icon' => 'fas fa-chart-pie',  'label' => 'Dashboard Gerencial',  'key' => 'gerencial'],
+        ['route' => 'admin.dashboard', 'icon' => 'fas fa-chart-pie', 'label' => 'Dashboard Gerencial', 'key' => 'dashboard'],
+        
         ['route' => 'tickets.index', 'icon' => 'fas fa-ticket-alt', 'label' => 'Todos los Tickets', 'key' => 'tickets'],
         ['route' => 'admin.reports.index', 'icon' => 'fas fa-chart-bar', 'label' => 'Reportes', 'key' => 'reports'],
         ['route' => 'admin.reports.agents', 'icon' => 'fas fa-user-clock', 'label' => 'KPIs por Agente', 'key' => 'agents'],
@@ -13,6 +13,7 @@
         ['route' => 'admin.departments.index', 'icon' => 'fas fa-building', 'label' => 'Departamentos', 'key' => 'departments'],
         ['route' => 'admin.users.index', 'icon' => 'fas fa-users', 'label' => 'Usuarios', 'key' => 'users'],
         ['route' => 'admin.settings.index', 'icon' => 'fas fa-cog', 'label' => 'Configuración', 'key' => 'settings'],
+        ['route' => 'admin.states.index', 'icon' => 'fas fa-sitemap', 'label' => 'Estados del Flujo', 'key' => 'states'],
         ['route' => 'admin.audit.index', 'icon' => 'fas fa-shield-alt', 'label' => 'Auditoría', 'key' => 'audit'],
     ];
 @endphp

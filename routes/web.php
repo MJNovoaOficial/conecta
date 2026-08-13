@@ -71,7 +71,7 @@ Route::middleware('auth')->group(function () {
     // ── Admin ─────────────────────────────────────────────────────────
     Route::middleware('admin')->prefix('admin')->group(function () {
         Route::get('/dashboard',  [AdminController::class, 'dashboard'])->name('admin.dashboard');
-        Route::get('/gerencial',   [AdminController::class, 'gerencialDashboard'])->name('admin.gerencial');
+        
 
         // Usuarios
         Route::get('/users',             [AdminController::class, 'users'])->name('admin.users.index');
@@ -130,5 +130,9 @@ Route::middleware('auth')->group(function () {
         // Configuración del Sistema
         Route::get('/settings',  [AdminController::class, 'settings'])->name('admin.settings.index');
         Route::post('/settings', [AdminController::class, 'updateSettings'])->name('admin.settings.update');
+
+        // RF-AD-08: Configuración de estados del flujo de tickets
+        Route::get('/states',  [AdminController::class, 'statesConfig'])->name('admin.states.index');
+        Route::post('/states', [AdminController::class, 'updateStates'])->name('admin.states.update');
     });
 });

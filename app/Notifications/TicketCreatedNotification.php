@@ -10,10 +10,9 @@ use Illuminate\Notifications\Notification;
 
 /**
  * Correo de confirmación para el usuario registrado que crea un ticket (RF-RI-11).
- * Incluye el número de ticket y el enlace para consultar su estado.
- *
- * El equivalente para invitados es App\Mail\GuestTicketCreatedMail, que usa un
- * enlace con token porque el invitado no tiene sesión.
+ * Usa una vista HTML personalizada (emails.ticket_created) para mantener
+ * la identidad visual de Conecta. El equivalente para invitados es
+ * App\Mail\GuestTicketCreatedMail (enlace con token porque no hay sesión).
  */
 class TicketCreatedNotification extends Notification implements ShouldQueue
 {
@@ -33,22 +32,12 @@ class TicketCreatedNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $mensaje = (new MailMessage)
+        return (new MailMessage)
             ->subject('Ticket ' . $this->ticket->ticket_number . ' creado — Conecta Soporte')
-            ->greeting('Hola ' . $notifiable->name)
-            ->line('Tu solicitud quedó registrada. Estos son los datos:')
-            ->line('Número de ticket: ' . $this->ticket->ticket_number)
-            ->line('Asunto: ' . $this->ticket->title)
-            ->line('Prioridad: ' . $this->ticket->getPriorityLabel())
-            ->line('Estado: ' . $this->ticket->getStatusLabel());
-
-        if ($this->ticket->sla_resolution_deadline_at) {
-            $mensaje->line('Plazo de resolución: ' . $this->ticket->sla_resolution_deadline_at->format('d/m/Y H:i'));
-        }
-
-        return $mensaje
-            ->action('Ver el estado de mi ticket', route('tickets.show', $this->ticket))
-            ->line('Guarda el número de ticket para futuras consultas.')
-            ->salutation('Saludos, equipo de soporte de Conecta.');
+            ->view('emails.ticket_created', [
+                'ticket'    => $this->ticket,
+                'user'      => $notifiable,
+                'ticketUrl' => route('tickets.show', $this->ticket),
+            ]);
     }
 }
