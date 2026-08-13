@@ -1,0 +1,65 @@
+/* public/css/premium.css */
+/* Premium design system: gradients, glassmorphism, micro‑animations */
+
+/* Global font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+html, body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #e0e7ff, #f3e8ff);
+    min-height: 100vh;
+    color: #1a2332;
+}
+
+/* Glassmorphism cards */
+.glass-card {
+    background: rgba(255, 255, 255, 0.45);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.glass-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15);
+}
+
+/* Buttons with gradient background */
+.btn-gradient {
+    background: linear-gradient(45deg, #6b5b95, #ff6f61);
+    color: #fff;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.2s ease;
+}
+.btn-gradient:hover {
+    background: linear-gradient(45deg, #ff6f61, #6b5b95);
+    transform: translateY(-1px);
+}
+
+/* Micro‑animation for badge updates */
+.badge-updated {
+    animation: pulse 1.2s ease-in-out;
+}
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+}
+
+/* Toast custom styling */
+.toast-msg {
+    border-left-width: 6px;
+    font-family: 'Inter', sans-serif;
+}
+
+/* Media queries for responsive premium layout */
+@media (max-width: 576px) {
+    .glass-card { padding: 1rem; }
+    .btn-gradient { width: 100%; }
+}

@@ -241,7 +241,9 @@
         <div class="tk-title">{{ $ticket->title }}</div>
         <div class="tk-meta">
             Creado por <strong>{{ $ticket->getCreatorName() }}</strong>
-            @if($ticket->isGuestTicket()) <span style="font-size:.68rem;background:rgba(255,255,255,.15);color:#e2e8f0;padding:1px 8px;border-radius:10px;margin-left:4px;">Invitado</span>@endif
+            @if($ticket->isGuestTicket())
+                @component('components.guest-token-link', ['token' => $ticket->guest_token, 'ticketId' => $ticket->id])@endcomponent
+            @endif
             &nbsp;·&nbsp; <i class="fas fa-building"></i> {{ $ticket->getCreatorDepartment() }}
             &nbsp;·&nbsp; {{ $ticket->created_at->format('d/m/Y H:i') }}
             &nbsp;·&nbsp; hace {{ $ticket->created_at->diffForHumans() }}
@@ -579,32 +581,7 @@
                 <li><span class="lbl">T. soporte</span>
                     <span class="val" title="Excluye espera de respuesta del usuario">{{ $ticket->getSupportTimeFormatted() }}</span>
                 </li>
-                @if($ticket->sla_resolution_deadline_at)
-                {{-- RF-ST-11: mostrar el plazo de resolucion y el tiempo restante
-                     antes del incumplimiento del SLA. --}}
-                @php
-                    $slaEstado   = $ticket->getSlaResolutionStatus();
-                    $slaRestante = $ticket->getSlaRemainingFormatted();
-                    $slaColor    = $slaEstado === 'exceeded' ? '#ef4444'
-                                 : ($slaEstado === 'warning' ? '#f59e0b' : '#22c55e');
-                @endphp
-                <li><span class="lbl">SLA vence</span>
-                    <span class="val" style="font-size:.78rem;color:{{ $slaColor }}">
-                        @if($slaEstado === 'exceeded') ⚠
-                        @elseif($slaEstado === 'warning') ⏰
-                        @else ✓
-                        @endif
-                        {{ $ticket->sla_resolution_deadline_at->format('d/m/Y H:i') }}
-                    </span>
-                </li>
-                @if($slaRestante)
-                <li><span class="lbl">{{ $slaEstado === 'exceeded' ? 'Vencido hace' : 'Tiempo restante' }}</span>
-                    <span class="val" style="font-size:.78rem;font-weight:700;color:{{ $slaColor }}">
-                        {{ $slaRestante }}
-                    </span>
-                </li>
-                @endif
-                @endif
+                <x-sla-info :ticket="$ticket" />
                 <li><span class="lbl">Creado</span><span class="val">{{ $ticket->created_at->format('d/m/Y H:i') }}</span></li>
                 <li><span class="lbl">Actualizado</span><span class="val">{{ $ticket->updated_at->format('d/m/Y H:i') }}</span></li>
                 @if($ticket->closed_at)

@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             CatalogoSeeder::class,
             SystemSettingsSeeder::class,
             UserSeeder::class,
+            PriorityRuleSeeder::class,
             TicketSeeder::class,
         ]);
     }

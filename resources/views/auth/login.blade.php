@@ -12,13 +12,13 @@
                 </h5>
             </div>
             <div class="card-body">
-                <form method="POST" action="/login">
+                <form method="POST" action="/login" autocomplete="off">
                     @csrf
                     
                     <div class="mb-3">
                         <label for="email" class="form-label">Correo Electrónico</label>
                         <input type="email" class="form-control @error('email') is-invalid @enderror" 
-                               id="email" name="email" value="{{ old('email') }}" required>
+                               id="email" name="email" value="{{ old('email') }}" required autocomplete="off">
                         @error('email')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -27,7 +27,7 @@
                     <div class="mb-3">
                         <label for="password" class="form-label">Contraseña</label>
                         <input type="password" class="form-control @error('password') is-invalid @enderror" 
-                               id="password" name="password" required>
+                               id="password" name="password" required autocomplete="off">
                         @error('password')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror

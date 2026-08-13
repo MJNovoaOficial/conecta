@@ -71,6 +71,9 @@
 .prio-medium   { background:#fefce8; color:#ca8a04; }
 .prio-low      { background:#f0fdf4; color:#16a34a; }
 
+    .btn-edit { background:#e0f2fe; border:1px solid #bae6fd; color:#0284c7; border-radius:6px; padding:5px 10px; font-size:.78rem; cursor:pointer; transition:background .2s; margin-right:5px; }
+    .btn-edit:hover { background:#bae6fd; }
+
 .btn-del {
     background:#fef2f2; border:1px solid #fecaca; color:#dc2626;
     border-radius:6px; padding:5px 10px; font-size:.78rem;
@@ -219,6 +222,7 @@
                                 </td>
                                 <td style="color:#64748b;">{{ $rule->description ?? '—' }}</td>
                                 <td>
+                                    <a href="{{ route('admin.priority-rules.edit', $rule) }}" class="btn-edit"><i class="fas fa-edit"></i> Editar</a>
                                     <form method="POST" action="{{ route('admin.priority-rules.destroy', $rule) }}" onsubmit="return confirm('¿Eliminar esta regla?')">
                                         @csrf @method('DELETE')
                                         <button class="btn-del" type="submit"><i class="fas fa-trash"></i> Eliminar</button>

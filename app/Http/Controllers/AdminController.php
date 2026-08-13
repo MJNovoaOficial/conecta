@@ -224,7 +224,7 @@ class AdminController extends Controller
     public function storeDepartment(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255|unique:departments|regex:/^[\p{L}\s\-]+$/u',
+            'name' => 'required|string|max:255|unique:departamentos,name|regex:/^[\p{L}\s\-]+$/u',
             'description' => 'nullable|string|max:1000',
         ]);
 
@@ -239,7 +239,58 @@ class AdminController extends Controller
             'name' => $request->name,
         ]);
 
-        return redirect()->route('admin.departments')->with('success', 'Departamento creado exitosamente.');
+        return redirect()->route('admin.departments.index')->with('success', 'Departamento creado exitosamente.');
+
+    }
+
+    // Mostrar formulario de edición de un departamento (opcional, si se necesita una página separada)
+    public function editDepartment(Department $department)
+    {
+        return view('admin.departments.edit', compact('department'));
+    }
+
+    // Actualizar departamento existente
+    public function updateDepartment(Request $request, Department $department)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255|unique:departamentos,name,' . $department->id . '|regex:/^[\p{L}\s\-]+$/u',
+            'description' => 'nullable|string|max:1000',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        $isActive = $request->boolean('is_active');
+        $department->update([
+            'name' => htmlspecialchars($request->name, ENT_QUOTES, 'UTF-8'),
+            'description' => htmlspecialchars($request->description, ENT_QUOTES, 'UTF-8'),
+            'is_active' => $isActive,
+        ]);
+
+        Log::info('Departamento actualizado por admin', [
+            'admin_id' => Auth::id(),
+            'department_id' => $department->id,
+        ]);
+
+        return redirect()->route('admin.departments.index')->with('success', 'Departamento actualizado exitosamente.');
+    }
+
+    public function destroyDepartment(Department $department)
+    {
+        // Safety: prevent deleting if users are assigned
+        if ($department->users()->count() > 0) {
+            return redirect()->route('admin.departments.index')
+                ->with('error', 'No se puede eliminar el departamento "' . $department->name . '" porque tiene usuarios asignados.');
+        }
+
+        $name = $department->name;
+        $department->delete();
+
+        Log::warning('Departamento eliminado por admin', [
+            'admin_id' => Auth::id(),
+            'department_name' => $name,
+        ]);
+
+        return redirect()->route('admin.departments.index')
+            ->with('success', 'Departamento "' . $name . '" eliminado correctamente.');
     }
 
     public function audit()
@@ -291,6 +342,6 @@ class AdminController extends Controller
 
         AuditLog::record('settings.updated', 'SystemSetting', null, ['keys' => array_keys($data)]);
 
-        return redirect()->route('admin.settings')->with('success', 'Configuración guardada correctamente.');
+        return redirect()->route('admin.settings.index')->with('success', 'Configuración guardada correctamente.');
     }
 }

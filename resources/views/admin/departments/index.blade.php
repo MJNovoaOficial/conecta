@@ -176,6 +176,19 @@
         <span>Departamentos</span>
     </div>
 
+    @if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius:8px; font-size:0.875rem;">
+        <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+    @if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius:8px; font-size:0.875rem;">
+        <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+
     <div class="admin-page-header">
         <div>
             <h1><i class="fas fa-sitemap" style="color:#3498db; margin-right:8px;"></i>Gestionar Departamentos</h1>
@@ -214,9 +227,13 @@
                         <span class="count-chip chip-tickets">{{ $dept->tickets_count }}</span>
                     </td>
                     <td>
-                        <button class="btn-edit-dept" data-bs-toggle="modal"
+                        <button class="btn-edit-dept btn btn-primary btn-sm me-2" data-bs-toggle="modal"
                                 data-bs-target="#editModal{{ $dept->id }}">
                             <i class="fas fa-pen"></i> Editar
+                        </button>
+                        <button class="btn-delete-dept btn btn-danger btn-sm" data-bs-toggle="modal"
+                                data-bs-target="#deleteModal{{ $dept->id }}">
+                            <i class="fas fa-trash"></i> Eliminar
                         </button>
                     </td>
                 </tr>
@@ -229,7 +246,7 @@
                                 <h5 class="modal-title"><i class="fas fa-building me-2"></i>Editar: {{ $dept->name }}</h5>
                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                             </div>
-                            <form method="POST" action="/admin/departments/{{ $dept->id }}">
+                            <form method="POST" action="{{ route('admin.departments.update', $dept) }}" id="editForm{{ $dept->id }}">
                                 @csrf
                                 @method('PUT')
                                 <div class="modal-body">
@@ -247,11 +264,32 @@
                                         <label class="form-check-label" for="active{{ $dept->id }}">Departamento activo</label>
                                     </div>
                                 </div>
-                                <div class="modal-footer">
+                                <div class="modal-footer" style="justify-content:space-between;">
                                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                    <button type="submit" class="btn btn-primary" form="editForm{{ $dept->id }}">Guardar Cambios</button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                </div>
+                <!-- Delete Confirmation Modal -->
+                <div class="modal fade" id="deleteModal{{ $dept->id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title"><i class="fas fa-trash me-2"></i>Eliminar Departamento</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                ¿Está seguro de eliminar el departamento "{{ $dept->name }}"? Esta acción no se puede deshacer.
+                            </div>
+                            <div class="modal-footer">
+                                <form method="POST" action="{{ route('admin.departments.destroy', $dept) }}">
+                                    @csrf @method('DELETE')
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'Conecta - Mesa de Ayuda')</title>
+    <title>Iniciar Sesión - Conecta Mesa de Ayuda</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -627,102 +627,193 @@
             .ticket-table td.celda-asunto::before { content: none; }
         }
     </style>
-    <link rel="stylesheet" href="{{ asset('css/premium.css') }}">
-    @yield('styles')
+    <style>
+.form-label-custom { font-size: 0.82rem; font-weight: 600; color: #4a5568; margin-bottom: 5px; display: block; }
+.form-control-custom {
+    border: 1.5px solid #e2e8f0;
+    border-radius: 7px;
+    padding: 9px 12px;
+    font-size: 0.875rem;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    color: #2d3748;
+    background: #fff;
+}
+.form-control-custom:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52,152,219,0.12);
+}
+.form-control-custom.is-invalid { border-color: #e74c3c; }
+.btn-submit-ticket {
+    background: linear-gradient(135deg, #2980b9, #3498db);
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 7px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 8px rgba(41,128,185,0.3);
+    width: 100%;
+}
+.btn-submit-ticket:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(41,128,185,0.4);
+}
+</style>
 </head>
 <body>
 
 <!-- TOP NAVBAR -->
 <nav class="top-navbar">
-    <a href="{{ auth()->check() ? route('tickets.index') : route('home') }}" class="brand">
-        <img src="{{ asset('images/logo.png') }}" alt="Dimak" style="height:36px; width:auto; object-fit:contain;">
+    <a href="http://127.0.0.1:8000" class="brand">
+        <img src="http://127.0.0.1:8000/images/logo.png" alt="Dimak" style="height:36px; width:auto; object-fit:contain;">
     </a>
 
-    @auth
-    <div class="user-menu">
-        <div class="nav-user-info">
-            <span class="nav-user-name">{{ Str::limit(Auth::user()->name, 22) }}</span>
-            <span class="nav-user-sep"></span>
-            <span class="nav-user-role">{{ Auth::user()->role === 'admin' ? 'Administrador' : (Auth::user()->role === 'support' ? 'Soporte' : 'Usuario') }}</span>
-        </div>
-
-        {{-- Campana de notificaciones --}}
-        <div class="notif-bell-wrap" id="notifWrap" style="position:relative;">
-            <button id="notifBtn" onclick="toggleNotifPanel()" style="background:none;border:none;cursor:pointer;padding:6px;position:relative;color:#cbd5e0;" title="Notificaciones">
-                <i class="fas fa-bell" style="font-size:1.1rem;"></i>
-                <span id="notifBadge" style="display:none;position:absolute;top:2px;right:2px;background:#ef4444;color:#fff;border-radius:99px;font-size:.6rem;font-weight:700;min-width:14px;height:14px;line-height:14px;text-align:center;padding:0 2px;"></span>
-            </button>
-            <div id="notifPanel" style="display:none;position:absolute;right:0;top:calc(100% + 6px);width:320px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.15);z-index:2000;overflow:hidden;">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;border-bottom:1px solid #f0f2f5;">
-                    <span style="font-size:.85rem;font-weight:700;color:#1a2332;">Notificaciones</span>
-                    <form method="POST" action="{{ route('notifications.readAll') }}" style="margin:0;">
-                        @csrf
-                        <button type="submit" style="background:none;border:none;cursor:pointer;font-size:.75rem;color:#3498db;padding:0;">Marcar todas leídas</button>
-                    </form>
-                </div>
-                <div id="notifList" style="max-height:340px;overflow-y:auto;">
-                    <div style="text-align:center;padding:1.5rem;color:#a0aec0;font-size:.83rem;">
-                        <i class="fas fa-bell-slash" style="font-size:1.5rem;display:block;margin-bottom:.5rem;"></i>
-                        Cargando notificaciones…
-                    </div>
-                </div>
-                <div style="padding:.5rem 1rem;border-top:1px solid #f0f2f5;text-align:center;">
-                    <a href="{{ route('notifications.index') }}" style="font-size:.8rem;color:#3498db;text-decoration:none;">Ver todas las notificaciones</a>
-                </div>
-            </div>
-        </div>
-
-        <a href="{{ route('profile.index') }}" style="display:flex;align-items:center;gap:6px;font-size:0.82rem;color:rgba(255,255,255,0.8);text-decoration:none;padding:5px 10px;border-radius:6px;transition:background 0.2s;"
-           onmouseenter="this.style.background='rgba(255,255,255,0.1)'" onmouseleave="this.style.background='transparent'">
-            <i class="fas fa-user-cog"></i> Mi Perfil
-        </a>
-
-        <form method="POST" action="{{ route('logout') }}" style="margin:0;">
-            @csrf
-            <button type="submit"><i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión</button>
-        </form>
-    </div>
-    @else
-    @if(!request()->routeIs('home', 'register', 'tickets.guest.create', 'tickets.guest.show'))
-    <div class="top-nav-items">
-        <a href="{{ route('login') }}"><i class="fas fa-sign-in-alt"></i> Iniciar Sesión</a>
-        <a href="{{ route('register') }}"><i class="fas fa-user-plus"></i> Registrarse</a>
-    </div>
-    @endif
-    <div class="user-menu"></div>
-    @endauth
-</nav>
+            <div class="user-menu"></div>
+    </nav>
 
 <!-- TOAST NOTIFICATIONS -->
 <div class="toast-container" id="toastContainer">
-    @if(session('success'))
-    <div class="toast-msg toast-success auto-toast" data-timeout="4000">
-        <i class="fas fa-check-circle toast-icon-s"></i>
-        <span>{{ session('success') }}</span>
-        <div class="toast-progress"><div class="toast-bar-success" id="toastBarS"></div></div>
+            </div>
+
+<div style="min-height: calc(100vh - 52px); display: flex; align-items: center; justify-content: center; padding: 24px;">
+
+    <div style="width: 100%; max-width: 420px;">
+
+        
+        <div style="text-align: center; margin-bottom: 28px;">
+            <h1 style="font-size: 1.4rem; font-weight: 700; color: #1a2332; margin: 0 0 4px;">Conecta Soporte</h1>
+            <p style="color: #718096; font-size: 0.85rem; margin: 0;">Mesa de Ayuda — Dimak</p>
+        </div>
+
+        
+        <div style="background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.07); overflow: hidden;">
+
+            <div style="background: linear-gradient(90deg, #1a2332, #243447); padding: 14px 22px;">
+                <h2 style="color: #fff; font-size: 0.95rem; font-weight: 600; margin: 0;">
+                    <i class="fas fa-sign-in-alt me-2" style="color: #3498db;"></i>Iniciar Sesión
+                </h2>
+            </div>
+
+            <div style="padding: 24px 22px;">
+                <form method="POST" action="http://127.0.0.1:8000/login">
+                    <input type="hidden" name="_token" value="btY5irxevMGECFPVCwmyP1E3Oy0zZRKozMXW6oIo" autocomplete="off">
+                    <div style="margin-bottom: 16px;">
+                        <label class="form-label-custom">Correo Electrónico</label>
+                        <div style="position: relative;">
+                            <span style="position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #a0aec0; font-size: 0.82rem;">
+                                <i class="fas fa-envelope"></i>
+                            </span>
+                            <input type="email"
+                                   name="email"
+                                   class="form-control-custom "
+                                   style="padding-left: 32px;"
+                                   value=""
+                                   placeholder="tu@correo.com"
+                                   autofocus
+                                   required>
+                        </div>
+                                            </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label-custom">Contraseña</label>
+                        <div style="position: relative;">
+                            <span style="position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #a0aec0; font-size: 0.82rem;">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <input type="password"
+                                   name="password"
+                                   id="passwordField"
+                                   class="form-control-custom "
+                                   style="padding-left: 32px; padding-right: 38px;"
+                                   placeholder="••••••••"
+                                   required>
+                            <button type="button"
+                                    onclick="togglePass()"
+                                    style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #5a6a7d; cursor: pointer; padding: 6px; font-size: 0.95rem; line-height: 1; border-radius: 4px;"
+                                    id="togglePassBtn"
+                                    aria-label="Mostrar contraseña"
+                                    aria-pressed="false"
+                                    title="Mostrar contraseña">
+                                <i class="fas fa-eye" id="passIcon"></i>
+                            </button>
+                        </div>
+                                            </div>
+
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+                        <label style="display: flex; align-items: center; gap: 7px; font-size: 0.82rem; color: #4a5568; cursor: pointer;">
+                            <input type="checkbox" name="remember" style="accent-color: #3498db;">
+                            Recuérdame
+                        </label>
+                        <a href="http://127.0.0.1:8000/forgot-password" style="font-size:0.8rem;color:#3498db;text-decoration:none;font-weight:500;">
+                            ¿Olvidaste tu contraseña?
+                        </a>
+                    </div>
+
+                    <button type="submit" class="btn-submit-ticket" style="width: 100%; justify-content: center; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;">
+                        <i class="fas fa-sign-in-alt"></i> Ingresar al Sistema
+                    </button>
+                </form>
+            </div>
+
+            
+            <div style="border-top: 1px solid #f0f2f5; background: #f7f9fc;">
+                <div style="padding: 13px 22px; border-bottom: 1px solid #f0f2f5; text-align: center;">
+                    <span style="font-size: 0.82rem; color: #718096;">
+                        ¿No tienes cuenta?
+                        <a href="http://127.0.0.1:8000/register" style="color: #3498db; font-weight: 700; text-decoration: none;">
+                            Regístrate aquí
+                        </a>
+                    </span>
+                </div>
+                <div style="padding: 12px 22px; text-align: center;">
+                    <a href="http://127.0.0.1:8000/tickets/guest"
+                       style="display: inline-flex; align-items: center; gap: 7px; font-size: 0.8rem; color: #718096; text-decoration: none; padding: 6px 16px; border: 1.5px solid #cbd5e0; border-radius: 6px; transition: all 0.2s; background: #fff;"
+                       onmouseenter="this.style.borderColor='#3498db'; this.style.color='#3498db'; this.style.background='#ebf5fb';"
+                       onmouseleave="this.style.borderColor='#cbd5e0'; this.style.color='#718096'; this.style.background='#fff';">
+                        <i class="fas fa-user-clock"></i>
+                        Acceder como invitado sin cuenta
+                    </a>
+                </div>
+            </div>
+
+        </div>
+
+        <p style="text-align: center; color: #a0aec0; font-size: 0.75rem; margin-top: 20px;">
+            Conecta © 2026 · Mesa de Ayuda Dimak
+        </p>
     </div>
-    @endif
-    @if(session('error'))
-    <div class="toast-msg toast-error auto-toast" data-timeout="5000">
-        <i class="fas fa-exclamation-circle toast-icon-e"></i>
-        <span>{{ session('error') }}</span>
-        <div class="toast-progress"><div class="toast-bar-error" id="toastBarE"></div></div>
-    </div>
-    @endif
-    @if($errors->any())
-    <div class="toast-msg toast-error auto-toast" data-timeout="6000">
-        <i class="fas fa-exclamation-circle toast-icon-e"></i>
-        <span>{{ $errors->first() }}</span>
-        <div class="toast-progress"><div class="toast-bar-error"></div></div>
-    </div>
-    @endif
 </div>
 
-@yield('content')
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-@yield('scripts')
-@stack('scripts')
+<script>
+function togglePass() {
+    const field = document.getElementById('passwordField');
+    const icon = document.getElementById('passIcon');
+    const btn = document.getElementById('togglePassBtn');
+    if (field.type === 'password') {
+        field.type = 'text';
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+        etiquetarToggle(btn, true);
+    } else {
+        field.type = 'password';
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+        etiquetarToggle(btn, false);
+    }
+}
+
+// Mantiene la etiqueta accesible del boton sincronizada con su estado (RNF-15).
+function etiquetarToggle(btn, visible) {
+    if (!btn) return;
+    const texto = visible ? 'Ocultar contraseña' : 'Mostrar contraseña';
+    btn.setAttribute('aria-label', texto);
+    btn.setAttribute('title', texto);
+    btn.setAttribute('aria-pressed', visible ? 'true' : 'false');
+}
+</script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.auto-toast').forEach(function (el) {
@@ -742,91 +833,6 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // ── NOTIFICACIONES IN-APP ─────────────────────────────────
-@auth
-(function() {
-    var panelOpen = false;
-
-    function updateBadge() {
-        fetch('{{ route("notifications.count") }}', {headers: {'X-Requested-With': 'XMLHttpRequest'}})
-            .then(r => r.json())
-            .then(data => {
-                var badge = document.getElementById('notifBadge');
-                if (!badge) return;
-                if (data.count > 0) {
-                    badge.textContent = data.count > 99 ? '99+' : data.count;
-                    badge.style.display = 'block';
-                } else {
-                    badge.style.display = 'none';
-                }
-            }).catch(() => {});
-    }
-
-    function loadNotifications() {
-        var list = document.getElementById('notifList');
-        if (!list) return;
-        fetch('{{ route("notifications.recent") }}', {headers: {'X-Requested-With': 'XMLHttpRequest'}})
-            .then(r => r.json())
-            .then(data => {
-                if (!data.items || data.items.length === 0) {
-                    list.innerHTML = '<div style="text-align:center;padding:1.5rem;color:#a0aec0;font-size:.83rem;"><i class="fas fa-check-circle" style="font-size:1.5rem;display:block;margin-bottom:.5rem;color:#68d391;"></i>Sin notificaciones pendientes</div>';
-                    return;
-                }
-                var icons = {new_ticket:'🎫', assigned:'👤', comment:'💬', forwarded:'↗️', closed:'🔒', default:'🔔'};
-                var csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '';
-                list.innerHTML = data.items.map(n => `
-                    <div data-notif-url="${n.url}" style="display:block;padding:.65rem 1rem;border-bottom:1px solid #f0f2f5;text-decoration:none;background:${n.read?'#fff':'#f0f7ff'};transition:background .15s;cursor:pointer;"
-                         onmouseover="this.style.background='#f7faff'" onmouseout="this.style.background='${n.read?'#fff':'#f0f7ff'}'"
-                         onclick="window._notifClick(this)">
-                        <div style="display:flex;align-items:flex-start;gap:.5rem;">
-                            <span style="font-size:1rem;margin-top:1px;">${icons[n.type] || icons.default}</span>
-                            <div style="flex:1;min-width:0;">
-                                <div style="font-size:.82rem;font-weight:${n.read?500:700};color:#1a2332;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.title}</div>
-                                <div style="font-size:.76rem;color:#718096;margin-top:1px;">${n.body || ''}</div>
-                                <div style="font-size:.72rem;color:#a0aec0;margin-top:2px;">${n.time}</div>
-                            </div>
-                            ${!n.read ? '<span style="width:7px;height:7px;background:#3498db;border-radius:50%;flex-shrink:0;margin-top:5px;"></span>' : ''}
-                        </div>
-                    </div>`).join('');
-            }).catch(() => {});
-    }
-
-    window.toggleNotifPanel = function() {
-        var panel = document.getElementById('notifPanel');
-        if (!panel) return;
-        panelOpen = !panelOpen;
-        panel.style.display = panelOpen ? 'block' : 'none';
-        if (panelOpen) loadNotifications();
-    };
-
-    // Maneja el click en una notificación del dropdown: hace POST para marcarla como leída
-    // y luego sigue la redirección que devuelve el servidor (al ticket).
-    window._notifClick = function(el) {
-        var url = el.getAttribute('data-notif-url');
-        if (!url || url === '#') return;
-        var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).getAttribute ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '';
-        fetch(url, {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-        }).then(function(res) {
-            // El controlador devuelve redirect; seguimos la URL final
-            if (res.redirected) { window.location.href = res.url; }
-            else { window.location.href = res.url || url; }
-        }).catch(function() { window.location.href = url; });
-    };
-
-    document.addEventListener('click', function(e) {
-        var wrap = document.getElementById('notifWrap');
-        if (wrap && !wrap.contains(e.target) && panelOpen) {
-            document.getElementById('notifPanel').style.display = 'none';
-            panelOpen = false;
-        }
-    });
-
-    // Actualizar badge cada 60 segundos
-    updateBadge();
-    setInterval(updateBadge, 60000);
-})();
-@endauth
 
 // ── Modal de nuevo ticket (global) ───────────────────────────────────────────
 window.mfmt = function(cmd) {

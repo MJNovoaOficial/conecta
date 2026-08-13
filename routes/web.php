@@ -83,6 +83,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/departments',        [AdminController::class, 'departments'])->name('admin.departments.index');
         Route::get('/departments/create', [AdminController::class, 'createDepartment'])->name('admin.departments.create');
         Route::post('/departments',       [AdminController::class, 'storeDepartment'])->name('admin.departments.store');
+        Route::get('/departments/{department}/edit', [AdminController::class, 'editDepartment'])->name('admin.departments.edit');
+        Route::put('/departments/{department}', [AdminController::class, 'updateDepartment'])->name('admin.departments.update');
+        Route::delete('/departments/{department}', [AdminController::class, 'destroyDepartment'])->name('admin.departments.destroy');
 
         // Categorías / Subcategorías / Tipos de Incidente
         Route::get('/categories',                                    [CategoryController::class, 'index'])->name('admin.categories.index');
@@ -113,10 +116,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports/download/{filename}.xlsx',  [ReportController::class, 'exportExcel'])->name('admin.reports.downloadXlsx');
         Route::get('/reports/download/{filename}.pdf',   [ReportController::class, 'exportPdf'])->name('admin.reports.downloadPdf');
 
-        // Reglas de Prioridad Automática
+        // Reglas de Prioridad
         Route::get('/priority-rules',                    [PriorityRuleController::class, 'index'])->name('admin.priority-rules.index');
         Route::post('/priority-rules',                   [PriorityRuleController::class, 'store'])->name('admin.priority-rules.store');
-        Route::delete('/priority-rules/{priorityRule}',  [PriorityRuleController::class, 'destroy'])->name('admin.priority-rules.destroy');
+        Route::delete('/priority-rules/{priorityRule}', [PriorityRuleController::class, 'destroy'])->name('admin.priority-rules.destroy');
+        Route::get('/priority-rules/{priorityRule}/edit', [PriorityRuleController::class, 'edit'])->name('admin.priority-rules.edit');
+        Route::put('/priority-rules/{priorityRule}',      [PriorityRuleController::class, 'update'])->name('admin.priority-rules.update');
 
         // Auditoría
         Route::get('/audit',    [AdminController::class, 'audit'])->name('admin.audit.index');
