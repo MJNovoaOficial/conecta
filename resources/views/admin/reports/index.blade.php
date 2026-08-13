@@ -241,6 +241,15 @@ table.rp-tbl tbody tr:hover td { background:#fafbff; }
                 </select>
             </div>
             <div class="filter-group">
+                <label>Departamento</label>
+                <select name="department_id" style="width:150px;">
+                    <option value="">Todos</option>
+                    @foreach($departments as $dept)
+                    <option value="{{ $dept->id }}" {{ request('department_id')==$dept->id?'selected':'' }}>{{ $dept->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="filter-group">
                 <label>Desde</label>
                 <input type="date" name="date_from" style="width:130px;" value="{{ request('date_from') }}">
             </div>

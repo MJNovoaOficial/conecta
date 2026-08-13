@@ -45,11 +45,16 @@ class ReportController extends Controller
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
         }
+        // Filtro por departamento (RN-25)
+        if ($request->filled('department_id')) {
+            $query->where('department_id', $request->department_id);
+        }
 
         $tickets    = $query->paginate(50)->withQueryString();
         $agents     = User::where('role', 'support')->orWhere('role', 'admin')->orderBy('name')->get();
         $categorias = Categoria::orderBy('name')->get();
         $requesters = User::where('role', 'user')->orderBy('name')->get();
+        $departments = \App\Models\Department::where('is_active', true)->orderBy('name')->get();
 
         // ── Resumen estadístico ───────────────────────────────────
         $summary = [
@@ -87,7 +92,7 @@ class ReportController extends Controller
         ->get();
 
         return view('admin.reports.index', compact(
-            'tickets', 'agents', 'categorias', 'requesters', 'summary',
+            'tickets', 'agents', 'categorias', 'requesters', 'departments', 'summary',
             'avgResolution', 'slaCompliance', 'byAgent'
         ));
     }
@@ -104,6 +109,7 @@ class ReportController extends Controller
         if ($request->filled('priority'))  $query->where('priority', $request->priority);
         if ($request->filled('agent_id'))  $query->where('assigned_to', $request->agent_id);
         if ($request->filled('user_id'))   $query->where('user_id', $request->user_id);
+        if ($request->filled('department_id')) $query->where('department_id', $request->department_id);
         if ($request->filled('date_from')) $query->whereDate('created_at', '>=', $request->date_from);
         if ($request->filled('date_to'))   $query->whereDate('created_at', '<=', $request->date_to);
 
@@ -153,6 +159,7 @@ class ReportController extends Controller
         if ($request->filled('priority'))  $query->where('priority', $request->priority);
         if ($request->filled('agent_id'))  $query->where('assigned_to', $request->agent_id);
         if ($request->filled('user_id'))   $query->where('user_id', $request->user_id);
+        if ($request->filled('department_id')) $query->where('department_id', $request->department_id);
         if ($request->filled('date_from')) $query->whereDate('created_at', '>=', $request->date_from);
         if ($request->filled('date_to'))   $query->whereDate('created_at', '<=', $request->date_to);
 
@@ -207,6 +214,7 @@ class ReportController extends Controller
         if ($request->filled('priority'))  $query->where('priority', $request->priority);
         if ($request->filled('agent_id'))  $query->where('assigned_to', $request->agent_id);
         if ($request->filled('user_id'))   $query->where('user_id', $request->user_id);
+        if ($request->filled('department_id')) $query->where('department_id', $request->department_id);
         if ($request->filled('date_from')) $query->whereDate('created_at', '>=', $request->date_from);
         if ($request->filled('date_to'))   $query->whereDate('created_at', '<=', $request->date_to);
 

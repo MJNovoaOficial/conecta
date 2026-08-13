@@ -163,6 +163,12 @@ class AdminController extends Controller
             'role'     => $request->role,
         ]);
 
+        AuditLog::record('user.created', 'User', $user->id, [
+            'name'  => $user->name,
+            'email' => $user->email,
+            'role'  => $user->role,
+        ]);
+
         return redirect()->route('admin.users.index')->with('success', 'Usuario "' . $user->name . '" creado correctamente.');
     }
 
@@ -206,6 +212,13 @@ class AdminController extends Controller
             'user_id'  => $user->id,
             'changes'  => $changes,
         ]);
+
+        if (!empty($changes)) {
+            AuditLog::record('user.updated', 'User', $user->id, [
+                'name'    => $user->name,
+                'changes' => $changes,
+            ]);
+        }
 
         return redirect()->route('admin.users.index')->with('success', 'Usuario actualizado correctamente.');
     }
@@ -364,10 +377,124 @@ class AdminController extends Controller
         }
 
         AuditLog::record('settings.updated', 'SystemSetting', null, [
-            'keys' => $changedKeys,
+            'keys'    => $changedKeys,
             'changes' => $changes,
         ]);
 
         return redirect()->route('admin.settings.index')->with('success', 'Configuración guardada correctamente.');
     }
+
+    /**
+     * Dashboard Gerencial — RF-AD-15
+     * Vista de indicadores ejecutivos de alto nivel para gerencia/dirección.
+     * Solo muestra métricas, sin acciones de gestión.
+     */
+    public function gerencialDashboard(Request $request)
+    {
+        $period = $request->get('period', '30d');
+        $periodMap = [
+            '7d'  => ['days' => 7,   'label' => 'Últimos 7 días'],
+            '30d' => ['days' => 30,  'label' => 'Últimos 30 días'],
+            '3m'  => ['days' => 90,  'label' => 'Últimos 3 meses'],
+            '6m'  => ['days' => 180, 'label' => 'Últimos 6 meses'],
+            '12m' => ['days' => 365, 'label' => 'Últimos 12 meses'],
+        ];
+        $pCfg = $periodMap[$period] ?? $periodMap['30d'];
+        $since = now()->subDays($pCfg['days']);
+        $periodLabel = $pCfg['label'];
+
+        // ── KPIs Generales ────────────────────────────────────────────
+        $totalTickets     = \App\Models\Ticket::where('created_at', '>=', $since)->count();
+        $openTickets      = \App\Models\Ticket::whereIn('status', ['open', 'in_progress', 'pending_user', 'forwarded'])->count();
+        $resolvedTickets  = \App\Models\Ticket::whereIn('status', ['resolved', 'closed'])
+                                ->where('created_at', '>=', $since)->count();
+        $criticalOpen     = \App\Models\Ticket::whereIn('status', ['open', 'in_progress'])
+                                ->where('priority', 'critical')->count();
+
+        // ── Tiempo promedio de resolución (horas) ─────────────────────
+        $avgResolutionHours = \App\Models\Ticket::whereNotNull('resolved_at')
+            ->where('created_at', '>=', $since)
+            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, resolved_at)) as avg_h')
+            ->value('avg_h');
+
+        // ── Cumplimiento de SLA ───────────────────────────────────────
+        $totalResolved  = \App\Models\Ticket::whereNotNull('resolved_at')->where('created_at', '>=', $since)->count();
+        $resolvedInSla  = \App\Models\Ticket::whereNotNull('resolved_at')
+            ->whereNotNull('sla_resolution_deadline_at')
+            ->where('created_at', '>=', $since)
+            ->where('resolved_at', '<=', DB::raw('sla_resolution_deadline_at'))
+            ->count();
+        $slaCompliance = $totalResolved > 0 ? round(($resolvedInSla / $totalResolved) * 100, 1) : null;
+        $slaMissed     = $totalResolved > 0 ? $totalResolved - $resolvedInSla : 0;
+
+        // ── Tickets por prioridad ─────────────────────────────────────
+        $byPriority = \App\Models\Ticket::selectRaw('priority, count(*) as total')
+            ->where('created_at', '>=', $since)
+            ->groupBy('priority')
+            ->pluck('total', 'priority');
+
+        // ── Tickets por categoría (top 5) ─────────────────────────────
+        $byCategory = \App\Models\Categoria::withCount([
+            'subcategorias as ticket_count' => fn($q) => $q
+                ->join('tickets', 'tickets.subcategoria_id', '=', 'subcategorias.id')
+                ->where('tickets.created_at', '>=', $since)
+                ->select(DB::raw('COUNT(tickets.id)'))
+        ])->orderByDesc('ticket_count')->take(5)->get();
+
+        // ── Tendencia mensual (últimos 6 meses) ───────────────────────
+        $monthlyData = \App\Models\Ticket::selectRaw("DATE_FORMAT(created_at, '%Y-%m') as mes, COUNT(*) as total")
+            ->where('created_at', '>=', now()->subMonths(6)->startOfMonth())
+            ->groupBy('mes')
+            ->orderBy('mes')
+            ->pluck('total', 'mes');
+
+        $trendLabels = [];
+        $trendValues = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $key = now()->subMonths($i)->format('Y-m');
+            $trendLabels[] = now()->subMonths($i)->locale('es')->isoFormat('MMM Y');
+            $trendValues[] = $monthlyData[$key] ?? 0;
+        }
+
+        // ── Rendimiento por técnico ───────────────────────────────────
+        $agentPerformance = \App\Models\User::whereIn('role', ['support', 'admin'])
+            ->where('is_active', true)
+            ->withCount([
+                'assignedTickets as total_assigned'  => fn($q) => $q->where('created_at', '>=', $since),
+                'assignedTickets as total_resolved'  => fn($q) => $q->whereIn('status', ['resolved', 'closed'])->where('created_at', '>=', $since),
+                'assignedTickets as total_active'    => fn($q) => $q->whereIn('status', ['open', 'in_progress', 'pending_user']),
+            ])
+            ->orderByDesc('total_resolved')
+            ->get()
+            ->map(function ($agent) {
+                $agent->resolution_rate = $agent->total_assigned > 0
+                    ? round(($agent->total_resolved / $agent->total_assigned) * 100, 1)
+                    : 0;
+                return $agent;
+            });
+
+        // ── Usuarios con más solicitudes ──────────────────────────────
+        $topRequesters = \App\Models\User::where('role', 'user')
+            ->withCount(['tickets as ticket_count' => fn($q) => $q->where('created_at', '>=', $since)])
+            ->orderByDesc('ticket_count')
+            ->take(5)
+            ->get();
+
+        // ── Categorías más frecuentes ─────────────────────────────────
+        $categoryTrend = \App\Models\Categoria::withCount([
+            'subcategorias as ticket_count' => fn($q) => $q
+                ->join('tickets', 'tickets.subcategoria_id', '=', 'subcategorias.id')
+                ->where('tickets.created_at', '>=', $since)
+                ->select(DB::raw('COUNT(tickets.id)'))
+        ])->orderByDesc('ticket_count')->take(8)->get();
+
+        return view('admin.gerencial', compact(
+            'period', 'periodLabel',
+            'totalTickets', 'openTickets', 'resolvedTickets', 'criticalOpen',
+            'avgResolutionHours', 'slaCompliance', 'slaMissed', 'totalResolved',
+            'byPriority', 'byCategory', 'trendLabels', 'trendValues',
+            'agentPerformance', 'topRequesters', 'categoryTrend'
+        ));
+    }
 }
+
