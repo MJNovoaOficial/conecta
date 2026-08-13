@@ -202,17 +202,57 @@ class CategoryController extends Controller
             'sla.*.resolution_hours' => 'required|integer|min:1|max:720',
         ]);
 
-        foreach ($request->sla as $item) {
+        $incoming = collect($request->sla)
+            ->map(function (array $item): array {
+                return [
+                    'priority' => $item['priority'],
+                    'response_hours' => (int) $item['response_hours'],
+                    'resolution_hours' => (int) $item['resolution_hours'],
+                ];
+            })
+            ->keyBy('priority');
+
+        $existing = SlaConfig::whereIn('priority', $incoming->keys())
+            ->get()
+            ->keyBy('priority');
+
+        $changes = [];
+
+        foreach ($incoming as $priority => $item) {
+            $current = $existing->get($priority);
+            $currentResponse = $current ? (int) $current->response_hours : null;
+            $currentResolution = $current ? (int) $current->resolution_hours : null;
+
+            $hasChanged = $current === null
+                || $currentResponse !== $item['response_hours']
+                || $currentResolution !== $item['resolution_hours'];
+
+            if (!$hasChanged) {
+                continue;
+            }
+
             SlaConfig::updateOrCreate(
-                ['priority' => $item['priority']],
+                ['priority' => $priority],
                 [
-                    'response_hours'   => $item['response_hours'],
+                    'response_hours' => $item['response_hours'],
                     'resolution_hours' => $item['resolution_hours'],
                 ]
             );
+
+            $changes[] = [
+                'priority' => $priority,
+                'response_hours' => $item['response_hours'],
+                'resolution_hours' => $item['resolution_hours'],
+                'old_response_hours' => $currentResponse,
+                'old_resolution_hours' => $currentResolution,
+            ];
         }
 
-        AuditLog::record('sla.updated', 'SlaConfig', null, $request->sla);
+        if (empty($changes)) {
+            return back()->with('success', 'No hubo cambios en la configuración SLA.');
+        }
+
+        AuditLog::record('sla.updated', 'SlaConfig', null, $changes);
 
         return back()->with('success', 'Configuración de SLA actualizada.');
     }

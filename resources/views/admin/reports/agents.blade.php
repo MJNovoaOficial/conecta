@@ -3,7 +3,7 @@
 
 @section('content')
 <style>
-.admin-layout { display:flex; gap:0; min-height:calc(100vh - 60px); }
+.admin-layout { display:flex; gap:0; min-height:calc(100vh - 52px); }
 .admin-content { flex:1; padding:28px 32px; background:#f5f7fa; min-width:0; }
 
 .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }

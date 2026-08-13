@@ -3,7 +3,7 @@
 
 @section('content')
 <style>
-.admin-layout { display:flex; gap:0; min-height:calc(100vh - 60px); }
+.admin-layout { display:flex; gap:0; min-height:calc(100vh - 52px); }
 .admin-content { flex:1; padding:24px 28px 48px; background:#f5f7fa; min-width:0; overflow-x:hidden; }
 
 /* ═══ HEADER ═══════════════════════════════════════════════════ */
@@ -94,15 +94,124 @@
 }
 .tl-details.open { display:block; }
 .tl-kv-grid {
-    display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr));
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(240px,1fr));
     gap:8px;
 }
 .tl-kv {
     background:#fff; border:1px solid #e2e8f0; border-radius:8px;
     padding:8px 12px;
 }
+.tl-kv.tl-kv-full {
+    grid-column: 1 / -1;
+}
 .tl-kv .k { font-size:.67rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#94a3b8; margin-bottom:2px; }
 .tl-kv .v { font-size:.82rem; font-weight:600; color:#1a2332; word-break:break-all; }
+
+.tl-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+    gap: 6px;
+}
+
+.tl-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #334155;
+    border: 1px solid #dbe4ff;
+    font-size: .72rem;
+    font-weight: 600;
+}
+
+.tl-object {
+    display: grid;
+    gap: 6px;
+}
+
+.tl-object-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    border-top: 1px dashed #e2e8f0;
+    padding-top: 6px;
+}
+
+.tl-object-row:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.tl-object-key {
+    font-size: .7rem;
+    color: #64748b;
+    min-width: 72px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    font-weight: 700;
+}
+
+.tl-object-val {
+    font-size: .8rem;
+    color: #0f172a;
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.tl-json {
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #0f172a;
+    color: #e2e8f0;
+    font-size: .74rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+/* SLA detail cards */
+.sla-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+}
+.sla-detail-card {
+    border: 1px solid #dbe6f5;
+    border-radius: 10px;
+    background: #fff;
+    padding: 10px 12px;
+}
+.sla-detail-priority {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .76rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+.sla-detail-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    display: inline-block;
+}
+.sla-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: .76rem;
+    color: #475569;
+    border-top: 1px dashed #e2e8f0;
+    padding-top: 6px;
+    margin-top: 6px;
+}
+.sla-detail-row strong {
+    color: #0f172a;
+}
 
 /* ═══ ACTION COLOR MAP ══════════════════════════════════════════ */
 /* ticket.created / ticket.updated / ticket.closed */
@@ -168,6 +277,20 @@
         return ['act-default', 'dot-default', 'fa-circle', $action];
     }
 
+    function parseAuditJsonIfNeeded($value) {
+        if (!is_string($value)) {
+            return $value;
+        }
+
+        $trimmed = trim($value);
+        if ($trimmed === '' || !in_array(substr($trimmed, 0, 1), ['{', '['], true)) {
+            return $value;
+        }
+
+        $decoded = json_decode($trimmed, true);
+        return json_last_error() === JSON_ERROR_NONE ? $decoded : $value;
+    }
+
     $keyLabels = [
         'ticket_number' => 'N° Ticket',
         'priority'      => 'Prioridad',
@@ -180,6 +303,12 @@
         'new_status'    => 'Estado nuevo',
     ];
     $priorityMap = ['critical'=>'Crítica 🔴','high'=>'Alta 🟠','medium'=>'Media 🟡','low'=>'Baja 🟢'];
+    $priorityMeta = [
+        'critical' => ['label' => 'Crítica', 'color' => '#ef4444'],
+        'high' => ['label' => 'Alta', 'color' => '#f97316'],
+        'medium' => ['label' => 'Media', 'color' => '#3b82f6'],
+        'low' => ['label' => 'Baja', 'color' => '#8b5cf6'],
+    ];
     @endphp
 
     @if($logs->isEmpty())
@@ -236,20 +365,90 @@
             {{-- Panel de detalles --}}
             @if($log->details)
             <div class="tl-details" id="{{ $entryId }}">
-                <div class="tl-kv-grid">
-                    @foreach($log->details as $k => $v)
-                    @php
-                        $displayKey = $keyLabels[$k] ?? str_replace('_', ' ', ucfirst($k));
-                        $displayVal = is_array($v) ? json_encode($v, JSON_UNESCAPED_UNICODE) : ($v ?? '—');
-                        if ($k === 'priority' && isset($priorityMap[$v])) $displayVal = $priorityMap[$v];
-                        if (is_bool($v)) $displayVal = $v ? 'Sí' : 'No';
-                    @endphp
-                    <div class="tl-kv">
-                        <div class="k">{{ $displayKey }}</div>
-                        <div class="v">{{ $displayVal }}</div>
+                @if($log->action === 'sla.updated' && collect($log->details)->every(fn($item) => is_array($item) && isset($item['priority'])))
+                    <div class="sla-detail-grid">
+                        @foreach($log->details as $item)
+                        @php
+                            $priority = $item['priority'] ?? null;
+                            $meta = $priorityMeta[$priority] ?? ['label' => ucfirst((string)$priority), 'color' => '#64748b'];
+                        @endphp
+                        <div class="sla-detail-card">
+                            <div class="sla-detail-priority" style="color: {{ $meta['color'] }};">
+                                <span class="sla-detail-dot" style="background: {{ $meta['color'] }};"></span>
+                                {{ $meta['label'] }}
+                            </div>
+                            <div class="sla-detail-row">
+                                <span>Primera respuesta</span>
+                                <strong>{{ $item['response_hours'] ?? '—' }}h</strong>
+                            </div>
+                            <div class="sla-detail-row">
+                                <span>Resolución</span>
+                                <strong>{{ $item['resolution_hours'] ?? '—' }}h</strong>
+                            </div>
+                        </div>
+                        @endforeach
                     </div>
-                    @endforeach
-                </div>
+                @else
+                    <div class="tl-kv-grid">
+                        @foreach($log->details as $k => $v)
+                        @php
+                            $displayKey = is_numeric($k) ? 'Ítem ' . ((int)$k + 1) : ($keyLabels[$k] ?? str_replace('_', ' ', ucfirst($k)));
+                            $parsedVal = parseAuditJsonIfNeeded($v);
+                            $kvClass = 'tl-kv';
+                            if (is_array($parsedVal) && array_is_list($parsedVal)) {
+                                $allScalars = collect($parsedVal)->every(fn($item) => is_scalar($item) || $item === null);
+                                if (($k === 'keys' && $allScalars) || ($allScalars && count($parsedVal) > 6)) {
+                                    $kvClass .= ' tl-kv-full';
+                                }
+                            }
+                        @endphp
+                        <div class="{{ $kvClass }}">
+                            <div class="k">{{ $displayKey }}</div>
+                            <div class="v">
+                                @if(is_bool($parsedVal))
+                                    {{ $parsedVal ? 'Sí' : 'No' }}
+                                @elseif($k === 'priority' && is_string($parsedVal) && isset($priorityMap[$parsedVal]))
+                                    {{ $priorityMap[$parsedVal] }}
+                                @elseif(is_array($parsedVal))
+                                    @if(array_is_list($parsedVal))
+                                        @php $allScalars = collect($parsedVal)->every(fn($item) => is_scalar($item) || $item === null); @endphp
+                                        @if($allScalars)
+                                            <div class="tl-list">
+                                                @foreach($parsedVal as $item)
+                                                    <span class="tl-chip">{{ $item ?? '—' }}</span>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <pre class="tl-json">{{ json_encode($parsedVal, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                        @endif
+                                    @else
+                                        <div class="tl-object">
+                                            @foreach($parsedVal as $objKey => $objVal)
+                                                <div class="tl-object-row">
+                                                    <span class="tl-object-key">{{ str_replace('_', ' ', $objKey) }}</span>
+                                                    <span class="tl-object-val">
+                                                        @if(is_bool($objVal))
+                                                            {{ $objVal ? 'Sí' : 'No' }}
+                                                        @elseif(is_scalar($objVal) || $objVal === null)
+                                                            {{ $objVal ?? '—' }}
+                                                        @else
+                                                            {{ json_encode($objVal, JSON_UNESCAPED_UNICODE) }}
+                                                        @endif
+                                                    </span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endif
+                                @elseif(is_scalar($parsedVal) || $parsedVal === null)
+                                    {{ $parsedVal ?? '—' }}
+                                @else
+                                    <pre class="tl-json">{{ json_encode($parsedVal, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                @endif
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                @endif
             </div>
             @endif
         </div>

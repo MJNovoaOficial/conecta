@@ -15,4 +15,16 @@ class Categoria extends Model
         return $this->hasMany(Subcategoria::class, 'categoria_id');
     }
 
+    public function tickets()
+    {
+        return $this->hasManyThrough(
+            Ticket::class,
+            Subcategoria::class,
+            'categoria_id',
+            'subcategoria_id',
+            'id',
+            'id'
+        );
+    }
+
 }

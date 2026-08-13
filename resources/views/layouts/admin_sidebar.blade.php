@@ -21,13 +21,13 @@
     width: 220px;
     min-width: 220px;
     background: #1a2332;
-    min-height: calc(100vh - 60px);
+    min-height: calc(100vh - 52px);
     display: flex;
     flex-direction: column;
     padding: 20px 0 28px;
     position: sticky;
-    top: 60px;
-    height: calc(100vh - 60px);
+    top: 52px;
+    height: calc(100vh - 52px);
     overflow-y: auto;
 }
 .sidebar-section-title {

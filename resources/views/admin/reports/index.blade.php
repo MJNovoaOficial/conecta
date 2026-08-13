@@ -4,7 +4,7 @@
 @section('content')
 <style>
 /* ═══ LAYOUT ═══════════════════════════════════════════════════ */
-.admin-layout  { display:flex; gap:0; min-height:calc(100vh - 60px); }
+.admin-layout  { display:flex; gap:0; min-height:calc(100vh - 52px); }
 .admin-content { flex:1; padding:24px 24px 48px; background:#f5f7fa; min-width:0; overflow-x:hidden; }
 
 /* ═══ HEADER ════════════════════════════════════════════════════ */

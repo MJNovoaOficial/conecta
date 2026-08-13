@@ -3,7 +3,7 @@
 @section('title', 'Mis Tickets de Soporte')
 
 @section('content')
-<div class="page-wrapper">
+<div class="page-wrapper tickets-index-page">
 
     {{-- SIDEBAR --}}
     <aside class="sidebar">
@@ -293,7 +293,7 @@
                             <th>Asignado</th>
                             <th>
                                 <a href="{{ $enlaceOrden('actualizado') }}" style="{{ $estiloOrden }}" title="Ordenar por fecha de última actualización">
-                                    Última Actualización <span class="sort-icon">{{ $iconoOrden('actualizado') }}</span>
+                                    Actualizado <span class="sort-icon">{{ $iconoOrden('actualizado') }}</span>
                                 </a>
                             </th>
                         </tr>
@@ -345,10 +345,10 @@
                                 @endphp
                                 @component('components.sla-badge', ['status' => $slaEstado])@endcomponent
                             </td>
-                            <td style="font-size:0.8rem; color:#718096;" data-label="Asignado">
+                            <td class="ticket-assigned-cell" data-label="Asignado">
                                 {{ $ticket->assignedTo->name ?? '—' }}
                             </td>
-                            <td style="font-size:0.8rem; color:#718096; white-space:nowrap;" data-label="Actualizado">
+                            <td class="ticket-updated-cell" data-label="Actualizado">
                                 {{ $ticket->updated_at->format('d/m/Y (H:i)') }}
                             </td>
                         </tr>
@@ -387,6 +387,91 @@
 .fmt-btn{background:none;border:1px solid transparent;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:.82rem;color:#4a5568;transition:all .15s;}
 .fmt-btn:hover{background:#e2e8f0;border-color:#cbd5e0;}
 #ticketTable tbody tr:hover{background:#f0f7ff !important;}
+
+/* Ajuste puntual de ancho para la vista de listado de tickets */
+.tickets-index-page {
+    width: calc(100vw - 12px);
+    max-width: none;
+    margin: 0;
+    padding: 16px 8px 32px;
+    gap: 14px;
+}
+
+.tickets-index-page .sidebar {
+    width: 200px;
+}
+
+.tickets-index-page .main-content {
+    min-width: 0;
+    width: calc(100% - 214px);
+}
+
+.tickets-index-page .content-card {
+    overflow: visible;
+}
+
+.tickets-index-page .ticket-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+}
+
+.tickets-index-page .ticket-table th,
+.tickets-index-page .ticket-table td {
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.tickets-index-page .ticket-table th:nth-child(1),
+.tickets-index-page .ticket-table td:nth-child(1) { width: 17%; }
+.tickets-index-page .ticket-table th:nth-child(2),
+.tickets-index-page .ticket-table td:nth-child(2) { width: 19%; }
+.tickets-index-page .ticket-table th:nth-child(3),
+.tickets-index-page .ticket-table td:nth-child(3) { width: 12%; }
+.tickets-index-page .ticket-table th:nth-child(4),
+.tickets-index-page .ticket-table td:nth-child(4) { width: 10%; }
+.tickets-index-page .ticket-table th:nth-child(5),
+.tickets-index-page .ticket-table td:nth-child(5) { width: 9%; }
+.tickets-index-page .ticket-table th:nth-child(6),
+.tickets-index-page .ticket-table td:nth-child(6) { width: 12%; }
+.tickets-index-page .ticket-table th:nth-child(7),
+.tickets-index-page .ticket-table td:nth-child(7) { width: 21%; }
+
+.tickets-index-page .ticket-table th {
+    white-space: normal;
+    line-height: 1.2;
+}
+
+.tickets-index-page .ticket-dept,
+.tickets-index-page .ticket-subject-sub,
+.tickets-index-page .ticket-assigned-cell,
+.tickets-index-page .ticket-updated-cell {
+    word-break: break-word;
+}
+
+.tickets-index-page .ticket-assigned-cell,
+.tickets-index-page .ticket-updated-cell {
+    font-size: 0.8rem;
+    color: #718096;
+}
+
+.tickets-index-page .ticket-table th,
+.tickets-index-page .ticket-table td {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+@media (max-width: 1200px) {
+    .tickets-index-page {
+        width: 100%;
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .tickets-index-page .main-content {
+        width: 100%;
+    }
+}
 </style>
 @endpush
 

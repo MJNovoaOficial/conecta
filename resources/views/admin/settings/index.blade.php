@@ -60,7 +60,7 @@
 
 @section('content')
 <style>
-.admin-layout { display:flex; gap:0; min-height:calc(100vh - 60px); }
+.admin-layout { display:flex; gap:0; min-height:calc(100vh - 52px); }
 .admin-content-wrap { flex:1; background:#f5f7fa; min-width:0; overflow-x:hidden; }
 .config-wrapper { max-width:900px; margin:0 auto; padding:28px 24px 60px; }
 </style>

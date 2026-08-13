@@ -163,7 +163,7 @@ class AdminController extends Controller
             'role'     => $request->role,
         ]);
 
-        return redirect()->route('admin.users')->with('success', 'Usuario "' . $user->name . '" creado correctamente.');
+        return redirect()->route('admin.users.index')->with('success', 'Usuario "' . $user->name . '" creado correctamente.');
     }
 
     public function updateUser(Request $request, User $user)
@@ -207,7 +207,7 @@ class AdminController extends Controller
             'changes'  => $changes,
         ]);
 
-        return redirect()->route('admin.users')->with('success', 'Usuario actualizado correctamente.');
+        return redirect()->route('admin.users.index')->with('success', 'Usuario actualizado correctamente.');
     }
 
     public function departments()
@@ -327,20 +327,46 @@ class AdminController extends Controller
         // Obtener todos los settings de DB para manejar los booleanos no enviados
         $allSettings = SystemSetting::all()->keyBy('key');
 
+        $changedKeys = [];
+        $changes = [];
+
         foreach ($allSettings as $key => $setting) {
             if ($setting->type === 'boolean') {
                 // Checkbox no enviado = false
-                $value = isset($data[$key]) ? '1' : '0';
+                $newValue = isset($data[$key]) ? '1' : '0';
             } elseif (isset($data[$key])) {
-                $value = $data[$key];
+                $newValue = (string) $data[$key];
             } else {
                 continue;
             }
 
-            SystemSetting::set($key, $value);
+            $currentValue = (string) $setting->value;
+
+            if ($setting->type === 'integer') {
+                $newValue = (string) ((int) $newValue);
+                $currentValue = (string) ((int) $currentValue);
+            } elseif ($setting->type === 'boolean') {
+                $newValue = filter_var($newValue, FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
+                $currentValue = filter_var($currentValue, FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
+            }
+
+            if ($currentValue === $newValue) {
+                continue;
+            }
+
+            SystemSetting::set($key, $newValue);
+            $changedKeys[] = $key;
+            $changes[$key] = ['old' => $currentValue, 'new' => $newValue];
         }
 
-        AuditLog::record('settings.updated', 'SystemSetting', null, ['keys' => array_keys($data)]);
+        if (empty($changedKeys)) {
+            return redirect()->route('admin.settings.index')->with('success', 'No hubo cambios para guardar.');
+        }
+
+        AuditLog::record('settings.updated', 'SystemSetting', null, [
+            'keys' => $changedKeys,
+            'changes' => $changes,
+        ]);
 
         return redirect()->route('admin.settings.index')->with('success', 'Configuración guardada correctamente.');
     }

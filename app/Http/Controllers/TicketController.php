@@ -444,6 +444,18 @@ class TicketController extends Controller
             'is_internal' => 'boolean',
             'attachments' => 'nullable|array|max:3',
             'attachments.*' => 'file|max:5120',
+        ], [
+            'comment.required' => 'El mensaje es obligatorio.',
+            'comment.string' => 'El mensaje debe ser texto válido.',
+            'comment.min' => 'El mensaje debe tener al menos 3 caracteres.',
+            'comment.max' => 'El mensaje no puede superar los 5000 caracteres.',
+            'attachments.array' => 'El formato de los adjuntos no es válido.',
+            'attachments.max' => 'Puedes adjuntar máximo 3 archivos.',
+            'attachments.*.file' => 'Uno de los adjuntos no es un archivo válido.',
+            'attachments.*.max' => 'Cada archivo adjunto puede pesar hasta 5 MB.',
+        ], [
+            'comment' => 'mensaje',
+            'attachments' => 'adjuntos',
         ]);
 
         // Verificar permisos para comentarios internos
