@@ -15,6 +15,7 @@ class Department extends Model
         'name',
         'description',
         'is_active',
+        'default_role',
     ];
 
     protected $casts = [

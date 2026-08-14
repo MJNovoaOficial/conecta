@@ -1,4 +1,4 @@
-﻿@extends("layouts.app")
+@extends("layouts.app")
 @section("title", "Mi Perfil - Conecta")
 @section("content")
 <div class="page-wrapper">
@@ -8,7 +8,7 @@
                 <span><i class="fas fa-user me-2"></i>Mi Cuenta</span>
             </div>
             <a href="{{ route("profile.index") }}" class="sidebar-item active">
-                <div class="item-left"><span class="item-icon"><i class="fas fa-lock"></i></span>Cambiar Contraseña</div>
+                <div class="item-left"><span class="item-icon"><i class="fas fa-id-card"></i></span>Mi Perfil</div>
             </a>
             <a href="{{ route("tickets.index") }}" class="sidebar-item">
                 <div class="item-left"><span class="item-icon"><i class="fas fa-ticket-alt"></i></span>Mis Tickets</div>
@@ -35,6 +35,9 @@
                 <div>
                     <h2 style="margin:0 0 4px;font-size:1.1rem;color:#1a2332;">{{ $user->name }}</h2>
                     <p style="margin:0 0 4px;color:#718096;font-size:0.85rem;"><i class="fas fa-envelope me-1"></i>{{ $user->email }}</p>
+                    @if($user->alternate_email)
+                        <p style="margin:0 0 4px;color:#718096;font-size:0.82rem;"><i class="fas fa-envelope-open me-1" style="color:#f59e0b;"></i>{{ $user->alternate_email }} <span style="font-size:0.72rem;color:#a0aec0;">(alternativo)</span></p>
+                    @endif
                     <span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:0.73rem;font-weight:600;
                         background:{{ $user->isAdmin() ? "#fef3c7" : ($user->isSupport() ? "#dbeafe" : "#dcfce7") }};
                         color:{{ $user->isAdmin() ? "#92400e" : ($user->isSupport() ? "#1e40af" : "#166534") }};">
@@ -44,15 +47,73 @@
             </div>
         </div>
 
-        {{-- Cambio de contraseña --}}
+        {{-- ── Información de Contacto ── --}}
+        <div class="content-card" style="padding:24px;margin-bottom:20px;">
+            <h3 style="margin:0 0 6px;font-size:1rem;font-weight:700;color:#1a2332;display:flex;align-items:center;gap:8px;">
+                <i class="fas fa-envelope" style="color:#4f8cff;"></i> Información de Contacto
+            </h3>
+            <p style="margin:0 0 20px;font-size:0.82rem;color:#718096;">Puedes modificar tu correo principal y agregar un correo alternativo para recibir notificaciones si tu correo corporativo falla.</p>
+
+            @if(session("success_profile"))
+                <div style="background:#e6f7ed;border:1px solid #a7d7b3;border-radius:8px;padding:12px 16px;margin-bottom:20px;color:#1a7f43;font-size:0.85rem;display:flex;gap:8px;align-items:center;">
+                    <i class="fas fa-check-circle"></i> {{ session("success_profile") }}
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route("profile.info") }}" style="max-width:480px;">
+                @csrf
+
+                {{-- Nombre --}}
+                <div style="margin-bottom:16px;">
+                    <label class="form-label-custom"><i class="fas fa-user me-1" style="color:#a0aec0;"></i> Nombre</label>
+                    <input type="text" name="name"
+                           class="form-control-custom @error("name") is-invalid @enderror"
+                           value="{{ old("name", $user->name) }}" required>
+                    @error("name")<div style="color:#e74c3c;font-size:0.78rem;margin-top:4px;"><i class="fas fa-exclamation-circle me-1"></i>{{ $message }}</div>@enderror
+                </div>
+
+                {{-- Email principal --}}
+                <div style="margin-bottom:16px;">
+                    <label class="form-label-custom"><i class="fas fa-envelope me-1" style="color:#a0aec0;"></i> Correo Principal</label>
+                    <input type="email" name="email"
+                           class="form-control-custom @error("email") is-invalid @enderror"
+                           value="{{ old("email", $user->email) }}" required>
+                    @error("email")<div style="color:#e74c3c;font-size:0.78rem;margin-top:4px;"><i class="fas fa-exclamation-circle me-1"></i>{{ $message }}</div>@enderror
+                </div>
+
+                {{-- Correo alternativo --}}
+                <div style="margin-bottom:24px;">
+                    <label class="form-label-custom">
+                        <i class="fas fa-envelope-open me-1" style="color:#f59e0b;"></i>
+                        Correo Alternativo <span style="font-weight:400;color:#a0aec0;">(opcional)</span>
+                    </label>
+                    <input type="email" name="alternate_email"
+                           class="form-control-custom @error("alternate_email") is-invalid @enderror"
+                           value="{{ old("alternate_email", $user->alternate_email) }}"
+                           placeholder="Ej: tuemail@gmail.com">
+                    <div style="font-size:0.75rem;color:#a0aec0;margin-top:5px;">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Si tu correo corporativo no está disponible, recibirás las notificaciones aquí.
+                    </div>
+                    @error("alternate_email")<div style="color:#e74c3c;font-size:0.78rem;margin-top:4px;"><i class="fas fa-exclamation-circle me-1"></i>{{ $message }}</div>@enderror
+                </div>
+
+                <button type="submit" class="btn-submit-ticket" style="display:inline-flex;align-items:center;gap:8px;width:auto;padding:10px 24px;">
+                    <i class="fas fa-save"></i> Guardar Información
+                </button>
+            </form>
+        </div>
+
+        {{-- ── Cambio de contraseña ── --}}
         <div class="content-card" style="padding:24px;">
-            <h3 style="margin:0 0 20px;font-size:1rem;font-weight:700;color:#1a2332;display:flex;align-items:center;gap:8px;">
+            <h3 style="margin:0 0 6px;font-size:1rem;font-weight:700;color:#1a2332;display:flex;align-items:center;gap:8px;">
                 <i class="fas fa-lock" style="color:#4f8cff;"></i> Cambiar Contraseña
             </h3>
+            <p style="margin:0 0 20px;font-size:0.82rem;color:#718096;">Por seguridad, ingresa tu contraseña actual para poder establecer una nueva.</p>
 
-            @if(session("success"))
+            @if(session("success_password"))
                 <div style="background:#e6f7ed;border:1px solid #a7d7b3;border-radius:8px;padding:12px 16px;margin-bottom:20px;color:#1a7f43;font-size:0.85rem;display:flex;gap:8px;align-items:center;">
-                    <i class="fas fa-check-circle"></i> {{ session("success") }}
+                    <i class="fas fa-check-circle"></i> {{ session("success_password") }}
                 </div>
             @endif
 
@@ -65,7 +126,7 @@
                         <input type="password" name="current_password" id="curPass"
                                class="form-control-custom @error("current_password") is-invalid @enderror"
                                style="padding-left:32px;padding-right:38px;" placeholder="Tu contraseña actual" required>
-                        <button type="button" onclick="toggleField("curPass","eyeCur")"
+                        <button type="button" onclick="toggleField('curPass','eyeCur')"
                                 style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:#5a6a7d;cursor:pointer;padding:6px;font-size:0.95rem;">
                             <i class="fas fa-eye" id="eyeCur"></i>
                         </button>
@@ -81,7 +142,7 @@
                         <input type="password" name="password" id="newPass"
                                class="form-control-custom @error("password") is-invalid @enderror"
                                style="padding-left:32px;padding-right:38px;" placeholder="Mínimo 8 caracteres" required minlength="8">
-                        <button type="button" onclick="toggleField("newPass","eyeNew")"
+                        <button type="button" onclick="toggleField('newPass','eyeNew')"
                                 style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:#5a6a7d;cursor:pointer;padding:6px;font-size:0.95rem;">
                             <i class="fas fa-eye" id="eyeNew"></i>
                         </button>
@@ -97,13 +158,13 @@
                         <input type="password" name="password_confirmation" id="confPass"
                                class="form-control-custom" style="padding-left:32px;padding-right:38px;"
                                placeholder="Repite la nueva contraseña" required minlength="8">
-                        <button type="button" onclick="toggleField("confPass","eyeConf")"
+                        <button type="button" onclick="toggleField('confPass','eyeConf')"
                                 style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:#5a6a7d;cursor:pointer;padding:6px;font-size:0.95rem;">
                             <i class="fas fa-eye" id="eyeConf"></i>
                         </button>
                     </div>
                 </div>
-                <button type="submit" class="btn-submit-ticket" style="display:inline-flex;align-items:center;gap:8px;">
+                <button type="submit" class="btn-submit-ticket" style="display:inline-flex;align-items:center;gap:8px;width:auto;padding:10px 24px;">
                     <i class="fas fa-save"></i> Actualizar Contraseña
                 </button>
             </form>

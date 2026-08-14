@@ -77,6 +77,18 @@
                         @error('description')<div class="field-error"><i class="fas fa-exclamation-circle me-1"></i>{{ $message }}</div>@enderror
                     </div>
 
+                    {{-- Rol por defecto del departamento --}}
+                    <div style="margin-bottom: 20px;">
+                        <label class="form-label-custom"><i class="fas fa-user-tag me-1" style="color:#a0aec0;"></i>Rol por defecto para nuevos usuarios</label>
+                        <select name="default_role" class="form-control-custom @error('default_role') is-invalid @enderror" required>
+                            <option value="user"    {{ old('default_role','user')    === 'user'    ? 'selected' : '' }}>👤 Usuario (solo crea tickets)</option>
+                            <option value="support" {{ old('default_role','user')    === 'support' ? 'selected' : '' }}>🎧 Soporte Técnico</option>
+                            <option value="admin"   {{ old('default_role','user')    === 'admin'   ? 'selected' : '' }}>🛡️ Administrador</option>
+                        </select>
+                        <div style="font-size:0.75rem;color:#a0aec0;margin-top:4px;"><i class="fas fa-info-circle me-1"></i>Los usuarios nuevos asignados a este departamento heredarán este rol automáticamente.</div>
+                        @error('default_role')<div class="field-error"><i class="fas fa-exclamation-circle me-1"></i>{{ $message }}</div>@enderror
+                    </div>
+
                     <button type="submit" class="btn-submit-ticket">
                         <i class="fas fa-plus"></i> Crear Departamento
                     </button>

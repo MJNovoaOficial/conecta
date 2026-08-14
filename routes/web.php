@@ -47,6 +47,7 @@ Route::middleware('auth')->group(function () {
     // Perfil de usuario
     Route::get('/profile',           [ProfileController::class, 'index'])->name('profile.index');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::post('/profile/info',     [ProfileController::class, 'updateProfile'])->name('profile.info');
 
     // ── Tickets ──────────────────────────────────────────────────────
     Route::get('/tickets/my-stats',  [TicketController::class, 'myStats'])->name('tickets.my-stats');

@@ -150,6 +150,120 @@
             </div>
         </div>
 
+        {{-- ╔══════════════════════════════════════════════════════════════╗
+             ║  BOTÓN CTA GRANDE — solo visible para usuario común         ║
+             ╚══════════════════════════════════════════════════════════════╝ --}}
+        @if(Auth::user()->isUser())
+        <a href="{{ route('tickets.create') }}" id="cta-new-ticket" style="
+            display:flex; align-items:center; gap:20px;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2980b9 50%, #3498db 100%);
+            border-radius:14px; padding:22px 28px; margin-bottom:20px;
+            text-decoration:none; box-shadow:0 6px 24px rgba(41,128,185,0.35);
+            transition:transform .15s, box-shadow .15s; border:none;
+            position:relative; overflow:hidden;">
+            {{-- Decoración de fondo --}}
+            <div style="position:absolute;right:-20px;top:-20px;width:120px;height:120px;
+                background:rgba(255,255,255,0.05);border-radius:50%;pointer-events:none;"></div>
+            <div style="position:absolute;right:40px;bottom:-30px;width:80px;height:80px;
+                background:rgba(255,255,255,0.04);border-radius:50%;pointer-events:none;"></div>
+
+            {{-- Icono --}}
+            <div style="width:60px;height:60px;border-radius:14px;background:rgba(255,255,255,0.15);
+                display:flex;align-items:center;justify-content:center;flex-shrink:0;
+                box-shadow:0 2px 10px rgba(0,0,0,0.15);">
+                <i class="fas fa-plus" style="color:#fff;font-size:1.6rem;"></i>
+            </div>
+
+            {{-- Texto --}}
+            <div style="flex:1;">
+                <div style="color:#fff;font-size:1.2rem;font-weight:800;margin-bottom:4px;letter-spacing:-0.2px;">
+                    Crear Nuevo Ticket
+                </div>
+                <div style="color:rgba(255,255,255,0.8);font-size:0.84rem;font-weight:400;">
+                    Reporta un problema técnico o solicita un servicio al equipo de TI
+                </div>
+            </div>
+
+            {{-- Flecha --}}
+            <div style="color:rgba(255,255,255,0.7);font-size:1.4rem;flex-shrink:0;">
+                <i class="fas fa-arrow-right"></i>
+            </div>
+        </a>
+        <script>
+        document.getElementById('cta-new-ticket').addEventListener('mouseenter', function(){
+            this.style.transform='translateY(-2px)';
+            this.style.boxShadow='0 10px 32px rgba(41,128,185,0.45)';
+        });
+        document.getElementById('cta-new-ticket').addEventListener('mouseleave', function(){
+            this.style.transform='translateY(0)';
+            this.style.boxShadow='0 6px 24px rgba(41,128,185,0.35)';
+        });
+        </script>
+        @endif
+
+        {{-- ╔══════════════════════════════════════════════════════════════╗
+             ║  BANNER DE ALERTA — tickets resueltos o con respuesta       ║
+             ╚══════════════════════════════════════════════════════════════╝ --}}
+        @if(Auth::user()->isUser())
+        @php
+            $ticketsResueltos = $tickets->where('status', 'resolved')->count();
+            $ticketsPendUser  = $tickets->where('status', 'pending_user')->count();
+            $totalAtencion    = $ticketsResueltos + $ticketsPendUser;
+        @endphp
+        @if($totalAtencion > 0)
+        <div id="attention-banner" style="
+            display:flex; align-items:center; gap:14px;
+            background:linear-gradient(90deg, #fff7ed, #fffbf0);
+            border:2px solid #f59e0b; border-radius:12px;
+            padding:16px 20px; margin-bottom:16px;
+            box-shadow:0 3px 12px rgba(245,158,11,0.15);">
+            <div style="width:42px;height:42px;border-radius:10px;background:#fef3c7;
+                display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="fas fa-bell" style="color:#f59e0b;font-size:1.15rem;animation:ring 2s ease-in-out infinite;"></i>
+            </div>
+            <div style="flex:1;">
+                <div style="font-weight:700;color:#92400e;font-size:0.9rem;margin-bottom:2px;">
+                    Tienes {{ $totalAtencion }} ticket{{ $totalAtencion>1?'s':'' }} que requieren tu atención
+                </div>
+                <div style="font-size:0.8rem;color:#b45309;">
+                    @if($ticketsResueltos > 0)
+                        <i class="fas fa-check-circle me-1" style="color:#10b981;"></i>
+                        {{ $ticketsResueltos }} resuelto{{ $ticketsResueltos>1?'s':'' }} esperando tu confirmación.
+                    @endif
+                    @if($ticketsPendUser > 0)
+                        <i class="fas fa-hourglass-half me-1" style="color:#f59e0b;"></i>
+                        {{ $ticketsPendUser }} esperando tu respuesta.
+                    @endif
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;flex-shrink:0;">
+                @if($ticketsResueltos > 0)
+                <a href="{{ route('tickets.index', ['status'=>'resolved']) }}"
+                   style="padding:7px 14px;background:#10b981;color:#fff;border-radius:7px;font-size:0.8rem;font-weight:600;text-decoration:none;white-space:nowrap;">
+                    Ver resueltos
+                </a>
+                @endif
+                @if($ticketsPendUser > 0)
+                <a href="{{ route('tickets.index', ['status'=>'pending_user']) }}"
+                   style="padding:7px 14px;background:#f59e0b;color:#fff;border-radius:7px;font-size:0.8rem;font-weight:600;text-decoration:none;white-space:nowrap;">
+                    Responder
+                </a>
+                @endif
+            </div>
+        </div>
+        <style>
+        @keyframes ring {
+            0%,100%{transform:rotate(0)}
+            10%{transform:rotate(-15deg)}
+            20%{transform:rotate(12deg)}
+            30%{transform:rotate(-8deg)}
+            40%{transform:rotate(6deg)}
+            50%{transform:rotate(0)}
+        }
+        </style>
+        @endif
+        @endif
+
         <div class="content-card">
             {{-- Barra de filtros (RF-RI-09) --}}
             <form method="GET" action="{{ route('tickets.index') }}" id="filterForm"

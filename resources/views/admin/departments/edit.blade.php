@@ -45,6 +45,16 @@
                         <input type="checkbox" class="form-check-input" name="is_active" id="active" value="1" {{ $department->is_active ? 'checked' : '' }}>
                         <label class="form-check-label" for="active">Departamento activo</label>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label-custom"><i class="fas fa-user-tag me-1" style="color:#a0aec0;"></i>Rol por defecto para nuevos usuarios</label>
+                        <select name="default_role" class="form-control-custom @error('default_role') is-invalid @enderror" required>
+                            <option value="user"    {{ old('default_role', $department->default_role) === 'user'    ? 'selected' : '' }}>👤 Usuario (solo crea tickets)</option>
+                            <option value="support" {{ old('default_role', $department->default_role) === 'support' ? 'selected' : '' }}>🎧 Soporte Técnico</option>
+                            <option value="admin"   {{ old('default_role', $department->default_role) === 'admin'   ? 'selected' : '' }}>🛡️ Administrador</option>
+                        </select>
+                        <div style="font-size:0.75rem;color:#a0aec0;margin-top:4px;"><i class="fas fa-info-circle me-1"></i>Los usuarios nuevos asignados heredarán este rol automáticamente.</div>
+                        @error('default_role')<div class="field-error"><i class="fas fa-exclamation-circle me-1"></i>{{ $message }}</div>@enderror
+                    </div>
                     <button type="submit" class="btn-submit"><i class="fas fa-save"></i> Guardar Cambios</button>
                 </form>
             </div>

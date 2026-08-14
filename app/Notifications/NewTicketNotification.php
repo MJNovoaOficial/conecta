@@ -3,14 +3,15 @@
 namespace App\Notifications;
 
 use App\Models\Ticket;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class NewTicketNotification extends Notification implements ShouldQueue
+/**
+ * Notificación al equipo de soporte cuando llega un nuevo ticket.
+ * Sin ShouldQueue — se envía en tiempo real (Reunión 3).
+ */
+class NewTicketNotification extends Notification
 {
-    use Queueable;
 
     protected $ticket;
 

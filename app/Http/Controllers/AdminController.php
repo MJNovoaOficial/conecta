@@ -141,26 +141,31 @@ class AdminController extends Controller
     public function storeUser(Request $request)
     {
         $request->validate([
-            'name'                  => 'required|string|max:255|regex:/^[\p{L}\s]+$/u',
-            'email'                 => 'required|email|max:255|unique:usuarios,email',
-            'department_id'         => 'required|integer|exists:departamentos,id',
-            'role'                  => 'required|in:user,support,admin',
-            'password'              => 'required|string|min:8|confirmed',
+            'name'          => 'required|string|max:255|regex:/^[\p{L}\s]+$/u',
+            'email'         => 'required|email|max:255|unique:usuarios,email',
+            'department_id' => 'required|integer|exists:departamentos,id',
+            'role'          => 'nullable|in:user,support,admin',
+            'password'      => 'required|string|min:8|confirmed',
         ]);
+
+        // Heredar rol del departamento si no se especificó uno
+        $department = Department::find($request->department_id);
+        $role = $request->filled('role') ? $request->role : ($department->default_role ?? 'user');
 
         $user = User::create([
             'name'          => trim($request->name),
             'email'         => strtolower($request->email),
             'password'      => Hash::make($request->password),
             'department_id' => $request->department_id,
-            'role'          => $request->role,
+            'role'          => $role,
             'is_active'     => true,
         ]);
 
         Log::info('Usuario creado por admin', [
-            'admin_id' => Auth::id(),
-            'user_id'  => $user->id,
-            'role'     => $request->role,
+            'admin_id'      => Auth::id(),
+            'user_id'       => $user->id,
+            'role'          => $role,
+            'role_inherited'=> !$request->filled('role'),
         ]);
 
         AuditLog::record('user.created', 'User', $user->id, [
@@ -237,23 +242,25 @@ class AdminController extends Controller
     public function storeDepartment(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255|unique:departamentos,name|regex:/^[\p{L}\s\-]+$/u',
-            'description' => 'nullable|string|max:1000',
+            'name'         => 'required|string|max:255|unique:departamentos,name|regex:/^[\p{L}\s\-]+$/u',
+            'description'  => 'nullable|string|max:1000',
+            'default_role' => 'required|in:user,support,admin',
         ]);
 
         Department::create([
-            'name' => htmlspecialchars($request->name, ENT_QUOTES, 'UTF-8'),
-            'description' => htmlspecialchars($request->description, ENT_QUOTES, 'UTF-8'),
-            'is_active' => true,
+            'name'         => htmlspecialchars($request->name, ENT_QUOTES, 'UTF-8'),
+            'description'  => htmlspecialchars($request->description ?? '', ENT_QUOTES, 'UTF-8'),
+            'is_active'    => true,
+            'default_role' => $request->default_role,
         ]);
 
         Log::info('Departamento creado por admin', [
-            'admin_id' => Auth::id(),
-            'name' => $request->name,
+            'admin_id'     => Auth::id(),
+            'name'         => $request->name,
+            'default_role' => $request->default_role,
         ]);
 
         return redirect()->route('admin.departments.index')->with('success', 'Departamento creado exitosamente.');
-
     }
 
     // Mostrar formulario de edición de un departamento (opcional, si se necesita una página separada)
@@ -266,21 +273,24 @@ class AdminController extends Controller
     public function updateDepartment(Request $request, Department $department)
     {
         $request->validate([
-            'name' => 'required|string|max:255|unique:departamentos,name,' . $department->id . '|regex:/^[\p{L}\s\-]+$/u',
-            'description' => 'nullable|string|max:1000',
-            'is_active' => 'nullable|boolean',
+            'name'         => 'required|string|max:255|unique:departamentos,name,' . $department->id . '|regex:/^[\p{L}\s\-]+$/u',
+            'description'  => 'nullable|string|max:1000',
+            'is_active'    => 'nullable|boolean',
+            'default_role' => 'required|in:user,support,admin',
         ]);
 
         $isActive = $request->boolean('is_active');
         $department->update([
-            'name' => htmlspecialchars($request->name, ENT_QUOTES, 'UTF-8'),
-            'description' => htmlspecialchars($request->description, ENT_QUOTES, 'UTF-8'),
-            'is_active' => $isActive,
+            'name'         => htmlspecialchars($request->name, ENT_QUOTES, 'UTF-8'),
+            'description'  => htmlspecialchars($request->description ?? '', ENT_QUOTES, 'UTF-8'),
+            'is_active'    => $isActive,
+            'default_role' => $request->default_role,
         ]);
 
         Log::info('Departamento actualizado por admin', [
-            'admin_id' => Auth::id(),
-            'department_id' => $department->id,
+            'admin_id'     => Auth::id(),
+            'department_id'=> $department->id,
+            'default_role' => $request->default_role,
         ]);
 
         return redirect()->route('admin.departments.index')->with('success', 'Departamento actualizado exitosamente.');
