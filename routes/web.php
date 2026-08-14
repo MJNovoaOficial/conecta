@@ -72,7 +72,7 @@ Route::middleware('auth')->group(function () {
     // ── Admin ─────────────────────────────────────────────────────────
     Route::middleware('admin')->prefix('admin')->group(function () {
         Route::get('/dashboard',  [AdminController::class, 'dashboard'])->name('admin.dashboard');
-        
+        Route::get('/gerencial',  [AdminController::class, 'gerencialDashboard'])->name('admin.gerencial');
 
         // Usuarios
         Route::get('/users',             [AdminController::class, 'users'])->name('admin.users.index');

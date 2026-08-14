@@ -151,10 +151,11 @@
         </div>
 
         {{-- ╔══════════════════════════════════════════════════════════════╗
-             ║  BOTÓN CTA GRANDE — solo visible para usuario común         ║
+             ║  BOTÓN CTA GRANDE — visible para todos los roles            ║
              ╚══════════════════════════════════════════════════════════════╝ --}}
-        @if(Auth::user()->isUser())
-        <a href="{{ route('tickets.create') }}" id="cta-new-ticket" style="
+        <a href="#" id="cta-new-ticket"
+           data-bs-toggle="modal" data-bs-target="#newTicketModal"
+           onclick="this.blur()" style="
             display:flex; align-items:center; gap:20px;
             background: linear-gradient(135deg, #1e3a5f 0%, #2980b9 50%, #3498db 100%);
             border-radius:14px; padding:22px 28px; margin-bottom:20px;
@@ -199,7 +200,6 @@
             this.style.boxShadow='0 6px 24px rgba(41,128,185,0.35)';
         });
         </script>
-        @endif
 
         {{-- ╔══════════════════════════════════════════════════════════════╗
              ║  BANNER DE ALERTA — tickets resueltos o con respuesta       ║

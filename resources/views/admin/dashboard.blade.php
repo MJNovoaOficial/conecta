@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Dashboard Gerencial — Conecta')
+@section('title', 'Dashboard Administrativo — Conecta')
 
 @section('content')
 <style>
@@ -94,7 +94,7 @@
         {{-- Header + Period Filter --}}
         <div class="dash-header">
             <div>
-                <h1><i class="fas fa-chart-pie" style="color:#4f8cff;margin-right:8px;"></i>Dashboard Gerencial</h1>
+                <h1><i class="fas fa-tachometer-alt" style="color:#4f8cff;margin-right:8px;"></i>Dashboard Administrativo</h1>
                 <p>{{ $periodLabel }} · {{ now()->format('d/m/Y H:i') }}</p>
             </div>
             <div class="period-pills">

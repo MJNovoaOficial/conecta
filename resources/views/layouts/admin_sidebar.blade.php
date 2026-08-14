@@ -2,7 +2,8 @@
 @php
     $sidebarActive = $active ?? '';
     $navItems = [
-        ['route' => 'admin.dashboard', 'icon' => 'fas fa-chart-pie', 'label' => 'Dashboard Gerencial', 'key' => 'dashboard'],
+        ['route' => 'admin.dashboard', 'icon' => 'fas fa-tachometer-alt', 'label' => 'Dashboard Administrativo', 'key' => 'dashboard'],
+        ['route' => 'admin.gerencial',  'icon' => 'fas fa-chart-pie',      'label' => 'Dashboard Gerencial',      'key' => 'gerencial'],
         
         ['route' => 'tickets.index', 'icon' => 'fas fa-ticket-alt', 'label' => 'Todos los Tickets', 'key' => 'tickets'],
         ['route' => 'admin.reports.index', 'icon' => 'fas fa-chart-bar', 'label' => 'Reportes', 'key' => 'reports'],
