@@ -114,6 +114,15 @@
                 </div>
                 <span class="sidebar-badge">{{ $counts['total'] ?? 0 }}</span>
             </a>
+            {{-- El centro de ayuda va ANTES de "Nuevo Ticket" a proposito:
+                 la idea es que el usuario vea la opcion de resolverlo solo
+                 antes de decidir abrir un ticket. --}}
+            <a href="{{ route('ayuda.index') }}" class="sidebar-item">
+                <div class="item-left">
+                    <span class="item-icon"><i class="fas fa-book-open"></i></span>
+                    Centro de Ayuda
+                </div>
+            </a>
             <a href="#" class="sidebar-item" data-bs-toggle="modal" data-bs-target="#newTicketModal" onclick="this.blur()">
                 <div class="item-left">
                     <span class="item-icon"><i class="fas fa-plus-circle"></i></span>
@@ -716,8 +725,18 @@ document.getElementById('newTicketModal').addEventListener('hidden.bs.modal', fu
           {{-- Asunto --}}
           <div class="mb-3">
             <label class="form-label fw-semibold" style="font-size:0.85rem; color:#2d3748;">Asunto *</label>
-            <input type="text" name="title" class="form-control" placeholder="Describe brevemente el problema..." required
+            <input type="text" name="title" id="modalTitleField" class="form-control" placeholder="Describe brevemente el problema..." required
+                   autocomplete="off"
                    style="border-radius:7px; border-color:#e2e8f0; font-size:0.87rem;">
+
+            {{-- Sugerencias de la base de conocimiento (RN-18).
+                 Se rellena por JavaScript mientras se escribe el asunto. --}}
+            <div id="kbSugerencias" style="display:none;margin-top:9px;padding:11px 13px;background:#f0f9ff;border:1px solid #bae0fb;border-radius:8px;">
+              <div style="font-size:0.78rem;font-weight:700;color:#2980b9;margin-bottom:7px;">
+                <i class="fas fa-lightbulb"></i> Quizás esto lo resuelva sin abrir un ticket
+              </div>
+              <div id="kbLista"></div>
+            </div>
           </div>
 
           {{-- Departamento / Prioridad automática / Dispositivo --}}
@@ -868,3 +887,5 @@ document.getElementById('newTicketModal').addEventListener('hidden.bs.modal', fu
 });
 </script>
 @endsection
+
+@include('partials.kb_sugerencias_script')

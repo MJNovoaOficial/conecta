@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ArticuloController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AyudaController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\NotificationController;
@@ -46,6 +47,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // Perfil de usuario
+    // Base de conocimiento para el usuario (RN-18).
+    // 'sugerencias' devuelve JSON y la consulta el formulario de ticket
+    // mientras se escribe el asunto.
+    Route::get('/ayuda',                        [AyudaController::class, 'index'])->name('ayuda.index');
+    Route::get('/ayuda/sugerencias',            [AyudaController::class, 'sugerencias'])->name('ayuda.sugerencias');
+    Route::get('/ayuda/{articulo}',             [AyudaController::class, 'show'])->name('ayuda.show');
+    Route::post('/ayuda/{articulo}/util',       [AyudaController::class, 'util'])->name('ayuda.util');
+    Route::post('/ayuda/{articulo}/resuelto',   [AyudaController::class, 'evitado'])->name('ayuda.evitado');
+
     Route::get('/profile',           [ProfileController::class, 'index'])->name('profile.index');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
     Route::post('/profile/info',     [ProfileController::class, 'updateProfile'])->name('profile.info');

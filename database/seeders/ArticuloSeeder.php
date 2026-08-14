@@ -129,6 +129,176 @@ class ArticuloSeeder extends Seeder
                              . "5. Si tu buzón está lleno, deja de recibir correos: revisa el espacio disponible y borra elementos grandes o vacía la papelera.\n\n"
                              . "Si aparece un mensaje de error al sincronizar, abre un ticket copiando el texto exacto.",
             ],
+
+            // ── Software ──────────────────────────────────────────────
+            [
+                'categoria' => 'Software',
+                'title'     => 'Excel o Word se cierra solo o deja de responder',
+                'symptoms'  => 'excel se cierra, word no responde, office se cuelga, se congela, deja de funcionar',
+                'content'   => "1. Espera 30 segundos antes de forzar el cierre: muchas veces está procesando y se recupera solo.\n"
+                             . "2. Si el archivo es muy pesado o tiene muchas fórmulas, cierra los demás programas para liberar memoria.\n"
+                             . "3. Vuelve a abrir el programa: Office suele ofrecer recuperar el documento no guardado.\n"
+                             . "4. Si el problema es siempre con el mismo archivo, cópialo a tu escritorio y ábrelo desde ahí. Los archivos en carpetas de red fallan más.\n"
+                             . "5. Guarda tu trabajo con frecuencia mientras tanto.\n\n"
+                             . "Si se cierra con cualquier archivo, abre un ticket indicando la versión de Office.",
+            ],
+            [
+                'categoria' => 'Software',
+                'title'     => 'No puedo abrir un archivo PDF',
+                'symptoms'  => 'pdf no abre, no se ve el pdf, error al abrir pdf, archivo dañado',
+                'content'   => "1. Prueba abrirlo con el navegador: arrastra el archivo a una pestaña de Chrome o Edge.\n"
+                             . "2. Si se abre en el navegador pero no en el lector, el problema es del programa, no del archivo.\n"
+                             . "3. Si el archivo llegó por correo, descárgalo primero al computador en vez de abrirlo desde el correo.\n"
+                             . "4. Verifica que el archivo se haya descargado completo: si pesa 0 KB, vuelve a bajarlo.\n\n"
+                             . "Si el PDF está protegido con contraseña y no la tienes, pídesela a quien te lo envió.",
+            ],
+            [
+                'categoria' => 'Software',
+                'title'     => 'Un programa no abre o se queda cargando',
+                'symptoms'  => 'programa no abre, se queda cargando, no inicia, aplicacion no responde al abrir',
+                'content'   => "1. Revisa si ya está abierto: presiona Ctrl + Shift + Esc y búscalo en la lista de procesos.\n"
+                             . "2. Si aparece ahí, selecciónalo y presiona \"Finalizar tarea\". Después vuelve a abrirlo.\n"
+                             . "3. Reinicia el computador. Suena obvio, pero resuelve la mayoría de estos casos.\n"
+                             . "4. Comprueba que no haya una actualización pendiente esperando reinicio.\n\n"
+                             . "Si después de reiniciar sigue igual, abre un ticket indicando el nombre exacto del programa.",
+            ],
+            [
+                'categoria' => 'Software',
+                'title'     => 'Office pide activar la licencia',
+                'symptoms'  => 'licencia de office, producto sin licencia, activar office, version de evaluacion',
+                'content'   => "Este aviso aparece cuando el equipo lleva mucho tiempo sin conectarse a la red de la empresa.\n\n"
+                             . "1. Conéctate a la red de la oficina, o activa la VPN si estás fuera.\n"
+                             . "2. Abre cualquier programa de Office y espera un par de minutos con la conexión activa.\n"
+                             . "3. Si sigue apareciendo, cierra todos los programas de Office y vuelve a abrir uno.\n\n"
+                             . "Si el aviso persiste después de un día conectado, abre un ticket: puede que la licencia deba reasignarse.",
+            ],
+
+            // ── Red / Internet ────────────────────────────────────────
+            [
+                'categoria' => 'Red / Internet',
+                'title'     => 'Mi equipo no tiene internet',
+                'symptoms'  => 'sin internet, no navega, sin conexion, no carga ninguna pagina, red desconectada',
+                'content'   => "1. Mira el ícono de red junto al reloj. Si tiene una equis o un globo terráqueo, no hay conexión.\n"
+                             . "2. Si usas cable, revisa que esté firme en el computador y en la roseta de pared.\n"
+                             . "3. Si usas wifi, comprueba que estés conectado a la red correcta y no a una de invitados.\n"
+                             . "4. Pregunta a un compañero cerca si él tiene internet: si nadie tiene, es una caída general y ya la estamos viendo.\n"
+                             . "5. Reinicia el computador.\n\n"
+                             . "Si eres el único sin conexión y ya reiniciaste, abre un ticket indicando tu ubicación.",
+            ],
+            [
+                'categoria' => 'Red / Internet',
+                'title'     => 'La conexión wifi se corta a cada rato',
+                'symptoms'  => 'wifi se desconecta, internet intermitente, se corta la conexion, señal debil',
+                'content'   => "1. Revisa la cantidad de barras de señal. Con una o dos barras los cortes son normales.\n"
+                             . "2. Aléjate de microondas, impresoras y equipos grandes: interfieren con la señal.\n"
+                             . "3. Si estás lejos del punto de acceso, prueba acercarte y ver si mejora.\n"
+                             . "4. Olvida la red y vuelve a conectarte: Configuración → Red e Internet → Wi-Fi → Administrar redes conocidas.\n"
+                             . "5. Si tu puesto es fijo, considera pedir conexión por cable: es más estable.\n\n"
+                             . "Si el corte ocurre siempre en el mismo lugar de la planta, abre un ticket indicándolo: puede faltar cobertura ahí.",
+            ],
+            [
+                'categoria' => 'Red / Internet',
+                'title'     => 'Una página o sistema de la empresa no carga',
+                'symptoms'  => 'no carga el sistema, pagina no disponible, sitio caido, error al entrar al portal',
+                'content'   => "1. Comprueba que tengas internet abriendo otra página cualquiera.\n"
+                             . "2. Si estás fuera de la oficina, confirma que la VPN esté conectada: los sistemas internos solo funcionan con ella.\n"
+                             . "3. Presiona Ctrl + Shift + R para recargar ignorando la caché.\n"
+                             . "4. Prueba en otro navegador o en una ventana de incógnito.\n"
+                             . "5. Pregunta a un compañero si a él le carga: si a nadie le funciona, es una caída del sistema.\n\n"
+                             . "Al abrir el ticket, indica la dirección exacta y el mensaje de error que aparece.",
+            ],
+
+            // ── Cuenta / Acceso ───────────────────────────────────────
+            [
+                'categoria' => 'Cuenta / Acceso',
+                'title'     => 'Olvidé mi contraseña',
+                'symptoms'  => 'olvide la clave, recuperar contraseña, no recuerdo mi password, restablecer clave',
+                'content'   => "1. En la pantalla de inicio de sesión del sistema, usa la opción \"¿Olvidaste tu contraseña?\".\n"
+                             . "2. Te llegará un correo con un enlace para crear una nueva. Revisa también la carpeta de correo no deseado.\n"
+                             . "3. La contraseña nueva debe tener al menos 12 caracteres, con mayúsculas, minúsculas, números y símbolos.\n"
+                             . "4. Si es la contraseña del computador (no la del sistema de tickets), esa la restablece soporte.\n\n"
+                             . "Si el correo no llega en 10 minutos, abre un ticket o pide ayuda a un compañero para reportarlo.",
+            ],
+            [
+                'categoria' => 'Cuenta / Acceso',
+                'title'     => 'No tengo permisos para entrar a un sistema o carpeta',
+                'symptoms'  => 'sin permisos, acceso denegado, no autorizado, no me deja entrar al sistema',
+                'content'   => "Los permisos se asignan según el cargo y el área, así que no se pueden otorgar de inmediato.\n\n"
+                             . "1. Confirma que estés usando tu cuenta y no la de otra persona.\n"
+                             . "2. Si antes tenías acceso y lo perdiste, menciónalo: puede ser un cambio reciente.\n"
+                             . "3. Para pedir un acceso nuevo, abre un ticket indicando: a qué sistema o carpeta, para qué lo necesitas, y quién es tu jefatura.\n\n"
+                             . "El acceso requiere aprobación de tu jefatura, así que el ticket puede tardar más que uno técnico.",
+            ],
+            [
+                'categoria' => 'Cuenta / Acceso',
+                'title'     => 'Necesito una cuenta para una persona nueva',
+                'symptoms'  => 'cuenta nueva, alta de usuario, correo para nuevo empleado, crear usuario',
+                'content'   => "Para crear una cuenta necesitamos estos datos, así que tenlos a mano antes de abrir el ticket:\n\n"
+                             . "1. Nombre completo y RUT de la persona.\n"
+                             . "2. Cargo y departamento.\n"
+                             . "3. Fecha de ingreso.\n"
+                             . "4. A qué sistemas necesitará acceso.\n"
+                             . "5. Si reemplaza a alguien, indícalo: podemos replicar los permisos.\n\n"
+                             . "Pídelo con al menos dos días de anticipación al ingreso, así la persona llega con todo listo.",
+            ],
+
+            // ── Seguridad ─────────────────────────────────────────────
+            [
+                'categoria' => 'Seguridad',
+                'title'     => 'Recibí un correo sospechoso',
+                'symptoms'  => 'correo sospechoso, phishing, estafa, correo raro, me piden la contraseña por correo',
+                'content'   => "IMPORTANTE: no hagas clic en ningún enlace ni descargues archivos adjuntos.\n\n"
+                             . "Señales de que un correo es falso:\n"
+                             . "1. Pide tu contraseña o datos bancarios. Nadie de la empresa te los va a pedir por correo, nunca.\n"
+                             . "2. Mete urgencia: \"tu cuenta será cerrada hoy\".\n"
+                             . "3. La dirección del remitente tiene letras cambiadas o un dominio que no es el de la empresa.\n"
+                             . "4. Tiene faltas de ortografía o un saludo genérico.\n\n"
+                             . "Qué hacer: abre un ticket adjuntando el correo, sin reenviarlo a compañeros. Si ya hiciste clic o ingresaste tu contraseña, repórtalo de inmediato: no es un reto, es lo correcto y mientras antes lo sepamos, mejor.",
+            ],
+            [
+                'categoria' => 'Seguridad',
+                'title'     => 'El antivirus bloqueó un programa que necesito',
+                'symptoms'  => 'antivirus bloquea, programa bloqueado, amenaza detectada, no me deja instalar',
+                'content'   => "1. No intentes desactivar el antivirus ni saltarte el bloqueo: si lo detuvo, hay un motivo.\n"
+                             . "2. Anota el nombre exacto del programa y el mensaje que mostró el antivirus.\n"
+                             . "3. Si descargaste el programa de internet, indica de qué sitio.\n"
+                             . "4. Abre un ticket con esos datos. Si el programa es legítimo y lo necesitas para trabajar, se autoriza.\n\n"
+                             . "Nunca instales programas descargados de sitios no oficiales, aunque parezcan la misma aplicación.",
+            ],
+            [
+                'categoria' => 'Seguridad',
+                'title'     => 'Conecté un pendrive y no lo reconoce',
+                'symptoms'  => 'pendrive no funciona, usb bloqueado, no reconoce el pendrive, memoria usb',
+                'content'   => "Por política de seguridad, los puertos USB de almacenamiento están restringidos en la mayoría de los equipos: es la vía más común de entrada de virus.\n\n"
+                             . "1. Comprueba si el pendrive funciona en otro equipo, para descartar que esté dañado.\n"
+                             . "2. Para compartir archivos dentro de la empresa, usa las carpetas de red en vez de un pendrive.\n"
+                             . "3. Para archivos que vienen de fuera, pide que te los envíen por correo.\n\n"
+                             . "Si tu trabajo requiere usar USB de forma habitual, abre un ticket explicando el motivo. Requiere aprobación de tu jefatura.",
+            ],
+
+            // ── Hardware (complemento) ────────────────────────────────
+            [
+                'categoria' => 'Hardware',
+                'title'     => 'El computador está muy lento',
+                'symptoms'  => 'computador lento, se demora, tarda en abrir, va lento, equipo pesado',
+                'content'   => "1. Presiona Ctrl + Shift + Esc para abrir el Administrador de tareas y mira qué programa consume más CPU o memoria.\n"
+                             . "2. Cierra las pestañas del navegador que no estés usando: son las que más memoria consumen.\n"
+                             . "3. Reinicia el equipo. Si llevas semanas sin apagarlo, esto solo ya suele resolverlo.\n"
+                             . "4. Revisa si hay una actualización de Windows instalándose en segundo plano.\n"
+                             . "5. Comprueba el espacio libre del disco: con menos de un 10% libre, todo se vuelve lento.\n\n"
+                             . "Si el equipo es lento incluso recién reiniciado y sin programas abiertos, abre un ticket: puede necesitar más memoria.",
+            ],
+            [
+                'categoria' => 'Hardware',
+                'title'     => 'El computador se apaga solo',
+                'symptoms'  => 'se apaga solo, se reinicia solo, se corta, apagado inesperado, pantallazo azul',
+                'content'   => "1. Revisa que el cable de poder esté firme, tanto en el equipo como en el enchufe.\n"
+                             . "2. Si es un notebook, comprueba que el cargador esté conectado y que la luz encienda.\n"
+                             . "3. Fíjate si el equipo se siente muy caliente o el ventilador suena fuerte antes de apagarse: puede ser sobrecalentamiento.\n"
+                             . "4. Revisa que las rejillas de ventilación no estén tapadas con papeles o contra la pared.\n"
+                             . "5. Anota si ocurre siempre a la misma hora o al usar cierto programa: ese dato ayuda mucho al diagnóstico.\n\n"
+                             . "Abre un ticket indicando desde cuándo ocurre y con qué frecuencia. Guarda tu trabajo seguido mientras tanto.",
+            ],
         ];
 
         foreach ($articulos as $datos) {
