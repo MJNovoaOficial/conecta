@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ArticuloController;
+use App\Http\Controllers\AsistenteController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AyudaController;
 use App\Http\Controllers\CategoryController;
@@ -52,6 +53,10 @@ Route::middleware('auth')->group(function () {
     // mientras se escribe el asunto.
     Route::get('/ayuda',                        [AyudaController::class, 'index'])->name('ayuda.index');
     Route::get('/ayuda/sugerencias',            [AyudaController::class, 'sugerencias'])->name('ayuda.sugerencias');
+    // Asistente sobre la base de conocimiento. Limitado por minuto porque cada
+    // consulta ocupa el servidor de modelos durante varios segundos.
+    Route::post('/ayuda/asistente',             [AsistenteController::class, 'preguntar'])
+        ->middleware('throttle:10,1')->name('ayuda.asistente');
     Route::get('/ayuda/{articulo}',             [AyudaController::class, 'show'])->name('ayuda.show');
     Route::post('/ayuda/{articulo}/util',       [AyudaController::class, 'util'])->name('ayuda.util');
     Route::post('/ayuda/{articulo}/resuelto',   [AyudaController::class, 'evitado'])->name('ayuda.evitado');
