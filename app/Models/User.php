@@ -100,4 +100,20 @@ class User extends Authenticatable
     {
         return $this->role === 'user';
     }
+
+    /**
+     * Direcciones a las que Laravel envía las notificaciones por correo.
+     *
+     * Devolver un arreglo hace que el correo llegue al principal y también al
+     * alternativo, cuando el usuario lo tiene configurado. Este es el punto
+     * donde corresponde definirlo: el canal de correo arma el destinatario a
+     * partir de este método, no de lo que devuelva toMail().
+     */
+    public function routeNotificationForMail($notification): array
+    {
+        return array_values(array_filter([
+            $this->email,
+            $this->alternate_email,
+        ]));
+    }
 }
