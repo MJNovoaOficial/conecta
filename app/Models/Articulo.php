@@ -59,12 +59,88 @@ class Articulo extends Model
      * Palabras que se descartan de la búsqueda por aparecer en cualquier texto.
      * Sin esta lista, buscar "carpetas del servidor" trae todos los artículos,
      * porque "del" coincide en casi todos.
+     *
+     * Incluye también los verbos con que la gente arma la frase ("tengo",
+     * "quiero", "necesito"): describen la intención, no el problema, y hacen
+     * calzar artículos que no tienen nada que ver.
      */
     private const PALABRAS_VACIAS = [
         'del', 'las', 'los', 'una', 'unos', 'unas', 'por', 'con', 'que', 'sin',
         'para', 'como', 'mas', 'muy', 'esta', 'este', 'esto', 'pero', 'sus',
         'les', 'mi', 'me', 'no', 'se', 'el', 'la', 'de', 'en', 'un', 'al', 'lo',
+        'es', 'si', 'su', 'ha', 'he', 'ya', 'yo', 'tu', 'te', 'le', 'da', 'va',
+        'ir', 'ni', 'os', 'nos', 'cual', 'cuales', 'tengo', 'tiene', 'quiero',
+        'necesito', 'puedo', 'pude', 'hacer', 'hago', 'veo', 'ver', 'donde',
+        'cuando', 'porque', 'sobre', 'desde', 'hasta', 'algo', 'alguien',
+        'favor', 'ayuda', 'ayudar',
     ];
+
+    /**
+     * Divide una frase en las palabras que vale la pena buscar.
+     *
+     * Se aceptan palabras de dos letras porque en informática son siglas con
+     * significado propio: IP, PC, TI. Si no queda ninguna palabra útil, se
+     * busca la frase entera para no consultar en el vacío.
+     */
+    public static function palabrasClave(?string $termino): array
+    {
+        $termino = trim((string) $termino);
+
+        if ($termino === '') {
+            return [];
+        }
+
+        $palabras = array_values(array_filter(
+            preg_split('/\s+/', mb_strtolower($termino)),
+            fn ($p) => mb_strlen($p) >= 2 && !in_array($p, self::PALABRAS_VACIAS, true)
+        ));
+
+        return $palabras ?: [mb_strtolower($termino)];
+    }
+
+    /**
+     * Cómo se compara una palabra contra un campo: [operador, patrón].
+     *
+     * Las palabras normales se buscan como fragmento, así "carpeta" encuentra
+     * "carpetas". Las siglas de dos letras, en cambio, tienen que calzar como
+     * palabra completa: buscar "ip" como fragmento coincide dentro de "equipo",
+     * y terminaba respondiendo sobre el cable de red a quien preguntaba por su
+     * dirección IP.
+     */
+    private static function comparacion(string $palabra): array
+    {
+        if (mb_strlen($palabra) > 2) {
+            return ['LIKE', "%{$palabra}%"];
+        }
+
+        return ['REGEXP', '\\b' . preg_quote($palabra, '/') . '\\b'];
+    }
+
+    /**
+     * Expresión SQL que puntúa un artículo contra una lista de palabras.
+     *
+     * Devuelve [expresión, valores]. Los términos viajan como bindings, nunca
+     * interpolados en el SQL; el operador sale de comparacion(), no del texto
+     * que escribió el usuario.
+     */
+    private static function expresionPuntaje(array $palabras): array
+    {
+        $expresiones = [];
+        $valores     = [];
+
+        foreach ($palabras as $palabra) {
+            [$op, $patron] = self::comparacion($palabra);
+
+            $expresiones[] = "(CASE WHEN title {$op} ? THEN 3 ELSE 0 END)";
+            $expresiones[] = "(CASE WHEN symptoms {$op} ? THEN 2 ELSE 0 END)";
+            $expresiones[] = "(CASE WHEN content {$op} ? THEN 1 ELSE 0 END)";
+            $valores[] = $patron;
+            $valores[] = $patron;
+            $valores[] = $patron;
+        }
+
+        return [implode(' + ', $expresiones), $valores];
+    }
 
     /**
      * Busca artículos por texto libre.
@@ -78,46 +154,26 @@ class Articulo extends Model
      */
     public function scopeBuscar($query, ?string $termino)
     {
-        $termino = trim((string) $termino);
+        $palabras = self::palabrasClave($termino);
 
-        if ($termino === '') {
-            return $query;
-        }
-
-        $palabras = array_values(array_filter(
-            preg_split('/\s+/', mb_strtolower($termino)),
-            fn ($p) => mb_strlen($p) >= 3 && !in_array($p, self::PALABRAS_VACIAS, true)
-        ));
-
-        // Si el usuario escribió solo palabras vacías, se busca la frase entera.
         if (empty($palabras)) {
-            $palabras = [mb_strtolower($termino)];
+            return $query;
         }
 
         $query->where(function ($q) use ($palabras) {
             foreach ($palabras as $palabra) {
-                $q->orWhere('title', 'like', "%{$palabra}%")
-                  ->orWhere('symptoms', 'like', "%{$palabra}%")
-                  ->orWhere('content', 'like', "%{$palabra}%");
+                [$op, $patron] = self::comparacion($palabra);
+
+                $q->orWhere('title', $op, $patron)
+                  ->orWhere('symptoms', $op, $patron)
+                  ->orWhere('content', $op, $patron);
             }
         });
 
-        // Puntaje de relevancia. Los términos viajan como bindings, nunca
-        // interpolados en el SQL.
-        $expresiones = [];
-        $valores     = [];
-
-        foreach ($palabras as $palabra) {
-            $expresiones[] = '(CASE WHEN title LIKE ? THEN 3 ELSE 0 END)';
-            $expresiones[] = '(CASE WHEN symptoms LIKE ? THEN 2 ELSE 0 END)';
-            $expresiones[] = '(CASE WHEN content LIKE ? THEN 1 ELSE 0 END)';
-            $valores[] = "%{$palabra}%";
-            $valores[] = "%{$palabra}%";
-            $valores[] = "%{$palabra}%";
-        }
+        [$suma, $valores] = self::expresionPuntaje($palabras);
 
         return $query
-            ->orderByRaw(implode(' + ', $expresiones) . ' DESC', $valores)
+            ->orderByRaw($suma . ' DESC', $valores)
             ->orderByDesc('helpful_yes')
             ->orderByDesc('views');
     }
