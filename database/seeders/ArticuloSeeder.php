@@ -207,6 +207,24 @@ class ArticuloSeeder extends Seeder
                              . "5. Pregunta a un compañero si a él le carga: si a nadie le funciona, es una caída del sistema.\n\n"
                              . "Al abrir el ticket, indica la dirección exacta y el mensaje de error que aparece.",
             ],
+            [
+                'categoria' => 'Red / Internet',
+                'title'     => 'Cómo ver mi dirección IP y el nombre de mi equipo',
+                'symptoms'  => 'cual es mi ip, direccion ip, ip del computador, mi ip, nombre del equipo, hostname, soporte me pide la ip, conflicto de ip, no tengo ip',
+                // Las dos rutas sin comandos van separadas y dicen dónde NO está
+                // cada dato. Redactado junto no basta: al resumirlo se termina
+                // afirmando que el nombre del equipo sale en las propiedades de
+                // red, que es de los primeros lugares donde la gente lo busca.
+                'content'   => "Soporte te pide estos datos para ubicar tu equipo en la red. Sacarlos toma menos de un minuto.\n\n"
+                             . "Con comandos, los dos datos de una vez:\n"
+                             . "1. Presiona la tecla Windows + R, escribe cmd y presiona Enter. Se abre una ventana negra.\n"
+                             . "2. Escribe ipconfig y presiona Enter. Busca la línea \"Dirección IPv4\": ese número, con formato 10.x.x.x o 192.168.x.x, es tu dirección IP.\n"
+                             . "3. En la misma ventana escribe hostname y presiona Enter. Eso te muestra el nombre del equipo.\n\n"
+                             . "Sin comandos, la dirección IP está en: Configuración, Red e Internet, propiedades de la conexión que estés usando.\n\n"
+                             . "Sin comandos, el nombre del equipo está en otro lugar distinto: Configuración, Sistema, y al final de la lista \"Información del sistema\". No aparece en las propiedades de red.\n\n"
+                             . "Si la dirección empieza con 169.254, tu equipo no está recibiendo dirección de la red. Revisa que el cable esté firme o vuelve a conectarte al wifi, y si sigue igual abre un ticket.\n\n"
+                             . "Si te aparece un aviso de conflicto de direcciones IP, abre un ticket indicando tu ubicación: eso se corrige desde la red y no lo puedes resolver tú.",
+            ],
 
             // ── Cuenta / Acceso ───────────────────────────────────────
             [
