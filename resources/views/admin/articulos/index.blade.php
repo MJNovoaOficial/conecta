@@ -42,7 +42,7 @@
             <span>Base de Conocimiento</span>
         </div>
         <h1 class="page-title">Base de Conocimiento</h1>
-        <p class="page-subtitle">Instructivos de autoayuda para que los usuarios resuelvan problemas frecuentes sin abrir un ticket (RN-18)</p>
+        <p class="page-subtitle">Instructivos de autoayuda para que los usuarios resuelvan problemas frecuentes sin abrir un ticket</p>
     </div>
 
     <div class="kb-grid">
