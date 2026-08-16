@@ -26,6 +26,20 @@ return [
     'timeout' => env('CHATBOT_TIMEOUT', 60),
 
     /*
+    | Cuánto rato Ollama mantiene el modelo cargado en memoria tras la última
+    | consulta.
+    |
+    | Por defecto lo descarga a los 5 minutos, y volver a cargarlo desde disco
+    | cuesta unos 15 segundos que paga entero quien pregunta después de una
+    | pausa. Con media hora, durante la jornada el modelo queda residente y
+    | solo el primero del día espera la carga.
+    |
+    | El costo es la memoria: el modelo ocupa unos 5 GB mientras está cargado.
+    | Si el servidor los necesita para otra cosa, bajar este valor.
+    */
+    'keep_alive' => env('CHATBOT_KEEP_ALIVE', '30m'),
+
+    /*
     | Cuántos artículos se le entregan al modelo como contexto.
     |
     | Medido sobre la base real: con uno solo, el modelo se niega a responder

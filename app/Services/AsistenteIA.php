@@ -120,10 +120,11 @@ class AsistenteIA
         try {
             $respuesta = Http::timeout((int) config('chatbot.timeout', 60))
                 ->post(rtrim(config('chatbot.url'), '/') . '/api/generate', [
-                    'model'   => config('chatbot.model'),
-                    'prompt'  => $prompt,
-                    'stream'  => false,
-                    'options' => ['temperature' => (float) config('chatbot.temperatura', 0.2)],
+                    'model'      => config('chatbot.model'),
+                    'prompt'     => $prompt,
+                    'stream'     => false,
+                    'keep_alive' => config('chatbot.keep_alive', '30m'),
+                    'options'    => ['temperature' => (float) config('chatbot.temperatura', 0.2)],
                 ]);
 
             if ($respuesta->failed()) {
