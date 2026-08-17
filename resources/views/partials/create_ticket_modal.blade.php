@@ -50,7 +50,7 @@
             <textarea name="description" id="modalDescField"
                       rows="4" class="form-control"
                       style="border-radius:7px;border-color:#e2e8f0;font-size:0.87rem;resize:vertical;"
-                      placeholder="Explícanos con tus palabras qué está pasando. No te preocupes por ser técnico, te entendemos igual 😊"></textarea>
+                      placeholder="Describe el problema con más detalle..."></textarea>
           </div>
 
           {{-- ───────────────────────── CAMPO 3: Adjuntos ───────────────────────────────── --}}
@@ -140,7 +140,8 @@
       <div class="modal-footer" style="border-top:1px solid #f0f2f5;padding:14px 22px;">
         <button type="button" class="btn btn-sm" data-bs-dismiss="modal"
                 style="color:#718096;background:none;border:1px solid #e2e8f0;border-radius:7px;padding:7px 18px;">Cancelar</button>
-        <button type="button" onclick="submitModalTicket()"
+        <button type="button" id="btnEnviarTicket"
+                onclick="enviarTicketSimplificado()"
                 style="background:linear-gradient(135deg,#27ae60,#2ecc71);color:#fff;border:none;border-radius:7px;padding:8px 22px;font-weight:600;font-size:0.875rem;cursor:pointer;">
           <i class="fas fa-paper-plane me-1"></i> Enviar Solicitud
         </button>
@@ -158,6 +159,44 @@ function toggleMoreDetails() {
     section.style.display = open ? 'none' : 'block';
     chevron.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
 }
+
+function enviarTicketSimplificado() {
+    const titleField = document.getElementById('modalTitleField');
+    if (!titleField || !titleField.value.trim()) {
+        titleField.style.borderColor = '#ef4444';
+        titleField.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.15)';
+        titleField.focus();
+        titleField.placeholder = '⚠ Este campo es obligatorio';
+        return;
+    }
+    titleField.style.borderColor = '';
+    titleField.style.boxShadow = '';
+    document.getElementById('modalTicketForm').submit();
+}
+
+// Resetear modal al cerrar
+document.addEventListener('DOMContentLoaded', function () {
+    var modalEl = document.getElementById('newTicketModal');
+    if (modalEl) {
+        modalEl.addEventListener('hidden.bs.modal', function () {
+            var form = document.getElementById('modalTicketForm');
+            if (form) form.reset();
+            var fileNames = document.getElementById('modalFileNames');
+            if (fileNames) fileNames.textContent = '';
+            var titleField = document.getElementById('modalTitleField');
+            if (titleField) {
+                titleField.style.borderColor = '';
+                titleField.style.boxShadow = '';
+                titleField.placeholder = 'Ej: No puedo entrar a mi correo, la impresora no imprime...';
+            }
+            // Cerrar "más detalles" si estaba abierto
+            var det = document.getElementById('moreDetailsSection');
+            if (det) det.style.display = 'none';
+            var chev = document.getElementById('detailsChevron');
+            if (chev) chev.style.transform = 'rotate(0deg)';
+        });
+    }
+});
 </script>
 
 @include('partials.kb_sugerencias_script')

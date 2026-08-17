@@ -321,15 +321,15 @@ class TicketController extends Controller
         $request->validate([
             'guest_name'        => 'required|string|max:255',
             'guest_email'       => 'required|email|max:255',
-            'guest_department'  => 'required|string|max:255',
+            'guest_department'  => 'nullable|string|max:255',
             'title'             => 'required|string|max:255',
-            'description'       => 'required|string|max:10000',
-            'subcategoria_id'   => 'required|exists:subcategorias,id', // RNG-08
+            'description'       => 'nullable|string|max:10000',
+            'subcategoria_id'   => 'nullable|exists:subcategorias,id',
             'tipo_incidente_id' => 'nullable|exists:tipos_incidente,id',
-            'device_type'       => 'required|string|max:100',
-            'department_id'     => 'required|integer|exists:departamentos,id',
+            'device_type'       => 'nullable|string|max:100',
+            'department_id'     => 'nullable|integer|exists:departamentos,id',
             'attachments'       => 'nullable|array|max:5',
-            'attachments.*'     => 'file|max:5120',
+            'attachments.*'     => 'file|max:51200', // 50 MB para videos
         ]);
 
         $ticketNumber = 'TK-' . date('YmdHis') . '-' . rand(1000, 9999);
