@@ -143,6 +143,37 @@ class Articulo extends Model
     }
 
     /**
+     * Igual que buscar(), pero además trae el puntaje como columna.
+     *
+     * Lo usa el asistente para decidir si la consulta tiene algo que ver con la
+     * base antes de pasársela al modelo.
+     */
+    public function scopeConPuntaje($query, ?string $termino)
+    {
+        $palabras = self::palabrasClave($termino);
+
+        if (empty($palabras)) {
+            return $query;
+        }
+
+        [$suma, $valores] = self::expresionPuntaje($palabras);
+
+        return $query
+            ->selectRaw("articulos.*, ({$suma}) as puntaje", $valores)
+            ->where(function ($q) use ($palabras) {
+                foreach ($palabras as $palabra) {
+                    [$op, $patron] = self::comparacion($palabra);
+
+                    $q->orWhere('title', $op, $patron)
+                      ->orWhere('symptoms', $op, $patron)
+                      ->orWhere('content', $op, $patron);
+                }
+            })
+            ->orderByDesc('puntaje')
+            ->orderByDesc('helpful_yes');
+    }
+
+    /**
      * Busca artículos por texto libre.
      *
      * Divide la frase en palabras y puntúa cada artículo según cuántas de esas
