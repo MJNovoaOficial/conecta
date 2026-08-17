@@ -640,10 +640,20 @@
 
     @auth
     <div class="user-menu">
-        <div class="nav-user-info">
-            <span class="nav-user-name">{{ Str::limit(Auth::user()->name, 22) }}</span>
-            <span class="nav-user-sep"></span>
-            <span class="nav-user-role">{{ Auth::user()->role === 'admin' ? 'Administrador' : (Auth::user()->role === 'support' ? 'Soporte' : 'Usuario') }}</span>
+        <div class="nav-user-info" style="display:flex;align-items:center;gap:8px;">
+            @if(Auth::user()->avatar_url)
+                <img src="{{ Storage::url(Auth::user()->avatar_url) }}"
+                     alt="avatar" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.3);">
+            @else
+                <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#4f8cff,#2563eb);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.72rem;font-weight:700;border:2px solid rgba(255,255,255,0.3);flex-shrink:0;">
+                    {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
+                </div>
+            @endif
+            <div>
+                <span class="nav-user-name">{{ Str::limit(Auth::user()->name, 18) }}</span>
+                <span class="nav-user-sep"></span>
+                <span class="nav-user-role">{{ Auth::user()->role === 'admin' ? 'Administrador' : (Auth::user()->role === 'support' ? 'Soporte' : 'Usuario') }}</span>
+            </div>
         </div>
 
         {{-- Campana de notificaciones --}}
@@ -671,6 +681,11 @@
                 </div>
             </div>
         </div>
+
+        <a href="{{ route('manuales.index') }}" style="display:flex;align-items:center;gap:6px;font-size:0.82rem;color:rgba(255,255,255,0.8);text-decoration:none;padding:5px 10px;border-radius:6px;transition:background 0.2s;"
+           onmouseenter="this.style.background='rgba(255,255,255,0.1)'" onmouseleave="this.style.background='transparent'">
+            <i class="fas fa-file-pdf" style="color:#f87171;"></i> Manuales
+        </a>
 
         <a href="{{ route('profile.index') }}" style="display:flex;align-items:center;gap:6px;font-size:0.82rem;color:rgba(255,255,255,0.8);text-decoration:none;padding:5px 10px;border-radius:6px;transition:background 0.2s;"
            onmouseenter="this.style.background='rgba(255,255,255,0.1)'" onmouseleave="this.style.background='transparent'">

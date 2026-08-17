@@ -13,6 +13,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\ManualController;
 
 // Página de inicio
 Route::get('/', function () {
@@ -64,6 +65,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile',           [ProfileController::class, 'index'])->name('profile.index');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
     Route::post('/profile/info',     [ProfileController::class, 'updateProfile'])->name('profile.info');
+    Route::post('/profile/avatar',   [ProfileController::class, 'uploadAvatar'])->name('profile.avatar');
+
+    // Manuales descargables (Reunión 4)
+    Route::get('/manuales',                       [ManualController::class, 'index'])->name('manuales.index');
+    Route::get('/manuales/{manual}/download',     [ManualController::class, 'download'])->name('manuales.download');
 
     // ── Tickets ──────────────────────────────────────────────────────
     Route::get('/tickets/my-stats',  [TicketController::class, 'myStats'])->name('tickets.my-stats');
@@ -158,5 +164,13 @@ Route::middleware('auth')->group(function () {
         // RF-AD-08: Configuración de estados del flujo de tickets
         Route::get('/states',  [AdminController::class, 'statesConfig'])->name('admin.states.index');
         Route::post('/states', [AdminController::class, 'updateStates'])->name('admin.states.update');
+
+        // Manuales descargables — gestión admin (Reunión 4)
+        Route::get('/manuales',                          [\App\Http\Controllers\Admin\ManualAdminController::class, 'index'])->name('admin.manuales.index');
+        Route::get('/manuales/create',                   [\App\Http\Controllers\Admin\ManualAdminController::class, 'create'])->name('admin.manuales.create');
+        Route::post('/manuales',                         [\App\Http\Controllers\Admin\ManualAdminController::class, 'store'])->name('admin.manuales.store');
+        Route::get('/manuales/{manual}/edit',            [\App\Http\Controllers\Admin\ManualAdminController::class, 'edit'])->name('admin.manuales.edit');
+        Route::put('/manuales/{manual}',                 [\App\Http\Controllers\Admin\ManualAdminController::class, 'update'])->name('admin.manuales.update');
+        Route::delete('/manuales/{manual}',              [\App\Http\Controllers\Admin\ManualAdminController::class, 'destroy'])->name('admin.manuales.destroy');
     });
 });

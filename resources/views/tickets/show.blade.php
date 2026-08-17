@@ -281,12 +281,26 @@
                  abra el ticket. Los saltos de linea los conserva white-space:pre-wrap. --}}
             <div class="tk-desc">{{ $ticket->description }}</div>
             @if($ticket->attachments->where('comment_id', null)->count() > 0)
-                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid #f0f2f5;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid #f0f2f5;">
                     @foreach($ticket->attachments->where('comment_id', null) as $att)
-                        <a href="{{ asset('storage/'.$att->file_path) }}" class="att-pill" target="_blank">
-                            <i class="fas fa-paperclip"></i> {{ $att->file_name }}
-                            <span style="color:#a0aec0;">({{ number_format($att->file_size/1024,1) }} KB)</span>
-                        </a>
+                        @php
+                            $ext = strtolower(pathinfo($att->file_name, PATHINFO_EXTENSION));
+                            $isVideo = in_array($ext, ['mp4', 'mov', 'webm']);
+                        @endphp
+                        @if($isVideo)
+                            <div style="width:100%;">
+                                <div style="font-size:0.75rem;color:#718096;margin-bottom:4px;"><i class="fas fa-film me-1"></i>{{ $att->file_name }}</div>
+                                <video controls style="max-width:100%;border-radius:8px;max-height:320px;background:#000;">
+                                    <source src="{{ asset('storage/'.$att->file_path) }}" type="video/{{ $ext === 'mov' ? 'quicktime' : $ext }}">
+                                    Tu navegador no soporta reproducción de video.
+                                </video>
+                            </div>
+                        @else
+                            <a href="{{ asset('storage/'.$att->file_path) }}" class="att-pill" target="_blank">
+                                <i class="fas fa-paperclip"></i> {{ $att->file_name }}
+                                <span style="color:#a0aec0;">({{ number_format($att->file_size/1024,1) }} KB)</span>
+                            </a>
+                        @endif
                     @endforeach
                 </div>
             @endif
@@ -329,11 +343,24 @@
                         </div>
                         <div class="c-body">{{ $comment->comment }}</div>
                         @if($comment->attachments && $comment->attachments->count() > 0)
-                            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;">
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
                                 @foreach($comment->attachments as $att)
-                                    <a href="{{ asset('storage/'.$att->file_path) }}" class="att-pill" target="_blank">
-                                        <i class="fas fa-paperclip"></i> {{ $att->file_name }}
-                                    </a>
+                                    @php
+                                        $ext = strtolower(pathinfo($att->file_name, PATHINFO_EXTENSION));
+                                        $isVideo = in_array($ext, ['mp4', 'mov', 'webm']);
+                                    @endphp
+                                    @if($isVideo)
+                                        <div style="width:100%;">
+                                            <div style="font-size:0.74rem;color:#718096;margin-bottom:3px;"><i class="fas fa-film me-1"></i>{{ $att->file_name }}</div>
+                                            <video controls style="max-width:100%;border-radius:8px;max-height:280px;background:#000;">
+                                                <source src="{{ asset('storage/'.$att->file_path) }}" type="video/{{ $ext === 'mov' ? 'quicktime' : $ext }}">
+                                            </video>
+                                        </div>
+                                    @else
+                                        <a href="{{ asset('storage/'.$att->file_path) }}" class="att-pill" target="_blank">
+                                            <i class="fas fa-paperclip"></i> {{ $att->file_name }}
+                                        </a>
+                                    @endif
                                 @endforeach
                             </div>
                         @endif

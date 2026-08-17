@@ -26,15 +26,40 @@
             </div>
         </div>
 
-        {{-- Info del usuario --}}
+        {{-- Info del usuario + foto de perfil --}}
         <div class="content-card" style="padding:24px;margin-bottom:20px;">
             <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
-                <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#4f8cff,#2563eb);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.5rem;font-weight:700;flex-shrink:0;">
-                    {{ strtoupper(substr($user->name, 0, 1)) }}
-                </div>
+
+                {{-- Avatar clickeable --}}
+                <form id="avatarForm" method="POST" action="{{ route('profile.avatar') }}" enctype="multipart/form-data">
+                    @csrf
+                    <input type="file" id="avatarInput" name="avatar" accept="image/jpeg,image/png,image/webp"
+                           style="display:none;" onchange="this.closest('form').submit()">
+                    <div onclick="document.getElementById('avatarInput').click()"
+                         title="Cambiar foto de perfil"
+                         style="width:72px;height:72px;border-radius:50%;flex-shrink:0;cursor:pointer;position:relative;overflow:hidden;
+                                background:linear-gradient(135deg,#4f8cff,#2563eb);">
+                        @if($user->avatar_url)
+                            <img src="{{ Storage::url($user->avatar_url) }}"
+                                 alt="Foto de perfil"
+                                 style="width:100%;height:100%;object-fit:cover;">
+                        @else
+                            <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.6rem;font-weight:700;">
+                                {{ strtoupper(substr($user->name, 0, 1)) }}
+                            </div>
+                        @endif
+                        {{-- Overlay hover --}}
+                        <div style="position:absolute;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;
+                                    opacity:0;transition:opacity .2s;"
+                             onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0">
+                            <i class="fas fa-camera" style="color:#fff;font-size:1.1rem;"></i>
+                        </div>
+                    </div>
+                </form>
+
                 <div>
                     <h2 style="margin:0 0 4px;font-size:1.1rem;color:#1a2332;">{{ $user->name }}</h2>
-                    <p style="margin:0 0 4px;color:#718096;font-size:0.85rem;"><i class="fas fa-envelope me-1"></i>{{ $user->email }}</p>
+                    <p style="margin:0 0 2px;color:#718096;font-size:0.85rem;"><i class="fas fa-envelope me-1"></i>{{ $user->email }}</p>
                     @if($user->alternate_email)
                         <p style="margin:0 0 4px;color:#718096;font-size:0.82rem;"><i class="fas fa-envelope-open me-1" style="color:#f59e0b;"></i>{{ $user->alternate_email }} <span style="font-size:0.72rem;color:#a0aec0;">(alternativo)</span></p>
                     @endif
@@ -43,6 +68,10 @@
                         color:{{ $user->isAdmin() ? "#92400e" : ($user->isSupport() ? "#1e40af" : "#166534") }};">
                         {{ $user->isAdmin() ? "Administrador" : ($user->isSupport() ? "Soporte" : "Usuario") }}
                     </span>
+                    <div style="font-size:0.72rem;color:#a0aec0;margin-top:4px;"><i class="fas fa-camera me-1"></i>Haz clic en la foto para cambiarla</div>
+                    @if(session('success_avatar'))
+                    <div style="color:#1a7f43;font-size:0.78rem;margin-top:4px;"><i class="fas fa-check-circle me-1"></i>{{ session('success_avatar') }}</div>
+                    @endif
                 </div>
             </div>
         </div>

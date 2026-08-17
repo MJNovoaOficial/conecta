@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
@@ -62,5 +63,38 @@ class ProfileController extends Controller
         ]);
 
         return back()->with('success_profile', 'Información de contacto actualizada correctamente.');
+    }
+
+    /**
+     * Sube o reemplaza la foto de perfil del usuario.
+     * Reunión 4: identificación visual del personal por región.
+     */
+    public function uploadAvatar(Request $request)
+    {
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+        ], [
+            'avatar.image'  => 'El archivo debe ser una imagen.',
+            'avatar.mimes'  => 'Solo se permiten imágenes JPG, PNG o WebP.',
+            'avatar.max'    => 'La imagen no puede superar los 2 MB.',
+        ]);
+
+        $user = Auth::user();
+
+        // Eliminar avatar anterior si existe
+        if ($user->avatar_url && Storage::disk('public')->exists($user->avatar_url)) {
+            Storage::disk('public')->delete($user->avatar_url);
+        }
+
+        $file = $request->file('avatar');
+        $path = $file->storeAs(
+            'avatars',
+            'user_' . $user->id . '.' . $file->getClientOriginalExtension(),
+            'public'
+        );
+
+        $user->update(['avatar_url' => $path]);
+
+        return back()->with('success_avatar', 'Foto de perfil actualizada correctamente.');
     }
 }

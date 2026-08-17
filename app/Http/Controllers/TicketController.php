@@ -31,9 +31,9 @@ use Carbon\Carbon;
 class TicketController extends Controller
 {
     // Extensiones de archivo permitidas
-    private const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'zip', 'txt'];
+    private const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'zip', 'txt', 'mp4', 'mov', 'webm'];
     
-    // Mime types permitidos
+    // Mime types permitidos (incluye videos cortos para guías — Reunión 4)
     private const ALLOWED_MIME_TYPES = [
         'application/pdf',
         'application/msword',
@@ -47,6 +47,11 @@ class TicketController extends Controller
         'image/gif',
         'application/zip',
         'text/plain',
+        // Videos cortos para guías didácticas
+        'video/mp4',
+        'video/quicktime',
+        'video/webm',
+        'video/x-msvideo',
     ];
 
     public function index()
@@ -228,13 +233,13 @@ class TicketController extends Controller
 
         $request->validate([
             'title'             => 'required|string|max:255',
-            'description'       => 'required|string|max:10000',
-            'subcategoria_id'   => 'required|exists:subcategorias,id', // RNG-08: clasificación obligatoria
+            'description'       => 'nullable|string|max:10000',
+            'subcategoria_id'   => 'nullable|exists:subcategorias,id',
             'tipo_incidente_id' => 'nullable|exists:tipos_incidente,id',
-            'device_type'       => 'required|string|max:100',
-            'department_id'     => 'required|integer|exists:departamentos,id',
+            'device_type'       => 'nullable|string|max:100',
+            'department_id'     => 'nullable|integer|exists:departamentos,id',
             'attachments'       => 'nullable|array|max:5',
-            'attachments.*'     => 'file|max:5120',
+            'attachments.*'     => 'file|max:51200', // 50 MB para videos
         ]);
 
         // Prioridad asignada automáticamente según reglas configuradas

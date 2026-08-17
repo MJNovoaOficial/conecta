@@ -10,6 +10,7 @@
         ['route' => 'admin.reports.agents', 'icon' => 'fas fa-user-clock', 'label' => 'KPIs por Agente', 'key' => 'agents'],
         ['route' => 'admin.priority-rules.index', 'icon' => 'fas fa-sliders-h', 'label' => 'Reglas de Prioridad', 'key' => 'priority_rules'],
         ['route' => 'admin.articulos.index', 'icon' => 'fas fa-book-open', 'label' => 'Base de Conocimiento', 'key' => 'articulos'],
+        ['route' => 'admin.manuales.index',  'icon' => 'fas fa-file-pdf',  'label' => 'Manuales PDF',           'key' => 'manuales'],
         // Va junto a la anterior porque son las dos caras de lo mismo: aquí se
         // escriben los artículos, y en el centro de ayuda se ve cómo le llegan
         // al usuario. Sin este enlace había que pasar por el listado de tickets
