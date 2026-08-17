@@ -24,8 +24,19 @@
           {{-- Asunto --}}
           <div class="mb-3">
             <label class="form-label fw-semibold" style="font-size:0.85rem;color:#2d3748;">Asunto *</label>
-            <input type="text" name="title" class="form-control" placeholder="Describe brevemente el problema..." required
+            <input type="text" name="title" id="modalTitleField" class="form-control" placeholder="Describe brevemente el problema..." required
+                   autocomplete="off"
                    style="border-radius:7px;border-color:#e2e8f0;font-size:0.87rem;">
+
+            {{-- Sugerencias de la base de conocimiento (RN-18).
+                 Se rellena por JavaScript mientras el usuario escribe el asunto.
+                 Empieza oculto y solo aparece si hay coincidencias. --}}
+            <div id="kbSugerencias" style="display:none;margin-top:9px;padding:11px 13px;background:#f0f9ff;border:1px solid #bae0fb;border-radius:8px;">
+              <div style="font-size:0.78rem;font-weight:700;color:#2980b9;margin-bottom:7px;">
+                <i class="fas fa-lightbulb"></i> Quizás esto lo resuelva sin abrir un ticket
+              </div>
+              <div id="kbLista"></div>
+            </div>
           </div>
 
           {{-- Departamento / Prioridad / Dispositivo --}}
@@ -134,3 +145,5 @@
     </div>
   </div>
 </div>
+
+@include('partials.kb_sugerencias_script')

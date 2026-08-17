@@ -1,7 +1,9 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ArticuloController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AyudaController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\NotificationController;
@@ -45,6 +47,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // Perfil de usuario
+    // Base de conocimiento para el usuario (RN-18).
+    // 'sugerencias' devuelve JSON y la consulta el formulario de ticket
+    // mientras se escribe el asunto.
+    Route::get('/ayuda',                        [AyudaController::class, 'index'])->name('ayuda.index');
+    Route::get('/ayuda/sugerencias',            [AyudaController::class, 'sugerencias'])->name('ayuda.sugerencias');
+    Route::get('/ayuda/{articulo}',             [AyudaController::class, 'show'])->name('ayuda.show');
+    Route::post('/ayuda/{articulo}/util',       [AyudaController::class, 'util'])->name('ayuda.util');
+    Route::post('/ayuda/{articulo}/resuelto',   [AyudaController::class, 'evitado'])->name('ayuda.evitado');
+
     Route::get('/profile',           [ProfileController::class, 'index'])->name('profile.index');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
     Route::post('/profile/info',     [ProfileController::class, 'updateProfile'])->name('profile.info');
@@ -90,6 +101,13 @@ Route::middleware('auth')->group(function () {
         Route::delete('/departments/{department}', [AdminController::class, 'destroyDepartment'])->name('admin.departments.destroy');
 
         // Categorías / Subcategorías / Tipos de Incidente
+        // Base de conocimiento (RN-18)
+        Route::get('/articulos',                     [ArticuloController::class, 'index'])->name('admin.articulos.index');
+        Route::post('/articulos',                    [ArticuloController::class, 'store'])->name('admin.articulos.store');
+        Route::get('/articulos/{articulo}/edit',     [ArticuloController::class, 'edit'])->name('admin.articulos.edit');
+        Route::put('/articulos/{articulo}',          [ArticuloController::class, 'update'])->name('admin.articulos.update');
+        Route::patch('/articulos/{articulo}/toggle', [ArticuloController::class, 'toggle'])->name('admin.articulos.toggle');
+
         Route::get('/categories',                                    [CategoryController::class, 'index'])->name('admin.categories.index');
         Route::post('/categories',                                   [CategoryController::class, 'store'])->name('admin.categories.store');
         Route::put('/categories/{categoria}',                        [CategoryController::class, 'update'])->name('admin.categories.update');
