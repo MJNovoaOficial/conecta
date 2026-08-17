@@ -42,6 +42,50 @@
     font-weight:600; text-decoration:none;
 }
 .ayuda-btn-ticket:hover { background:#1e8449; color:#fff; }
+
+/* ── Asistente ─────────────────────────────────────────────────── */
+.asis {
+    background:#fff; border:1px solid #e8ecf0; border-radius:12px;
+    padding:18px 20px; margin-bottom:22px;
+}
+.asis-titulo {
+    display:flex; align-items:center; gap:9px; margin:0 0 4px;
+    font-size:.95rem; font-weight:700; color:#1a2332;
+}
+.asis-titulo i { color:#2980b9; }
+.asis-nota { font-size:.78rem; color:#a0aec0; margin:0 0 13px; }
+.asis-fila { display:flex; gap:9px; flex-wrap:wrap; }
+.asis-fila input {
+    flex:1; min-width:200px; padding:11px 14px; border:1.5px solid #e2e8f0;
+    border-radius:9px; font-size:.9rem; outline:none;
+}
+.asis-fila input:focus { border-color:#2980b9; box-shadow:0 0 0 3px rgba(41,128,185,.1); }
+.asis-fila button {
+    padding:11px 20px; background:linear-gradient(135deg,#2980b9,#3498db);
+    color:#fff; border:none; border-radius:9px; font-size:.88rem;
+    font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:7px;
+}
+.asis-fila button:disabled { opacity:.55; cursor:default; }
+.asis-caja { margin-top:14px; display:none; }
+.asis-caja.visible { display:block; }
+.asis-texto {
+    background:#f7fafc; border-left:3px solid #2980b9; border-radius:8px;
+    padding:14px 16px; font-size:.89rem; line-height:1.65; color:#2d3748;
+    white-space:pre-wrap;
+}
+.asis-texto.aviso { border-left-color:#e0a83c; background:#fffbf2; }
+.asis-fuentes { margin-top:10px; font-size:.8rem; color:#718096; }
+.asis-fuentes a { color:#2980b9; text-decoration:none; font-weight:600; }
+.asis-fuentes a:hover { text-decoration:underline; }
+.asis-cargando { display:flex; align-items:center; gap:9px; color:#718096; font-size:.86rem; padding:12px 2px; }
+.asis-punto {
+    width:7px; height:7px; border-radius:50%; background:#2980b9;
+    animation:asisLatido 1.1s ease-in-out infinite;
+}
+.asis-punto:nth-child(2) { animation-delay:.18s; }
+.asis-punto:nth-child(3) { animation-delay:.36s; }
+@keyframes asisLatido { 0%,100% { opacity:.25; } 50% { opacity:1; } }
+@media (prefers-reduced-motion: reduce) { .asis-punto { animation:none; opacity:.6; } }
 </style>
 
 <div class="ayuda-wrap">
@@ -50,6 +94,36 @@
         <h1>Centro de Ayuda</h1>
         <p>Busca tu problema. Muchos se resuelven en un par de pasos, sin esperar a soporte.</p>
     </div>
+
+    @if(config('chatbot.enabled'))
+        {{-- Asistente sobre la base de conocimiento. Si el servidor de modelos
+             no responde, el bloque avisa y el buscador de abajo sigue igual. --}}
+        <div class="asis">
+            <h2 class="asis-titulo">
+                <i class="fas fa-comment-dots"></i> Cuéntame tu problema
+            </h2>
+            <p class="asis-nota">
+                Te respondo con lo que dicen los artículos de soporte. Si no está ahí, te lo digo.
+            </p>
+
+            <form class="asis-fila" id="asisForm">
+                <input type="text" id="asisPregunta" maxlength="500" autocomplete="off"
+                       placeholder="Ej: me llegó un correo raro pidiendo mi contraseña">
+                <button type="submit" id="asisBoton">
+                    <i class="fas fa-paper-plane"></i> Preguntar
+                </button>
+            </form>
+
+            <div class="asis-caja" id="asisCaja">
+                <div class="asis-cargando" id="asisCargando" style="display:none;">
+                    <span class="asis-punto"></span><span class="asis-punto"></span><span class="asis-punto"></span>
+                    <span>Revisando los artículos de soporte...</span>
+                </div>
+                <div class="asis-texto" id="asisTexto" style="display:none;"></div>
+                <div class="asis-fuentes" id="asisFuentes"></div>
+            </div>
+        </div>
+    @endif
 
     <form method="GET" action="{{ route('ayuda.index') }}" class="ayuda-buscador">
         <div class="campo">
@@ -130,4 +204,72 @@
     @endif
 
 </div>
+
+@if(config('chatbot.enabled'))
+<script>
+(function () {
+    const form     = document.getElementById('asisForm');
+    const input    = document.getElementById('asisPregunta');
+    const boton    = document.getElementById('asisBoton');
+    const caja     = document.getElementById('asisCaja');
+    const cargando = document.getElementById('asisCargando');
+    const texto    = document.getElementById('asisTexto');
+    const fuentes  = document.getElementById('asisFuentes');
+
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const pregunta = input.value.trim();
+        if (pregunta.length < 4) { return; }
+
+        boton.disabled  = true;
+        caja.classList.add('visible');
+        cargando.style.display = 'flex';
+        texto.style.display    = 'none';
+        fuentes.textContent    = '';
+
+        try {
+            const r = await fetch('{{ route('ayuda.asistente') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ pregunta: pregunta }),
+            });
+
+            if (!r.ok) { throw new Error('respuesta ' + r.status); }
+            const d = await r.json();
+
+            // textContent, nunca innerHTML: lo que devuelve el modelo se muestra
+            // como texto plano y no puede inyectar etiquetas en la página.
+            texto.textContent = d.texto;
+            texto.classList.toggle('aviso', d.tipo !== 'respuesta');
+
+            if (d.fuentes && d.fuentes.length) {
+                fuentes.appendChild(document.createTextNode(
+                    d.tipo === 'respuesta' ? 'Fuente: ' : 'Artículos relacionados: '
+                ));
+                d.fuentes.forEach(function (f, i) {
+                    if (i > 0) { fuentes.appendChild(document.createTextNode(' · ')); }
+                    const a = document.createElement('a');
+                    a.href = f.url;
+                    a.textContent = f.titulo;
+                    fuentes.appendChild(a);
+                });
+            }
+        } catch (err) {
+            texto.textContent = 'No se pudo consultar al asistente. Usa el buscador de abajo '
+                              + 'o abre un ticket y soporte te ayuda.';
+            texto.classList.add('aviso');
+        } finally {
+            cargando.style.display = 'none';
+            texto.style.display    = 'block';
+            boton.disabled         = false;
+        }
+    });
+})();
+</script>
+@endif
 @endsection
