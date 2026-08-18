@@ -248,11 +248,14 @@ class TicketController extends Controller
             $request->tipo_incidente_id ? (int) $request->tipo_incidente_id : null
         );
 
-        // Departamento: usar regla automática si existe, si no el del formulario
+        // Departamento: primero la regla automática, si no el del formulario y,
+        // como último recurso, el del propio usuario. Desde que el formulario
+        // simplificado dejó el campo opcional, este respaldo evita que el ticket
+        // quede sin departamento y no aparezca en las bandejas por área.
         $subcatCatId = Subcategoria::find($request->subcategoria_id)?->categoria_id;
         $departmentId = ($subcatCatId && $auto = CategoryDepartmentRule::resolve($subcatCatId))
             ? $auto
-            : $request->department_id;
+            : ($request->department_id ?: Auth::user()->department_id);
 
         // Generar número de ticket único
         $ticketNumber = 'TK-' . date('YmdHis') . '-' . rand(1000, 9999);
@@ -341,7 +344,9 @@ class TicketController extends Controller
             $request->tipo_incidente_id ? (int) $request->tipo_incidente_id : null
         );
 
-        // Departamento automático si hay regla
+        // Departamento automático si hay regla. Un invitado no pertenece a
+        // ningún departamento, así que aquí no hay respaldo posible: el ticket
+        // puede quedar sin departamento y lo asigna soporte al recibirlo.
         $subcatCatId = Subcategoria::find($request->subcategoria_id)?->categoria_id;
         $departmentId = ($subcatCatId && $auto = CategoryDepartmentRule::resolve($subcatCatId))
             ? $auto
