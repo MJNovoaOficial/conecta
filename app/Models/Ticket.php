@@ -266,16 +266,27 @@ class Ticket extends Model
 
     /**
      * Calcula el estado del SLA de resolución.
-     * Retorna: 'ok', 'warning' (75% del tiempo usado), 'exceeded'.
+     * Retorna: 'none', 'ok', 'warning' (75% del tiempo usado) o 'exceeded'.
+     *
+     * Es la única fuente para esta pregunta: la vista de reportes, el listado y
+     * la ficha del ticket la consultan en vez de calcularla por su cuenta.
      */
     public function getSlaResolutionStatus(): string
     {
         if (!$this->sla_resolution_deadline_at) {
             return 'none';
         }
+
+        // Un ticket terminado se juzga por cuándo se resolvió, no por la fecha
+        // de hoy: el plazo dejó de correr en ese momento. Sin esto, uno
+        // atendido a tiempo aparecía vencido con solo dejar pasar los días, y
+        // uno resuelto tarde quedaba como cumplido para siempre.
         if (in_array($this->status, [self::STATUS_RESOLVED, self::STATUS_CLOSED])) {
-            return 'ok';
+            $cierre = $this->resolved_at ?? $this->updated_at;
+
+            return $cierre->isAfter($this->sla_resolution_deadline_at) ? 'exceeded' : 'ok';
         }
+
         $now = Carbon::now();
         if ($now->isAfter($this->sla_resolution_deadline_at)) {
             return 'exceeded';
