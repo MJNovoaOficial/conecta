@@ -13,6 +13,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\FileController;
 use App\Http\Controllers\ManualController;
 
 // Página de inicio
@@ -66,6 +67,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
     Route::post('/profile/info',     [ProfileController::class, 'updateProfile'])->name('profile.info');
     Route::post('/profile/avatar',   [ProfileController::class, 'uploadAvatar'])->name('profile.avatar');
+
+    // Archivos privados — servidos con control de acceso (Reunión 4 seguridad)
+    Route::get('/files/avatar/{filename}',           [FileController::class, 'serveAvatar'])->name('files.avatar')->where('filename', '.+');
+    Route::get('/files/attachment/{attachment}',     [FileController::class, 'serveAttachment'])->name('files.attachment');
+    Route::get('/files/manual/{manual}',             [FileController::class, 'serveManual'])->name('files.manual');
 
     // Manuales descargables (Reunión 4)
     Route::get('/manuales',                       [ManualController::class, 'index'])->name('manuales.index');

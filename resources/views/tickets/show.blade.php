@@ -291,12 +291,12 @@
                             <div style="width:100%;">
                                 <div style="font-size:0.75rem;color:#718096;margin-bottom:4px;"><i class="fas fa-film me-1"></i>{{ $att->file_name }}</div>
                                 <video controls style="max-width:100%;border-radius:8px;max-height:320px;background:#000;">
-                                    <source src="{{ asset('storage/'.$att->file_path) }}" type="video/{{ $ext === 'mov' ? 'quicktime' : $ext }}">
+                                    <source src="{{ route('files.attachment', $att) }}" type="video/{{ $ext === 'mov' ? 'quicktime' : $ext }}">
                                     Tu navegador no soporta reproducción de video.
                                 </video>
                             </div>
                         @else
-                            <a href="{{ asset('storage/'.$att->file_path) }}" class="att-pill" target="_blank">
+                            <a href="{{ route('files.attachment', $att) }}" class="att-pill" target="_blank">
                                 <i class="fas fa-paperclip"></i> {{ $att->file_name }}
                                 <span style="color:#a0aec0;">({{ number_format($att->file_size/1024,1) }} KB)</span>
                             </a>
@@ -353,11 +353,11 @@
                                         <div style="width:100%;">
                                             <div style="font-size:0.74rem;color:#718096;margin-bottom:3px;"><i class="fas fa-film me-1"></i>{{ $att->file_name }}</div>
                                             <video controls style="max-width:100%;border-radius:8px;max-height:280px;background:#000;">
-                                                <source src="{{ asset('storage/'.$att->file_path) }}" type="video/{{ $ext === 'mov' ? 'quicktime' : $ext }}">
+                                                <source src="{{ route('files.attachment', $att) }}" type="video/{{ $ext === 'mov' ? 'quicktime' : $ext }}">
                                             </video>
                                         </div>
                                     @else
-                                        <a href="{{ asset('storage/'.$att->file_path) }}" class="att-pill" target="_blank">
+                                        <a href="{{ route('files.attachment', $att) }}" class="att-pill" target="_blank">
                                             <i class="fas fa-paperclip"></i> {{ $att->file_name }}
                                         </a>
                                     @endif

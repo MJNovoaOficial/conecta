@@ -82,15 +82,15 @@ class ProfileController extends Controller
         $user = Auth::user();
 
         // Eliminar avatar anterior si existe
-        if ($user->avatar_url && Storage::disk('public')->exists($user->avatar_url)) {
-            Storage::disk('public')->delete($user->avatar_url);
+        if ($user->avatar_url && Storage::disk('local')->exists($user->avatar_url)) {
+            Storage::disk('local')->delete($user->avatar_url);
         }
 
         $file = $request->file('avatar');
         $path = $file->storeAs(
             'avatars',
             'user_' . $user->id . '.' . $file->getClientOriginalExtension(),
-            'public'
+            'local'   // disco privado — se sirve vía /files/avatar/...
         );
 
         $user->update(['avatar_url' => $path]);

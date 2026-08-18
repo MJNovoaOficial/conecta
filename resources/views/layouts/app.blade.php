@@ -642,7 +642,7 @@
     <div class="user-menu">
         <div class="nav-user-info" style="display:flex;align-items:center;gap:8px;">
             @if(Auth::user()->avatar_url)
-                <img src="{{ Storage::url(Auth::user()->avatar_url) }}"
+                <img src="{{ route('files.avatar', basename(Auth::user()->avatar_url)) }}"
                      alt="avatar" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.3);">
             @else
                 <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#4f8cff,#2563eb);display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.72rem;font-weight:700;border:2px solid rgba(255,255,255,0.3);flex-shrink:0;">

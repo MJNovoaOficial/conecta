@@ -974,7 +974,7 @@ class TicketController extends Controller
 
             $filename = $this->sanitizeFilename($file->getClientOriginalName());
             $subfolder = $commentId ? 'tickets/' . $ticket->id . '/comments' : 'tickets/' . $ticket->id;
-            $path = $file->storeAs($subfolder, $filename, 'public');
+            $path = $file->storeAs($subfolder, $filename, 'local'); // disco privado
 
             TicketAttachment::create([
                 'ticket_id' => $ticket->id,

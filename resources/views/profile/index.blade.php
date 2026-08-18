@@ -40,7 +40,7 @@
                          style="width:72px;height:72px;border-radius:50%;flex-shrink:0;cursor:pointer;position:relative;overflow:hidden;
                                 background:linear-gradient(135deg,#4f8cff,#2563eb);">
                         @if($user->avatar_url)
-                            <img src="{{ Storage::url($user->avatar_url) }}"
+                            <img src="{{ route('files.avatar', basename($user->avatar_url)) }}"
                                  alt="Foto de perfil"
                                  style="width:100%;height:100%;object-fit:cover;">
                         @else

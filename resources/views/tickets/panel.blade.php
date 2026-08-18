@@ -177,7 +177,7 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
     @if($ticket->attachments->where('comment_id', null)->count() > 0)
       <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
         @foreach($ticket->attachments->where('comment_id', null) as $att)
-          <a href="{{ asset('storage/'.$att->file_path) }}" target="_blank"
+          <a href="{{ route('files.attachment', $att) }}" target="_blank"
              style="font-size:0.75rem;color:#3498db;border:1px solid #bfdbfe;border-radius:5px;padding:3px 9px;text-decoration:none;">
             📎 {{ $att->file_name }}
           </a>
@@ -216,7 +216,7 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
           @if($comment->attachments && $comment->attachments->count() > 0)
             <div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap;">
               @foreach($comment->attachments as $att)
-                <a href="{{ asset('storage/'.$att->file_path) }}" target="_blank"
+                <a href="{{ route('files.attachment', $att) }}" target="_blank"
                    style="font-size:0.72rem;color:#3498db;border:1px solid #bfdbfe;border-radius:4px;padding:2px 7px;text-decoration:none;">
                   📎 {{ $att->file_name }}
                 </a>

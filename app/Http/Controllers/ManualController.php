@@ -39,10 +39,11 @@ class ManualController extends Controller
     public function download(Manual $manual)
     {
         abort_unless($manual->is_active, 404);
+        abort_unless(Storage::disk('local')->exists($manual->archivo_path), 404);
 
         $manual->increment('downloads_count');
 
-        return Storage::download(
+        return Storage::disk('local')->download(
             $manual->archivo_path,
             $manual->archivo_nombre_original
         );

@@ -36,7 +36,7 @@ class ManualAdminController extends Controller
 
         $file     = $request->file('archivo');
         $filename = Str::slug($request->titulo) . '_' . time() . '.pdf';
-        $path     = $file->storeAs('public/manuales', $filename);
+        $path     = $file->storeAs('manuales', $filename, 'local'); // disco privado
 
         Manual::create([
             'titulo'                 => $request->titulo,
@@ -76,11 +76,11 @@ class ManualAdminController extends Controller
 
         if ($request->hasFile('archivo')) {
             // Eliminar el anterior
-            Storage::delete($manual->archivo_path);
+            Storage::disk('local')->delete($manual->archivo_path);
 
             $file     = $request->file('archivo');
             $filename = Str::slug($request->titulo) . '_' . time() . '.pdf';
-            $path     = $file->storeAs('public/manuales', $filename);
+            $path     = $file->storeAs('manuales', $filename, 'local'); // disco privado
 
             $data['archivo_path']            = $path;
             $data['archivo_nombre_original'] = $file->getClientOriginalName();
@@ -95,7 +95,7 @@ class ManualAdminController extends Controller
 
     public function destroy(Manual $manual)
     {
-        Storage::delete($manual->archivo_path);
+        Storage::disk('local')->delete($manual->archivo_path);
         $manual->delete();
 
         return redirect()->route('admin.manuales.index')
