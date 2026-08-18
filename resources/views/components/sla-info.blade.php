@@ -1,11 +1,19 @@
 @props(['ticket'])
 @php
-    $now = \Carbon\Carbon::now();
-    $deadline = $ticket->sla_resolution_deadline_at;
-    $slaEstado = $now->gt($deadline) ? 'exceeded' : ($deadline->diffInHours($now) < 12 ? 'warning' : 'on_time');
-    $slaColor = $slaEstado === 'exceeded' ? '#ef4444' : ($slaEstado === 'warning' ? '#f59e0b' : '#22c55e');
-    $slaRestante = $now->lt($deadline) ? $now->diffForHumans($deadline, ['parts' => 2, 'short' => true]) : null;
+    // El estado y el tiempo restante los calcula el modelo. Antes se resolvían
+    // aquí comparando el plazo contra la fecha de hoy, lo que marcaba como
+    // vencido cualquier ticket antiguo aunque se hubiera atendido a tiempo.
+    $slaEstado = $ticket->getSlaResolutionStatus();
+    $slaRestante = $ticket->getSlaRemainingFormatted();
+
+    $slaColor = match ($slaEstado) {
+        'exceeded' => '#ef4444',
+        'warning'  => '#f59e0b',
+        'ok'       => '#22c55e',
+        default    => '#94a3b8',
+    };
 @endphp
+@if($slaEstado !== 'none')
 <div class="flex items-center space-x-2" style="font-family: 'Inter', sans-serif;">
     <x-sla-badge :status="$slaEstado" />
     <span class="text-sm" style="color: {{ $slaColor }};">
@@ -24,3 +32,4 @@
         </span>
     @endif
 </div>
+@endif
