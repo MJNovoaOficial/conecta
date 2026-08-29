@@ -20,9 +20,10 @@ use Illuminate\Support\Facades\Log;
  */
 class AsistenteIA
 {
-    public const RESPUESTA     = 'respuesta';      // el modelo contestó
-    public const SIN_COBERTURA = 'sin_cobertura';  // la base no cubre el tema
-    public const NO_DISPONIBLE = 'no_disponible';  // el servidor no responde
+    public const RESPUESTA      = 'respuesta';       // el modelo contestó
+    public const SOLO_ARTICULOS = 'solo_articulos';  // hay artículos, sin modelo
+    public const SIN_COBERTURA  = 'sin_cobertura';   // la base no cubre el tema
+    public const NO_DISPONIBLE  = 'no_disponible';   // el servidor no responde
 
     public function disponible(): bool
     {
@@ -30,14 +31,30 @@ class AsistenteIA
     }
 
     /**
-     * @return array{tipo:string, texto:string, fuentes:\Illuminate\Support\Collection}
+     * Artículos de la base que tratan sobre la consulta.
+     *
+     * Devuelve una colección vacía cuando la consulta no tiene que ver con la
+     * base. Está separado de responder() para que la ayuda funcione aunque el
+     * servidor de modelos no exista: buscar el artículo correcto no necesita
+     * inteligencia artificial, solo la búsqueda que ya teníamos.
      */
-    public function responder(string $pregunta): array
+    public function articulosRelevantes(string $pregunta)
     {
+        return $this->buscar($pregunta)['articulos'];
+    }
+
+    /**
+     * Busca y calcula qué tan relacionada está la consulta con lo encontrado.
+     *
+     * @return array{articulos:\Illuminate\Support\Collection, relevancia:float}
+     */
+    private function buscar(string $pregunta): array
+    {
+        $vacio = ['articulos' => collect(), 'relevancia' => 0.0];
         $palabras = Articulo::palabrasClave($pregunta);
 
         if (empty($palabras)) {
-            return $this->sinCobertura();
+            return $vacio;
         }
 
         $articulos = Articulo::activos()
@@ -46,7 +63,7 @@ class AsistenteIA
             ->get();
 
         if ($articulos->isEmpty()) {
-            return $this->sinCobertura();
+            return $vacio;
         }
 
         // El puntaje crudo favorece las preguntas largas, así que se divide por
@@ -54,8 +71,39 @@ class AsistenteIA
         // larga puede empatar con una consulta corta y pertinente.
         $relevancia = $articulos->first()->puntaje / count($palabras);
 
-        if ($relevancia < (float) config('chatbot.umbral_relevancia', 1.8)) {
+        return $relevancia < (float) config('chatbot.umbral_articulos', 0.9)
+            ? $vacio
+            : ['articulos' => $articulos, 'relevancia' => $relevancia];
+    }
+
+    /**
+     * @return array{tipo:string, texto:string, fuentes:\Illuminate\Support\Collection}
+     */
+    public function responder(string $pregunta): array
+    {
+        ['articulos' => $articulos, 'relevancia' => $relevancia] = $this->buscar($pregunta);
+
+        if ($articulos->isEmpty()) {
             return $this->sinCobertura();
+        }
+
+        $soloArticulos = [
+            'tipo'    => self::SOLO_ARTICULOS,
+            'texto'   => 'Encontré esto en las guías de soporte. Revisa si alguna trata tu problema:',
+            'fuentes' => $articulos,
+        ];
+
+        // Sin servidor de modelos igual se entrega el artículo: es la mitad del
+        // valor y no depende de ninguna decisión de infraestructura.
+        if (! $this->disponible()) {
+            return $soloArticulos;
+        }
+
+        // Coincidencia débil: se muestra el artículo pero no se le pide al
+        // modelo que lo explique. Que la persona lea el título y decida es
+        // preferible a una explicación segura y sin fundamento.
+        if ($relevancia < (float) config('chatbot.umbral_relevancia', 1.8)) {
+            return $soloArticulos;
         }
 
         $texto = $this->consultarModelo($this->construirPrompt($pregunta, $articulos));

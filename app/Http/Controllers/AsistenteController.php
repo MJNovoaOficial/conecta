@@ -14,12 +14,15 @@ use Illuminate\Http\Request;
  */
 class AsistenteController extends Controller
 {
+    /**
+     * No exige que el asistente esté encendido.
+     *
+     * Con el servidor de modelos apagado igual devuelve los artículos que
+     * tratan la consulta, así la ayuda sirve desde el primer día y mejora sola
+     * cuando el servidor esté disponible.
+     */
     public function preguntar(Request $request, AsistenteIA $asistente): JsonResponse
     {
-        if (! $asistente->disponible()) {
-            return response()->json(['tipo' => 'apagado'], 404);
-        }
-
         $datos = $request->validate([
             'pregunta' => ['required', 'string', 'min:4', 'max:500'],
         ]);
