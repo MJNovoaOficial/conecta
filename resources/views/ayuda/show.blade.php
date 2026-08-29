@@ -17,6 +17,19 @@
 .art-cuerpo { padding:22px 24px; }
 .art-pasos { font-size:.92rem; line-height:1.8; color:#2d3748; white-space:pre-wrap; }
 
+/* Imágenes de apoyo: una por paso, a ancho completo para que se distinga
+   dónde hay que tocar sin tener que ampliar. */
+.art-imagenes { margin-top:26px; padding-top:22px; border-top:1px solid #e8ecf0; display:flex; flex-direction:column; gap:24px; }
+.art-imagen { margin:0; }
+.art-imagen img {
+    width:100%; height:auto; display:block; border-radius:10px;
+    border:1px solid #dbe3ed; background:#fff;
+}
+.art-imagen figcaption {
+    margin-top:9px; font-size:.9rem; color:#4a5568; line-height:1.55;
+    padding-left:12px; border-left:3px solid #3498db;
+}
+
 .art-feedback { padding:20px 24px; background:#f7f9fc; border-top:1px solid #e8ecf0; text-align:center; }
 .art-feedback p { font-size:.9rem; font-weight:600; color:#4a5568; margin:0 0 14px; }
 .art-botones { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
@@ -56,6 +69,23 @@
             {{-- Se escapa siempre: es contenido escrito por una persona.
                  Los saltos de linea los conserva white-space:pre-wrap. --}}
             <div class="art-pasos">{{ $articulo->content }}</div>
+
+            {{-- Imágenes de apoyo. Para quien no está familiarizado con la
+                 tecnología, ver la pantalla explica más que leerla descrita. --}}
+            @if($articulo->imagenes->isNotEmpty())
+                <div class="art-imagenes">
+                    @foreach($articulo->imagenes as $img)
+                        <figure class="art-imagen">
+                            <img src="{{ $img->url }}"
+                                 alt="{{ $img->descripcion ?: 'Imagen de apoyo del instructivo' }}"
+                                 loading="lazy">
+                            @if($img->descripcion)
+                                <figcaption>{{ $img->descripcion }}</figcaption>
+                            @endif
+                        </figure>
+                    @endforeach
+                </div>
+            @endif
         </div>
 
         <div class="art-feedback">

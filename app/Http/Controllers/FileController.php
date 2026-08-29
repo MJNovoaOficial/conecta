@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ArticuloImagen;
 use App\Models\Manual;
 use App\Models\TicketAttachment;
 use Illuminate\Support\Facades\Auth;
@@ -49,6 +50,18 @@ class FileController extends Controller
             $attachment->file_path,
             $attachment->file_name
         );
+    }
+
+    // ── Imágenes de artículos ─────────────────────────────────────────────────
+    // Cualquier usuario autenticado puede verlas: son material de autoayuda,
+    // igual que el texto del artículo. Se sirven desde el disco privado para
+    // que no queden accesibles sin sesión.
+
+    public function serveArticuloImagen(ArticuloImagen $imagen): StreamedResponse
+    {
+        abort_unless(Storage::disk('local')->exists($imagen->ruta), 404);
+
+        return Storage::disk('local')->response($imagen->ruta);
     }
 
     // ── Manuales PDF ─────────────────────────────────────────────────────────

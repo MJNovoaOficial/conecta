@@ -48,6 +48,16 @@ class Articulo extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /**
+     * Imágenes de apoyo, en el orden en que ilustran los pasos.
+     */
+    public function imagenes()
+    {
+        return $this->hasMany(ArticuloImagen::class, 'articulo_id')
+                    ->orderBy('orden')
+                    ->orderBy('id');
+    }
+
     // ── Consultas ─────────────────────────────────────────────────
 
     public function scopeActivos($query)
