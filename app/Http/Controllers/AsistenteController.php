@@ -35,6 +35,13 @@ class AsistenteController extends Controller
             'fuentes' => $resultado['fuentes']->map(fn ($articulo) => [
                 'titulo' => $articulo->title,
                 'url'    => route('ayuda.show', $articulo),
+                // Las imágenes del artículo viajan con la respuesta: para quien
+                // no está familiarizado con la tecnología, ver la pantalla
+                // resuelve en segundos lo que un párrafo explica mal.
+                'imagenes' => $articulo->imagenes->map(fn ($imagen) => [
+                    'url'         => $imagen->url,
+                    'descripcion' => $imagen->descripcion,
+                ])->values(),
             ])->values(),
         ]);
     }

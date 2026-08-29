@@ -86,15 +86,30 @@
 }
 .bur-texto.aviso { border-left-color: #d97706; background: #fffbeb; }
 
-.bur-articulos { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-.bur-articulos a {
-    display: flex; align-items: center; gap: 10px;
-    padding: 13px 15px; border: 2px solid #dbeafe; border-radius: 10px;
-    background: #eff6ff; color: #1d4ed8; text-decoration: none;
-    font-size: .95rem; font-weight: 600; line-height: 1.4;
+.bur-articulos { margin-top: 12px; display: flex; flex-direction: column; gap: 14px; }
+.bur-guia {
+    border: 2px solid #dbeafe; border-radius: 12px;
+    background: #eff6ff; overflow: hidden;
 }
-.bur-articulos a:hover { background: #dbeafe; color: #1e40af; }
-.bur-articulos a i { flex-shrink: 0; }
+.bur-guia > a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 13px 15px; color: #1d4ed8; text-decoration: none;
+    font-size: .95rem; font-weight: 700; line-height: 1.4;
+}
+.bur-guia > a:hover { background: #dbeafe; color: #1e40af; }
+.bur-guia > a i { flex-shrink: 0; }
+
+/* Las capturas se muestran aquí mismo: hacer clic para verlas ya es una
+   barrera para quien no está habituado a navegar. */
+.bur-capturas { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 12px; }
+.bur-captura figure { margin: 0; }
+.bur-captura img {
+    width: 100%; height: auto; display: block; border-radius: 8px;
+    border: 1px solid #bfdbfe; background: #fff;
+}
+.bur-captura figcaption {
+    margin-top: 6px; font-size: .85rem; color: #334155; line-height: 1.5;
+}
 
 .bur-pie {
     border-top: 1px solid #e2e8f0; padding: 14px 18px;
@@ -232,14 +247,51 @@
             texto.classList.toggle('aviso', d.tipo !== 'respuesta' && d.tipo !== 'solo_articulos');
 
             (d.fuentes || []).forEach(function (f) {
+                const caja = document.createElement('div');
+                caja.className = 'bur-guia';
+
                 const a = document.createElement('a');
                 a.href = f.url;
                 const icono = document.createElement('i');
                 icono.className = 'fas fa-book-open';
                 icono.setAttribute('aria-hidden', 'true');
                 a.appendChild(icono);
-                a.appendChild(document.createTextNode(f.titulo));
-                articulos.appendChild(a);
+                a.appendChild(document.createTextNode(
+                    (f.imagenes && f.imagenes.length ? 'Ver la guía con imágenes: ' : 'Ver la guía: ') + f.titulo
+                ));
+                caja.appendChild(a);
+
+                // Las capturas se muestran dentro de la respuesta. Pedirle a
+                // alguien que haga clic para verlas es perder justamente a
+                // quien más las necesita.
+                if (f.imagenes && f.imagenes.length) {
+                    const cont = document.createElement('div');
+                    cont.className = 'bur-capturas';
+
+                    f.imagenes.forEach(function (im) {
+                        const fig = document.createElement('figure');
+                        const img = document.createElement('img');
+                        img.src = im.url;
+                        img.alt = im.descripcion || 'Imagen de apoyo de la guía';
+                        img.loading = 'lazy';
+                        fig.appendChild(img);
+
+                        if (im.descripcion) {
+                            const pie = document.createElement('figcaption');
+                            pie.textContent = im.descripcion;
+                            fig.appendChild(pie);
+                        }
+
+                        const envoltorio = document.createElement('div');
+                        envoltorio.className = 'bur-captura';
+                        envoltorio.appendChild(fig);
+                        cont.appendChild(envoltorio);
+                    });
+
+                    caja.appendChild(cont);
+                }
+
+                articulos.appendChild(caja);
             });
         } catch (err) {
             texto.textContent = 'No pude buscar en este momento. Puedes pedir ayuda a soporte '

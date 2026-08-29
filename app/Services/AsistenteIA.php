@@ -58,6 +58,7 @@ class AsistenteIA
         }
 
         $articulos = Articulo::activos()
+            ->with('imagenes')
             ->conPuntaje($pregunta)
             ->limit((int) config('chatbot.articulos_contexto', 2))
             ->get();
