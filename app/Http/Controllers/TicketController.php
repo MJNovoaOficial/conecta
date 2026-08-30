@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Notifications\NewTicketNotification;
 use App\Notifications\TicketCreatedNotification;
 use App\Notifications\TicketUpdatedNotification;
+use App\Support\HorarioLaboral;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -274,8 +275,9 @@ class TicketController extends Controller
             'device_type'                => $request->device_type,
             'priority'                   => $priority,
             'status'                     => Ticket::STATUS_OPEN,
-            'sla_response_deadline_at'   => now()->addHours($sla->response_hours),
-            'sla_resolution_deadline_at' => now()->addHours($sla->resolution_hours),
+            // Los plazos avanzan solo en horario laboral: ver HorarioLaboral.
+            'sla_response_deadline_at'   => HorarioLaboral::sumarHoras(now(), $sla->response_hours, $priority),
+            'sla_resolution_deadline_at' => HorarioLaboral::sumarHoras(now(), $sla->resolution_hours, $priority),
         ]);
 
         // Procesar adjuntos con validación estricta
@@ -365,8 +367,9 @@ class TicketController extends Controller
             'device_type'                => $request->device_type,
             'priority'                   => $priority,
             'status'                     => Ticket::STATUS_OPEN,
-            'sla_response_deadline_at'   => now()->addHours($sla->response_hours),
-            'sla_resolution_deadline_at' => now()->addHours($sla->resolution_hours),
+            // Mismo criterio que en store(): el plazo corre en horario laboral.
+            'sla_response_deadline_at'   => HorarioLaboral::sumarHoras(now(), $sla->response_hours, $priority),
+            'sla_resolution_deadline_at' => HorarioLaboral::sumarHoras(now(), $sla->resolution_hours, $priority),
             'guest_name'                 => $request->guest_name,
             'guest_email'                => $request->guest_email,
             'guest_department'           => $request->guest_department,
@@ -489,7 +492,10 @@ class TicketController extends Controller
             $ticket->update([
                 'status'                   => Ticket::STATUS_PENDING_USER,
                 'last_response_request_at' => Carbon::now(),
-                'response_deadline_at'     => Carbon::now()->addHours(2), // RNG-01
+                // RNG-01: 2 horas hábiles. Pedirle información a alguien un
+                // viernes a las 17:30 y darle plazo hasta las 19:30 es darle
+                // dos horas en las que no está trabajando.
+                'response_deadline_at'     => HorarioLaboral::sumarHoras(Carbon::now(), 2),
                 'user_responded_at'        => null,
             ]);
             TicketHistory::create([
@@ -571,10 +577,11 @@ class TicketController extends Controller
 
         $updateData = ['status' => $newStatus];
 
-        // Si se solicita información al usuario, establecer deadline (RNG-01: 2 horas)
+        // Si se solicita información al usuario, establecer deadline
+        // (RNG-01: 2 horas hábiles, mismo criterio que en addComment)
         if ($newStatus === Ticket::STATUS_PENDING_USER) {
             $updateData['last_response_request_at'] = Carbon::now();
-            $updateData['response_deadline_at'] = Carbon::now()->addHours(2); // RNG-01: 2 horas
+            $updateData['response_deadline_at'] = HorarioLaboral::sumarHoras(Carbon::now(), 2);
             $updateData['user_responded_at'] = null;
 
             // Notificar in-app al creador del ticket
