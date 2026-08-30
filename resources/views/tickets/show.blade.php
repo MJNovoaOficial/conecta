@@ -241,9 +241,12 @@
         <div class="tk-title">{{ $ticket->title }}</div>
         <div class="tk-meta">
             Creado por <strong>{{ $ticket->getCreatorName() }}</strong>
-            @if($ticket->isGuestTicket())
-                @component('components.guest-token-link', ['token' => $ticket->guest_token, 'ticketId' => $ticket->id])@endcomponent
-            @endif
+            {{-- Solo para quien atiende: el invitado ya llegó por ese enlace. --}}
+            @auth
+                @if($ticket->isGuestTicket())
+                    <x-guest-token-link :ticket="$ticket" />
+                @endif
+            @endauth
             &nbsp;·&nbsp; <i class="fas fa-building"></i> {{ $ticket->getCreatorDepartment() }}
             &nbsp;·&nbsp; {{ $ticket->created_at->format('d/m/Y H:i') }}
             &nbsp;·&nbsp; hace {{ $ticket->created_at->diffForHumans() }}
@@ -327,16 +330,23 @@
                         $isInt = $comment->is_internal;
                         $showIt = !$isInt || (Auth::check() && (Auth::user()->isSupport() || Auth::user()->isAdmin()));
                         $cu = $comment->user;
+                        // Un comentario sin usuario lo escribió el invitado que
+                        // reportó el ticket, no el sistema.
+                        $autor = $cu->name ?? ($ticket->guest_name ?? 'Sistema');
                     @endphp
                     @if($showIt)
                     <div class="comment-item {{ $isInt ? 'internal':'' }}">
                         <div class="comment-head">
                             <div class="c-avatar {{ $cu ? ($cu->isAdmin() ? 'av-a':($cu->isSupport()?'av-s':'av-u')):'av-u' }}">
-                                {{ $cu ? strtoupper(substr($cu->name,0,1)):'?' }}
+                                {{ strtoupper(substr($autor, 0, 1)) }}
                             </div>
                             <div>
-                                <span class="c-name">{{ $cu->name ?? 'Sistema' }}</span>
-                                @if($cu)<span class="c-role">{{ ucfirst($cu->role) }}</span>@endif
+                                <span class="c-name">{{ $autor }}</span>
+                                @if($cu)
+                                    <span class="c-role">{{ ucfirst($cu->role) }}</span>
+                                @elseif($ticket->isGuestTicket())
+                                    <span class="c-role">Solicitante</span>
+                                @endif
                                 @if($isInt)<span style="font-size:.68rem;background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:10px;margin-left:5px;">🔒 Interno</span>@endif
                             </div>
                             <div class="c-time">{{ $comment->created_at->format('d/m/Y H:i') }}</div>
@@ -400,6 +410,44 @@
             </div>
             @endif
             @endauth
+
+            {{-- Responder siendo invitado.
+                 El token del enlace es la credencial. Sin esto, pedirle
+                 informacion a un invitado era un callejon sin salida: no tenia
+                 como contestar y el ticket se cerraba solo. --}}
+            @guest
+            @if($ticket->isGuestTicket() && !in_array($ticket->status, ['closed','resolved']))
+            <div class="reply-wrap" style="margin-top:16px;">
+                @if($ticket->status === 'pending_user')
+                    <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:11px 14px;margin-bottom:12px;font-size:.84rem;color:#92400e;">
+                        <i class="fas fa-question-circle me-1"></i>
+                        Soporte necesita información tuya para continuar. Respóndele aquí abajo.
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ route('tickets.guest.comment', $ticket->guest_token) }}" enctype="multipart/form-data">
+                    @csrf
+                    <textarea name="comment" placeholder="Escribe tu respuesta..." required></textarea>
+                    @error('comment')
+                        <div style="color:#e74c3c;font-size:.78rem;margin-top:5px;">{{ $message }}</div>
+                    @enderror
+                    <div class="reply-footer">
+                        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:.79rem;color:#718096;">
+                            <input type="file" name="attachments[]" multiple style="display:none;" id="guestFile"
+                                   onchange="document.getElementById('guestFileName').textContent=Array.from(this.files).map(f=>f.name).join(', ')">
+                            <span onclick="document.getElementById('guestFile').click()" style="cursor:pointer;color:#3498db;">
+                                <i class="fas fa-paperclip"></i> Adjuntar
+                            </span>
+                            <span id="guestFileName" style="color:#a0aec0;font-size:.74rem;"></span>
+                        </label>
+                        <button type="submit" class="btn-send">
+                            <i class="fas fa-paper-plane"></i> Enviar respuesta
+                        </button>
+                    </div>
+                </form>
+            </div>
+            @endif
+            @endguest
         </div>
     </div>
 

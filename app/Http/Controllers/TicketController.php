@@ -441,6 +441,91 @@ class TicketController extends Controller
         return view('tickets.show', compact('ticket', 'departments', 'supportUsers'));
     }
 
+    /**
+     * Respuesta de un invitado a su propio ticket.
+     *
+     * Sin esto, pedirle información a un invitado era un callejón sin salida:
+     * el ticket pasaba a "Pendiente Usuario" con un plazo, el invitado no tenía
+     * ninguna forma de contestar, y a las dos horas el cierre automático lo
+     * cerraba por falta de respuesta.
+     *
+     * El token del enlace es la única credencial, así que no se acepta ningún
+     * identificador de ticket por separado: se resuelve todo desde el token.
+     */
+    public function guestComment(Request $request, string $token)
+    {
+        $ticket = Ticket::where('guest_token', $token)->firstOrFail();
+
+        // Un ticket cerrado no se reabre por un comentario: el invitado tendría
+        // que abrir uno nuevo, que es lo que dice el correo de cierre.
+        if (in_array($ticket->status, [Ticket::STATUS_CLOSED, Ticket::STATUS_RESOLVED], true)) {
+            return back()->withErrors([
+                'comment' => 'Este ticket ya está cerrado. Si el problema continúa, abre uno nuevo.',
+            ]);
+        }
+
+        // Limitado por IP: el endpoint es público y el token viaja por correo.
+        $llave = 'guest_comment:' . $request->ip();
+        if (RateLimiter::tooManyAttempts($llave, 20)) {
+            return back()->withErrors(['comment' => 'Has enviado demasiados mensajes. Intenta más tarde.']);
+        }
+        RateLimiter::hit($llave, 3600);
+
+        $request->validate([
+            'comment'       => 'required|string|min:3|max:5000',
+            'attachments'   => 'nullable|array|max:3',
+            'attachments.*' => 'file|max:5120',
+        ], [
+            'comment.required' => 'Escribe tu respuesta.',
+            'comment.min'      => 'La respuesta debe tener al menos 3 caracteres.',
+            'comment.max'      => 'La respuesta no puede superar los 5000 caracteres.',
+            'attachments.max'  => 'Puedes adjuntar máximo 3 archivos.',
+            'attachments.*.max'=> 'Cada archivo puede pesar hasta 5 MB.',
+        ]);
+
+        $comentario = TicketComment::create([
+            'ticket_id'                => $ticket->id,
+            'user_id'                  => null,   // un invitado no tiene cuenta
+            'comment'                  => $request->comment,
+            'ticket_status_at_comment' => $ticket->status,
+            'is_internal'              => false,  // nunca interno: lo escribe quien reporta
+        ]);
+
+        $this->processAttachments($request, $ticket, $comentario->id);
+
+        // Mismo trato que a un usuario registrado: responder detiene el plazo y
+        // devuelve el ticket a la cola de soporte.
+        if ($ticket->status === Ticket::STATUS_PENDING_USER) {
+            $ticket->update([
+                'user_responded_at' => Carbon::now(),
+                'status'            => Ticket::STATUS_IN_PROGRESS,
+            ]);
+
+            TicketHistory::create([
+                'ticket_id'  => $ticket->id,
+                'user_id'    => null,
+                'action'     => 'guest_responded',
+                'old_value'  => Ticket::STATUS_PENDING_USER,
+                'new_value'  => Ticket::STATUS_IN_PROGRESS,
+                'field_name' => 'status',
+            ]);
+        }
+
+        // Avisar a soporte, que es quien está esperando la respuesta.
+        if ($ticket->assigned_to) {
+            try {
+                $ticket->assignedTo->notify(new TicketUpdatedNotification(
+                    $ticket,
+                    'El solicitante respondió el ticket ' . $ticket->ticket_number . '.'
+                ));
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo avisar de la respuesta del invitado: ' . $e->getMessage());
+            }
+        }
+
+        return back()->with('success', 'Tu respuesta fue enviada. Soporte la revisará.');
+    }
+
     public function addComment(Request $request, Ticket $ticket)
     {
         $this->authorize('update', $ticket);
