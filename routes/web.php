@@ -40,6 +40,11 @@ Route::post('/reset-password',         [ForgotPasswordController::class, 'resetP
 Route::get('/tickets/guest',         [TicketController::class, 'guestCreate'])->name('tickets.guest.create');
 Route::post('/tickets/guest',        [TicketController::class, 'guestStore'])->name('tickets.guest.store');
 Route::get('/tickets/guest/{token}', [TicketController::class, 'guestShow'])->name('tickets.guest.show');
+// El invitado responde con el token de su enlace. Sin esta ruta, pedirle
+// información era un callejón sin salida: no tenía cómo contestar y el ticket
+// se cerraba solo por falta de respuesta.
+Route::post('/tickets/guest/{token}/comment', [TicketController::class, 'guestComment'])
+    ->name('tickets.guest.comment');
 
 // AJAX público — catálogo (para formularios de invitados)
 Route::get('/api/categorias/{categoria}/subcategorias', [CategoryController::class, 'getSubcategorias'])->name('api.subcategorias');
