@@ -43,7 +43,8 @@
     <div class="card" style="max-width:820px;">
         <div class="card-body">
 
-            <form method="POST" action="{{ route('admin.articulos.update', $articulo) }}">
+            {{-- enctype: el formulario ahora acepta imágenes de apoyo --}}
+            <form method="POST" action="{{ route('admin.articulos.update', $articulo) }}" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 
@@ -94,6 +95,55 @@
                     <textarea id="content" name="content" rows="14">{{ old('content', $articulo->content) }}</textarea>
                     <span class="ayuda">Numera los pasos. Termina indicando qué hacer si nada funcionó.</span>
                     @error('content') <span class="kb-error">{{ $message }}</span> @enderror
+                </div>
+
+                {{-- Imágenes de apoyo.
+                     Los manuales que circulan por correo son pasos con una
+                     captura en cada uno. Esto reproduce ese formato dentro de
+                     la plataforma, donde sí se puede buscar y actualizar. --}}
+                <div class="kb-campo" style="margin-top:1.6rem;padding-top:1.4rem;border-top:1px solid #e8ecf0;">
+                    <label>Imágenes de apoyo</label>
+                    <span class="ayuda" style="margin-bottom:12px;display:block;">
+                        Una captura por paso. Se muestran en el orden que indiques, debajo de las instrucciones.
+                    </span>
+
+                    @if($articulo->imagenes->isNotEmpty())
+                        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+                            @foreach($articulo->imagenes as $img)
+                                <div style="display:flex;gap:14px;align-items:flex-start;background:#f7f9fc;border:1px solid #e2e8f0;border-radius:9px;padding:12px;">
+                                    <img src="{{ $img->url }}" alt="{{ $img->descripcion ?? 'Imagen del artículo' }}"
+                                         style="width:110px;height:82px;object-fit:cover;border-radius:6px;border:1px solid #cbd5e0;flex-shrink:0;background:#fff;">
+
+                                    <div style="flex:1;min-width:180px;display:flex;flex-direction:column;gap:8px;">
+                                        <input type="text"
+                                               name="imagen_descripcion[{{ $img->id }}]"
+                                               value="{{ $img->descripcion }}"
+                                               maxlength="300"
+                                               placeholder="Qué muestra esta imagen (ej: pantalla de ajustes del celular)"
+                                               style="width:100%;padding:8px 11px;border:1.5px solid #cbd5e0;border-radius:7px;font-size:.86rem;">
+
+                                        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+                                            <label style="font-size:.8rem;color:#4a5568;display:flex;align-items:center;gap:6px;margin:0;">
+                                                Paso
+                                                <input type="number" name="imagen_orden[{{ $img->id }}]"
+                                                       value="{{ $img->orden }}" min="0" max="999"
+                                                       style="width:66px;padding:5px 8px;border:1.5px solid #cbd5e0;border-radius:6px;font-size:.84rem;">
+                                            </label>
+                                            <label style="font-size:.8rem;color:#c53030;display:flex;align-items:center;gap:6px;margin:0;cursor:pointer;">
+                                                <input type="checkbox" name="eliminar_imagen[]" value="{{ $img->id }}">
+                                                Eliminar esta imagen
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+
+                    <input type="file" name="imagenes[]" multiple accept="image/*"
+                           style="width:100%;padding:10px;border:1.5px dashed #cbd5e0;border-radius:8px;background:#fff;font-size:.86rem;">
+                    <span class="ayuda">Puedes seleccionar varias a la vez. Máximo 4 MB cada una.</span>
+                    @error('imagenes.*') <span class="kb-error">{{ $message }}</span> @enderror
                 </div>
 
                 <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:1.2rem;">

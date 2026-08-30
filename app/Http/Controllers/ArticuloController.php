@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Articulo;
+use App\Models\ArticuloImagen;
 use App\Models\AuditLog;
 use App\Models\Categoria;
 use App\Models\Subcategoria;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * Administración de la base de conocimiento (RN-18).
@@ -41,6 +44,7 @@ class ArticuloController extends Controller
         $datos['is_active']  = true;
 
         $articulo = Articulo::create($datos);
+        $this->guardarImagenes($request, $articulo);
 
         AuditLog::record('articulo.created', 'Articulo', $articulo->id, [
             'title' => $articulo->title,
@@ -61,6 +65,10 @@ class ArticuloController extends Controller
     {
         $articulo->update($this->validar($request));
 
+        $this->actualizarDescripciones($request, $articulo);
+        $this->eliminarImagenes($request, $articulo);
+        $this->guardarImagenes($request, $articulo);
+
         AuditLog::record('articulo.updated', 'Articulo', $articulo->id, [
             'title' => $articulo->title,
         ]);
@@ -68,6 +76,90 @@ class ArticuloController extends Controller
         return redirect()
             ->route('admin.articulos.index')
             ->with('success', 'Artículo actualizado.');
+    }
+
+    // ── Imágenes de apoyo ─────────────────────────────────────────────
+
+    /**
+     * Extensiones aceptadas. Solo imágenes: no es un espacio para adjuntar
+     * documentos, para eso están los manuales.
+     */
+    private const IMAGENES_PERMITIDAS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+    /**
+     * Guarda las imágenes nuevas al final del instructivo.
+     *
+     * Van al disco privado, igual que los adjuntos: se sirven por
+     * FileController y no quedan accesibles sin sesión.
+     */
+    private function guardarImagenes(Request $request, Articulo $articulo): void
+    {
+        if (! $request->hasFile('imagenes')) {
+            return;
+        }
+
+        $request->validate([
+            'imagenes'   => ['array', 'max:15'],
+            'imagenes.*' => ['image', 'mimes:' . implode(',', self::IMAGENES_PERMITIDAS), 'max:4096'],
+        ], [
+            'imagenes.*.image' => 'Cada archivo debe ser una imagen.',
+            'imagenes.*.max'   => 'Cada imagen debe pesar menos de 4 MB.',
+        ]);
+
+        // Las nuevas se agregan después de las que ya estaban.
+        $orden = (int) $articulo->imagenes()->max('orden');
+
+        foreach ($request->file('imagenes') as $archivo) {
+            if (! $archivo->isValid()) {
+                continue;
+            }
+
+            // Nombre propio: el original puede traer acentos, espacios o
+            // repetirse entre artículos distintos.
+            $nombre = Str::uuid() . '.' . strtolower($archivo->getClientOriginalExtension());
+            $ruta   = $archivo->storeAs('articulos/' . $articulo->id, $nombre, 'local');
+
+            $articulo->imagenes()->create([
+                'ruta'            => $ruta,
+                'nombre_original' => $archivo->getClientOriginalName(),
+                'orden'           => ++$orden,
+            ]);
+        }
+    }
+
+    /**
+     * Guarda el texto que acompaña a cada imagen y su posición.
+     */
+    private function actualizarDescripciones(Request $request, Articulo $articulo): void
+    {
+        foreach ((array) $request->input('imagen_descripcion', []) as $id => $descripcion) {
+            $articulo->imagenes()
+                ->whereKey($id)
+                ->update([
+                    'descripcion' => $descripcion !== '' ? mb_substr($descripcion, 0, 300) : null,
+                    'orden'       => (int) $request->input("imagen_orden.{$id}", 0),
+                ]);
+        }
+    }
+
+    /**
+     * Borra las imágenes marcadas, del disco y de la base.
+     *
+     * Aquí sí se elimina de verdad: a diferencia de un artículo, una imagen no
+     * deja rastro en ningún ticket y conservarla solo ocupa espacio.
+     */
+    private function eliminarImagenes(Request $request, Articulo $articulo): void
+    {
+        $ids = (array) $request->input('eliminar_imagen', []);
+
+        if (empty($ids)) {
+            return;
+        }
+
+        foreach ($articulo->imagenes()->whereKey($ids)->get() as $imagen) {
+            Storage::disk('local')->delete($imagen->ruta);
+            $imagen->delete();
+        }
     }
 
     /**

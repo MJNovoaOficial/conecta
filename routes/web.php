@@ -72,6 +72,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/files/avatar/{filename}',           [FileController::class, 'serveAvatar'])->name('files.avatar')->where('filename', '.+');
     Route::get('/files/attachment/{attachment}',     [FileController::class, 'serveAttachment'])->name('files.attachment');
     Route::get('/files/manual/{manual}',             [FileController::class, 'serveManual'])->name('files.manual');
+    Route::get('/files/articulo-imagen/{imagen}',    [FileController::class, 'serveArticuloImagen'])->name('files.articulo-imagen');
 
     // Manuales descargables (Reunión 4)
     Route::get('/manuales',                       [ManualController::class, 'index'])->name('manuales.index');
