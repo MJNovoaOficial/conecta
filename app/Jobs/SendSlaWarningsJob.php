@@ -14,6 +14,23 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Mail;
 
+/**
+ * INCOMPLETO — NO PROGRAMAR TODAVÍA.
+ *
+ * Avisar antes de que venza un SLA es una función que falta y vale la pena
+ * tener, pero este trabajo no está terminado y programarlo rompería la cola:
+ *
+ *   1. SlaWarningNotification y SlaWarningMail no existen. En cuanto
+ *      encontrara un ticket por vencer, fallaría con "Class not found".
+ *   2. config('mail.sla_warning_recipients') no está definida, así que el
+ *      correo a los administradores nunca saldría.
+ *   3. No registra si ya avisó de un ticket. Corriendo cada cinco minutos con
+ *      una ventana de treinta, avisaría seis veces del mismo caso.
+ *
+ * Estuvo referenciado desde app/Console/Kernel.php, que Laravel 12 no carga,
+ * así que nunca llegó a ejecutarse. Terminarlo requiere escribir las dos
+ * clases que faltan y agregar una columna para no repetir el aviso.
+ */
 class SendSlaWarningsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, SerializesModels;
