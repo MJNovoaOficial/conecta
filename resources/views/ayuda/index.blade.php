@@ -74,9 +74,21 @@
     white-space:pre-wrap;
 }
 .asis-texto.aviso { border-left-color:#e0a83c; background:#fffbf2; }
-.asis-fuentes { margin-top:10px; font-size:.8rem; color:#718096; }
-.asis-fuentes a { color:#2980b9; text-decoration:none; font-weight:600; }
-.asis-fuentes a:hover { text-decoration:underline; }
+.asis-fuentes { margin-top:12px; display:flex; flex-direction:column; gap:14px; }
+.asis-guia { border:2px solid #dbeafe; border-radius:12px; background:#eff6ff; overflow:hidden; }
+.asis-guia > a {
+    display:flex; align-items:center; gap:10px; padding:13px 15px;
+    color:#1d4ed8; text-decoration:none; font-size:.93rem; font-weight:700; line-height:1.4;
+}
+.asis-guia > a:hover { background:#dbeafe; color:#1e40af; }
+.asis-guia > a i { flex-shrink:0; }
+.asis-capturas { padding:0 12px 12px; display:flex; flex-direction:column; gap:12px; }
+.asis-capturas figure { margin:0; }
+.asis-capturas img {
+    width:100%; height:auto; display:block; border-radius:8px;
+    border:1px solid #bfdbfe; background:#fff;
+}
+.asis-capturas figcaption { margin-top:6px; font-size:.85rem; color:#334155; line-height:1.5; }
 .asis-cargando { display:flex; align-items:center; gap:9px; color:#718096; font-size:.86rem; padding:12px 2px; }
 .asis-punto {
     width:7px; height:7px; border-radius:50%; background:#2980b9;
@@ -247,18 +259,49 @@
             texto.textContent = d.texto;
             texto.classList.toggle('aviso', d.tipo !== 'respuesta');
 
-            if (d.fuentes && d.fuentes.length) {
-                fuentes.appendChild(document.createTextNode(
-                    d.tipo === 'respuesta' ? 'Fuente: ' : 'Artículos relacionados: '
+            (d.fuentes || []).forEach(function (f) {
+                const caja = document.createElement('div');
+                caja.className = 'asis-guia';
+
+                const a = document.createElement('a');
+                a.href = f.url;
+                const icono = document.createElement('i');
+                icono.className = 'fas fa-book-open';
+                icono.setAttribute('aria-hidden', 'true');
+                a.appendChild(icono);
+                a.appendChild(document.createTextNode(
+                    (f.imagenes && f.imagenes.length ? 'Ver la guía con imágenes: ' : 'Ver la guía: ') + f.titulo
                 ));
-                d.fuentes.forEach(function (f, i) {
-                    if (i > 0) { fuentes.appendChild(document.createTextNode(' · ')); }
-                    const a = document.createElement('a');
-                    a.href = f.url;
-                    a.textContent = f.titulo;
-                    fuentes.appendChild(a);
-                });
-            }
+                caja.appendChild(a);
+
+                // Las capturas se muestran aquí mismo. Antes había que darse
+                // cuenta de que "Fuente:" era un enlace y hacer clic para
+                // llegar a ellas.
+                if (f.imagenes && f.imagenes.length) {
+                    const cont = document.createElement('div');
+                    cont.className = 'asis-capturas';
+
+                    f.imagenes.forEach(function (im) {
+                        const fig = document.createElement('figure');
+                        const img = document.createElement('img');
+                        img.src = im.url;
+                        img.alt = im.descripcion || 'Imagen de apoyo de la guía';
+                        img.loading = 'lazy';
+                        fig.appendChild(img);
+
+                        if (im.descripcion) {
+                            const pie = document.createElement('figcaption');
+                            pie.textContent = im.descripcion;
+                            fig.appendChild(pie);
+                        }
+                        cont.appendChild(fig);
+                    });
+
+                    caja.appendChild(cont);
+                }
+
+                fuentes.appendChild(caja);
+            });
         } catch (err) {
             texto.textContent = 'No se pudo consultar al asistente. Usa el buscador de abajo '
                               + 'o abre un ticket y soporte te ayuda.';

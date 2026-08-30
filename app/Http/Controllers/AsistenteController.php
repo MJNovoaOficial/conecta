@@ -14,12 +14,15 @@ use Illuminate\Http\Request;
  */
 class AsistenteController extends Controller
 {
+    /**
+     * No exige que el asistente esté encendido.
+     *
+     * Con el servidor de modelos apagado igual devuelve los artículos que
+     * tratan la consulta, así la ayuda sirve desde el primer día y mejora sola
+     * cuando el servidor esté disponible.
+     */
     public function preguntar(Request $request, AsistenteIA $asistente): JsonResponse
     {
-        if (! $asistente->disponible()) {
-            return response()->json(['tipo' => 'apagado'], 404);
-        }
-
         $datos = $request->validate([
             'pregunta' => ['required', 'string', 'min:4', 'max:500'],
         ]);
@@ -32,6 +35,13 @@ class AsistenteController extends Controller
             'fuentes' => $resultado['fuentes']->map(fn ($articulo) => [
                 'titulo' => $articulo->title,
                 'url'    => route('ayuda.show', $articulo),
+                // Las imágenes del artículo viajan con la respuesta: para quien
+                // no está familiarizado con la tecnología, ver la pantalla
+                // resuelve en segundos lo que un párrafo explica mal.
+                'imagenes' => $articulo->imagenes->map(fn ($imagen) => [
+                    'url'         => $imagen->url,
+                    'descripcion' => $imagen->descripcion,
+                ])->values(),
             ])->values(),
         ]);
     }

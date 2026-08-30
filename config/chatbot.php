@@ -51,18 +51,39 @@ return [
     'articulos_contexto' => 2,
 
     /*
-    | Relevancia mínima para molestar al modelo.
+    | Relevancia mínima para mostrar artículos como sugerencia.
     |
-    | La búsqueda puntúa cada artículo (título vale 3, síntomas 2, cuerpo 1) y
-    | ese puntaje se divide por la cantidad de palabras buscadas. Por debajo de
-    | este valor la consulta no tiene que ver con la base y se responde de
-    | inmediato ofreciendo abrir un ticket, sin gastar una llamada al modelo.
+    | Más bajo que el umbral del modelo a propósito. Equivocarse en esta
+    | dirección es barato: la persona ve el título del artículo y decide sola si
+    | le sirve. Equivocarse dejando que el modelo explique un artículo que no
+    | viene al caso es caro, porque lo explica con seguridad.
     |
-    | Medido: las consultas que la base sí cubre dieron entre 2.0 y 5.5; las
-    | ajenas (vacaciones, arriendos, sistemas que no administra soporte),
-    | entre 0.25 y 1.5.
+    | Medido sobre frases naturales, del estilo que invita la burbuja de ayuda:
+    | las consultas que la base cubre dieron entre 1.0 y 5.5, y las ajenas entre
+    | 0.33 y 0.75.
     */
-    'umbral_relevancia' => env('CHATBOT_UMBRAL', 1.8),
+    'umbral_articulos' => env('CHATBOT_UMBRAL_ARTICULOS', 0.9),
+
+    /*
+    | Relevancia mínima para que el modelo explique el artículo.
+    |
+    | Por debajo de este valor el artículo igual se muestra, pero como enlace:
+    | la persona lee el título y decide. Solo con una coincidencia fuerte se le
+    | pide al modelo que lo explique.
+    |
+    | Sobre el límite de esta medición, que conviene tener presente: la
+    | puntuación es por palabras, así que no distingue "cómo configuro el
+    | sistema SAP" de un artículo sobre sistemas que no cargan —para la
+    | búsqueda ambos son "sistema"—. Esa consulta ajena puntúa 2.0, más que
+    | varias consultas legítimas. No hay un valor que separe los dos grupos
+    | limpiamente.
+    |
+    | Por eso el umbral quedó alto: prefiere dejar sin explicación una consulta
+    | válida (que igual recibe el artículo) antes que explicar con seguridad un
+    | artículo que no venía al caso. Y por eso la respuesta siempre muestra de
+    | qué artículo salió.
+    */
+    'umbral_relevancia' => env('CHATBOT_UMBRAL', 2.5),
 
     // Temperatura baja: interesa que repita el manual, no que sea creativo.
     'temperatura' => 0.2,

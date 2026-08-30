@@ -919,5 +919,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+{{-- Ayuda flotante. Va al final del body para quedar sobre el resto de la
+     página, y solo con sesión iniciada: consulta rutas que exigen estar
+     autenticado. --}}
+@auth
+    @include('partials.burbuja_ayuda')
+@endauth
 </body>
 </html>
