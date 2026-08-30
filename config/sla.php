@@ -40,6 +40,21 @@ return [
     ],
 
     /*
+    |--------------------------------------------------------------------------
+    | Aviso antes de que venza el plazo
+    |--------------------------------------------------------------------------
+    |
+    | Cuántos minutos antes del vencimiento se avisa al agente asignado —o al
+    | equipo, si el ticket no tiene dueño—.
+    |
+    | Conviene que sea holgado: avisar cinco minutos antes no le da tiempo a
+    | nadie de hacer nada, y el aviso pasa a ser una constatación en vez de una
+    | oportunidad de reaccionar.
+    |
+    */
+    'aviso_minutos_antes' => env('SLA_AVISO_MINUTOS', 30),
+
+    /*
     | Prioridades que se cuentan las 24 horas, sin esperar al horario laboral.
     |
     | Vacío a propósito: hoy todas las prioridades respetan el horario. Si la
