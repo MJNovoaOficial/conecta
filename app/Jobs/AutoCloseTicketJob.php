@@ -2,56 +2,110 @@
 
 namespace App\Jobs;
 
+use App\Mail\GuestTicketAutoClosedMail;
+use App\Models\AuditLog;
+use App\Models\Notificacion;
 use App\Models\Ticket;
+use App\Models\TicketHistory;
+use App\Notifications\TicketUpdatedNotification;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
+/**
+ * Cierra los tickets que quedaron esperando una respuesta que nunca llegó.
+ *
+ * RNG-01: cuando soporte pide información al solicitante, este tiene un plazo
+ * para contestar. Vencido ese plazo sin respuesta, el ticket se cierra.
+ *
+ * Cierra ÚNICAMENTE por falta de respuesta del solicitante. Un ticket que
+ * soporte no alcanzó a resolver dentro del SLA no se toca: incumplir un plazo
+ * de atención no significa que el problema esté resuelto, y cerrarlo lo
+ * haría desaparecer de la bandeja dejando al usuario sin respuesta.
+ */
 class AutoCloseTicketJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function handle(): void
     {
-        // Obtener tickets en estado "Pendiente Usuario" con deadline expirado
-        $expiredTickets = Ticket::where('status', Ticket::STATUS_PENDING_USER)
-            ->where('response_deadline_at', '<', Carbon::now())
+        $ahora = Carbon::now();
+
+        $tickets = Ticket::where('status', Ticket::STATUS_PENDING_USER)
+            ->whereNotNull('response_deadline_at')
+            ->where('response_deadline_at', '<', $ahora)
+            // Sin esta condición se cerrarían también los tickets de quien sí
+            // contestó: le pedimos información, la entregó, y le cerramos el
+            // ticket igual.
+            ->whereNull('user_responded_at')
             ->get();
 
-        foreach ($expiredTickets as $ticket) {
+        foreach ($tickets as $ticket) {
+            $estadoAnterior = $ticket->status;
+
             $ticket->update([
-                'status' => Ticket::STATUS_CLOSED,
+                'status'    => Ticket::STATUS_CLOSED,
+                'closed_at' => $ahora,
             ]);
 
-            // Registrar en historial
-            \App\Models\TicketHistory::create([
-                'ticket_id' => $ticket->id,
-                'user_id' => null,
-                'action' => 'auto_closed',
-                'old_value' => Ticket::STATUS_PENDING_USER,
-                'new_value' => Ticket::STATUS_CLOSED,
+            TicketHistory::create([
+                'ticket_id'  => $ticket->id,
+                'user_id'    => null,   // lo cierra el sistema, no una persona
+                'action'     => 'auto_closed',
+                'old_value'  => $estadoAnterior,
+                'new_value'  => Ticket::STATUS_CLOSED,
                 'field_name' => 'status',
             ]);
 
-            // Notificar al usuario registrado
-            if ($ticket->user) {
-                $ticket->user->notify(
-                    new \App\Notifications\TicketUpdatedNotification(
-                        $ticket,
-                        'Tu ticket ' . $ticket->ticket_number . ' ha sido cerrado automáticamente por falta de respuesta. Si el problema persiste, por favor abre un nuevo ticket.'
-                    )
+            // RNG-05: queda en auditoría porque es una acción que nadie firmó.
+            // El nombre corto del modelo es la convención del resto del código.
+            AuditLog::record('ticket.auto_closed_no_response', 'Ticket', $ticket->id, [
+                'previous_status'   => $estadoAnterior,
+                'response_deadline' => $ticket->response_deadline_at,
+                'reason'            => 'Falta de respuesta del solicitante',
+            ]);
+
+            $this->avisar($ticket);
+        }
+    }
+
+    /**
+     * Avisa a quien abrió el ticket.
+     *
+     * Un fallo de correo no puede dejar el cierre a medias: el ticket ya se
+     * cerró y la auditoría ya quedó escrita.
+     */
+    private function avisar(Ticket $ticket): void
+    {
+        $mensaje = 'Tu ticket ' . $ticket->ticket_number . ' se cerró porque no recibimos '
+                 . 'tu respuesta dentro del plazo. Si el problema sigue, abre uno nuevo.';
+
+        try {
+            if ($ticket->user_id) {
+                Notificacion::notify(
+                    $ticket->user_id,
+                    'closed',
+                    'Ticket cerrado: ' . $ticket->ticket_number,
+                    $mensaje,
+                    $ticket->id
                 );
+
+                $ticket->user->notify(new TicketUpdatedNotification($ticket, $mensaje));
+                return;
             }
 
-            // Notificar al invitado por correo directamente
-            if ($ticket->isGuestTicket() && $ticket->guest_email) {
-                \Illuminate\Support\Facades\Mail::to($ticket->guest_email)->send(
-                    new \App\Mail\GuestTicketAutoClosedMail($ticket)
-                );
+            if ($ticket->guest_email) {
+                Mail::to($ticket->guest_email)->send(new GuestTicketAutoClosedMail($ticket));
             }
+        } catch (\Throwable $e) {
+            Log::warning(
+                "No se pudo avisar del cierre automatico del ticket {$ticket->id}: " . $e->getMessage()
+            );
         }
     }
 }
