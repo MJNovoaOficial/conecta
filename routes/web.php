@@ -45,6 +45,8 @@ Route::get('/tickets/guest/{token}', [TicketController::class, 'guestShow'])->na
 // se cerraba solo por falta de respuesta.
 Route::post('/tickets/guest/{token}/comment', [TicketController::class, 'guestComment'])
     ->name('tickets.guest.comment');
+Route::post('/tickets/guest/{token}/reopen',  [TicketController::class, 'guestReopen'])
+    ->name('tickets.guest.reopen');
 
 // AJAX público — catálogo (para formularios de invitados)
 Route::get('/api/categorias/{categoria}/subcategorias', [CategoryController::class, 'getSubcategorias'])->name('api.subcategorias');
@@ -94,6 +96,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/tickets/{ticket}/self-assign', [TicketController::class, 'selfAssign'])->name('tickets.selfAssign');
     Route::post('/tickets/{ticket}/forward',     [TicketController::class, 'forward'])->name('tickets.forward');
     Route::post('/tickets/{ticket}/close',       [TicketController::class, 'close'])->name('tickets.close');
+    // El solicitante reabre su ticket cuando la solución no resolvió el problema.
+    Route::post('/tickets/{ticket}/reopen',      [TicketController::class, 'reopen'])->name('tickets.reopen');
     Route::get('/tickets/{ticket}/panel',        [TicketController::class, 'panel'])->name('tickets.panel');
 
     // ── Notificaciones ────────────────────────────────────────────────
