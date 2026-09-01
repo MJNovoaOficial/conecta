@@ -153,10 +153,21 @@ class Ticket extends Model
     }
 
 
+    /**
+     * Tiempo de reloj desde que se creó el ticket hasta que se resolvió, o
+     * hasta ahora si sigue abierto.
+     *
+     * Se muestra junto al tiempo de soporte y el contraste entre ambos es lo
+     * informativo: cuánto esperó la persona frente a cuánto se trabajó.
+     *
+     * Un ticket terminado deja de sumar. Midiendo siempre contra la fecha de
+     * hoy, uno cerrado en junio seguía envejeciendo en pantalla.
+     */
     public function getTimeElapsedFormatted()
     {
-        $diff = $this->created_at->diff(Carbon::now());
-        
+        $hasta = $this->resolved_at ?? $this->closed_at ?? Carbon::now();
+        $diff  = $this->created_at->diff($hasta);
+
         if ($diff->days > 0) {
             return $diff->days . 'd ' . $diff->h . 'h';
         }
@@ -172,26 +183,38 @@ class Ticket extends Model
     }
 
     /**
-     * Calcula el tiempo real de atención de soporte,
-     * excluyendo el período en que el ticket estuvo "Pendiente Usuario".
-     * Retorna los minutos de trabajo efectivo de soporte.
+     * Minutos de atención de soporte.
+     *
+     * Descuenta el tiempo que el ticket estuvo esperando al solicitante, y deja
+     * de contar cuando el ticket se resolvió.
+     *
+     * Se mide en horas de reloj y no en horas hábiles a propósito: si alguien
+     * resuelve algo un sábado, ese trabajo existió. Contar solo horario laboral
+     * mostraría "0 minutos de atención" en un ticket que costó una tarde de
+     * fin de semana.
      */
     public function getSupportMinutes(): int
     {
-        $totalMinutes = $this->created_at->diffInMinutes(Carbon::now());
+        // Un ticket terminado deja de acumular tiempo en el momento en que se
+        // resolvió. Midiendo siempre contra la fecha de hoy, un ticket cerrado
+        // en junio mostraba "72 días de atención" habiéndose resuelto en 52
+        // horas, y el número seguía subiendo solo.
+        $hasta = $this->resolved_at ?? $this->closed_at ?? Carbon::now();
 
-        // Si el ticket estuvo en pendiente_usuario y el usuario respondió,
-        // restamos el tiempo que estuvo esperando respuesta del usuario.
+        $minutos = $this->created_at->diffInMinutes($hasta);
+
+        // El rato que el ticket estuvo esperando al solicitante no es tiempo de
+        // atención: soporte no podía avanzar.
         if ($this->last_response_request_at && $this->user_responded_at) {
-            $waitMinutes = $this->last_response_request_at->diffInMinutes($this->user_responded_at);
-            $totalMinutes = max(0, $totalMinutes - $waitMinutes);
+            $espera  = $this->last_response_request_at->diffInMinutes($this->user_responded_at);
+            $minutos = max(0, $minutos - $espera);
         } elseif ($this->last_response_request_at && $this->status === self::STATUS_PENDING_USER) {
-            // El ticket sigue esperando respuesta: restar el tiempo desde que se solicitó hasta ahora
-            $waitMinutes = $this->last_response_request_at->diffInMinutes(Carbon::now());
-            $totalMinutes = max(0, $totalMinutes - $waitMinutes);
+            // Sigue esperando: se descuenta hasta ahora.
+            $espera  = $this->last_response_request_at->diffInMinutes(Carbon::now());
+            $minutos = max(0, $minutos - $espera);
         }
 
-        return (int) $totalMinutes;
+        return (int) $minutos;
     }
 
     /**
