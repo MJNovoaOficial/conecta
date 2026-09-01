@@ -939,6 +939,134 @@ class TicketController extends Controller
     /**
      * Cierre formal del ticket con solución (RF-ST-14, RF-ST-10)
      */
+    /**
+     * El solicitante reabre su ticket porque la solución no resolvió su problema.
+     *
+     * Antes, el botón "No, necesito más ayuda" solo llevaba al formulario de
+     * comentarios: el ticket seguía en "Resuelto" y contando como tal en los
+     * reportes. La tasa de resolución quedaba inflada con casos que no se
+     * habían resuelto.
+     */
+    public function reopen(Request $request, Ticket $ticket)
+    {
+        $this->authorize('update', $ticket);
+
+        $user    = Auth::user();
+        $esDueno = $ticket->user_id === $user->id;
+
+        if (! $esDueno && ! $user->isAdmin() && $ticket->assigned_to !== $user->id) {
+            return back()->with('error', 'No tienes permiso para reabrir este ticket.');
+        }
+
+        // Solo desde "Resuelto". Un ticket cerrado ya fue confirmado por su
+        // dueño, y para ese caso corresponde abrir uno nuevo.
+        if ($ticket->status !== Ticket::STATUS_RESOLVED) {
+            return back()->with('error', 'Solo se puede reabrir un ticket que está marcado como resuelto.');
+        }
+
+        $request->validate([
+            'motivo' => 'required|string|min:10|max:5000',
+        ], [
+            'motivo.required' => 'Cuéntanos qué sigue fallando.',
+            'motivo.min'      => 'Describe con un poco más de detalle qué sigue fallando.',
+        ]);
+
+        $this->reabrir($ticket, $request->motivo, $user->id);
+
+        return back()->with('success', 'Tu ticket fue reabierto. Soporte lo va a revisar de nuevo.');
+    }
+
+    /**
+     * Reapertura de un invitado, con el token de su enlace.
+     */
+    public function guestReopen(Request $request, string $token)
+    {
+        $ticket = Ticket::where('guest_token', $token)->firstOrFail();
+
+        if ($ticket->status !== Ticket::STATUS_RESOLVED) {
+            return back()->with('error', 'Solo se puede reabrir un ticket que está marcado como resuelto.');
+        }
+
+        $llave = 'guest_reopen:' . $request->ip();
+        if (RateLimiter::tooManyAttempts($llave, 10)) {
+            return back()->withErrors(['motivo' => 'Demasiados intentos. Prueba más tarde.']);
+        }
+        RateLimiter::hit($llave, 3600);
+
+        $request->validate([
+            'motivo' => 'required|string|min:10|max:5000',
+        ], [
+            'motivo.required' => 'Cuéntanos qué sigue fallando.',
+            'motivo.min'      => 'Describe con un poco más de detalle qué sigue fallando.',
+        ]);
+
+        $this->reabrir($ticket, $request->motivo, null);
+
+        return back()->with('success', 'Tu ticket fue reabierto. Soporte lo va a revisar de nuevo.');
+    }
+
+    /**
+     * Devuelve el ticket a la cola de soporte y deja registrada la reapertura.
+     *
+     * El plazo de resolución se recalcula desde ahora. Mantener el original
+     * dejaría el ticket vencido de entrada, y un plazo que ya no se puede
+     * cumplir no le da a soporte ninguna señal sobre la que actuar. La falla
+     * queda registrada en el contador de reaperturas, que es el dato honesto:
+     * un ticket reabierto tres veces se ve como tal aunque cada ciclo cumpla
+     * su plazo.
+     */
+    private function reabrir(Ticket $ticket, string $motivo, ?int $usuarioId): void
+    {
+        $sla = SlaConfig::forPriority($ticket->priority);
+
+        $ticket->update([
+            'status'                     => Ticket::STATUS_IN_PROGRESS,
+            'resolved_at'                => null,
+            'closed_at'                  => null,
+            'reopened_count'             => $ticket->reopened_count + 1,
+            'reopened_at'                => Carbon::now(),
+            'sla_resolution_deadline_at' => HorarioLaboral::sumarHoras(now(), $sla->resolution_hours, $ticket->priority),
+            // El aviso de vencimiento vuelve a armarse para el plazo nuevo.
+            'sla_warned_for'             => null,
+        ]);
+
+        // El motivo queda como comentario: es lo que soporte necesita leer para
+        // retomar, y se pierde si solo vive en el historial.
+        TicketComment::create([
+            'ticket_id'                => $ticket->id,
+            'user_id'                  => $usuarioId,
+            'comment'                  => $motivo,
+            'ticket_status_at_comment' => Ticket::STATUS_RESOLVED,
+            'is_internal'              => false,
+        ]);
+
+        TicketHistory::create([
+            'ticket_id'  => $ticket->id,
+            'user_id'    => $usuarioId,
+            'action'     => 'reopened',
+            'old_value'  => Ticket::STATUS_RESOLVED,
+            'new_value'  => Ticket::STATUS_IN_PROGRESS,
+            'field_name' => 'status',
+        ]);
+
+        AuditLog::record('ticket.reopened', 'Ticket', $ticket->id, [
+            'reaperturas' => $ticket->reopened_count,
+            'motivo'      => Str::limit($motivo, 200),
+        ], $usuarioId);
+
+        if ($ticket->assigned_to) {
+            try {
+                $ticket->assignedTo->notify(new TicketUpdatedNotification(
+                    $ticket,
+                    'El solicitante reabrió el ticket ' . $ticket->ticket_number
+                    . ': la solución entregada no resolvió su problema.'
+                ));
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo avisar de la reapertura: ' . $e->getMessage());
+            }
+        }
+    }
+
     public function close(Request $request, Ticket $ticket)
     {
         $this->authorize('update', $ticket);

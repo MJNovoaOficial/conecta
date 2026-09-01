@@ -30,6 +30,9 @@ class Ticket extends Model
         'user_responded_at',
         'closed_at',
         'resolved_at',
+        'reopened_count',
+        'reopened_at',
+        'sla_warned_for',
         'guest_name',
         'guest_email',
         'guest_department',
@@ -46,6 +49,8 @@ class Ticket extends Model
         'user_responded_at'           => 'datetime',
         'closed_at'                   => 'datetime',
         'resolved_at'                 => 'datetime',
+        'reopened_at'                 => 'datetime',
+        'sla_warned_for'              => 'datetime',
     ];
 
     // Estados posibles
