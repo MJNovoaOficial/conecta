@@ -48,6 +48,18 @@ Route::post('/tickets/guest/{token}/comment', [TicketController::class, 'guestCo
 Route::post('/tickets/guest/{token}/reopen',  [TicketController::class, 'guestReopen'])
     ->name('tickets.guest.reopen');
 
+// Asistente de la pantalla de login, sin sesión iniciada.
+//
+// Solo alcanza los artículos marcados como públicos: quien pregunta acá no se
+// ha identificado, así que no puede ver la base completa. El filtro está en
+// AsistenteIA, no en esta ruta.
+//
+// El límite es más estricto que el de la versión con sesión (10 por minuto)
+// porque acá no hay cuenta a la que atribuir el abuso, solo una IP, y cada
+// consulta ocupa el servidor de modelos varios segundos.
+Route::post('/asistente', [AsistenteController::class, 'preguntarPublico'])
+    ->middleware('throttle:5,1')->name('asistente.publico');
+
 // AJAX público — catálogo (para formularios de invitados)
 Route::get('/api/categorias/{categoria}/subcategorias', [CategoryController::class, 'getSubcategorias'])->name('api.subcategorias');
 Route::get('/api/subcategorias/{subcategoria}/tipos',   [CategoryController::class, 'getTipos'])->name('api.tipos');

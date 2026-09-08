@@ -85,6 +85,36 @@ return [
     */
     'umbral_relevancia' => env('CHATBOT_UMBRAL', 2.5),
 
+    /*
+    | Lo mismo, pero para el asistente de la pantalla de login.
+    |
+    | Más bajo, y no por descuido. Con sesión iniciada, quedarse corto es
+    | barato: el artículo se muestra como enlace y la persona entra a leerlo.
+    | Antes de iniciar sesión no hay enlace posible —la ruta del artículo exige
+    | sesión—, así que quedarse corto deja a la vista un título suelto y nada
+    | más. La persona que no puede entrar se queda igual de trabada.
+    |
+    | El riesgo de bajarlo también es menor ahí: la búsqueda pública solo
+    | alcanza los artículos marcados como públicos, que son un puñado y todos
+    | del mismo tema. Lo peor que puede pasar es que explique el artículo de
+    | contraseñas a alguien que preguntó otra cosa, y la respuesta siempre dice
+    | de qué artículo salió.
+    |
+    | Medido sobre frases naturales de la pantalla de login:
+    |
+    |   "olvide mi contrasena"                    5.50
+    |   "cuenta bloqueada por intentos fallidos"  5.25
+    |   "olvide mi contrasena, como la recupero"  2.33
+    |   "como recupero mi contrasena olvidada"    2.25
+    |   "no me acepta la contrasena al entrar"    2.00
+    |   "no puedo iniciar sesion"                 0.50
+    |
+    | En 1.5 pasan las cinco primeras y queda fuera la última, que es
+    | efectivamente vaga. Con el umbral general de 2.5 pasaban solo dos: las
+    | cortas, que son justo las que no escribe quien está apurado y molesto.
+    */
+    'umbral_relevancia_publico' => env('CHATBOT_UMBRAL_PUBLICO', 1.5),
+
     // Temperatura baja: interesa que repita el manual, no que sea creativo.
     'temperatura' => 0.2,
 

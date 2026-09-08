@@ -1,5 +1,5 @@
 {{--
-    Burbuja de ayuda flotante.
+    DIMAKING, el asistente de la mesa de ayuda.
 
     Aparece en todas las páginas para quien no sabe dónde buscar. La plataforma
     la usan personas mayores y gente poco habituada a sistemas, así que el botón
@@ -8,7 +8,23 @@
 
     No depende del servidor de modelos. Si está apagado, igual entrega el
     artículo que corresponde; si está encendido, además lo explica.
+
+    ── Dos modos ──────────────────────────────────────────────────────────────
+
+    Con $publico = true se usa en la pantalla de login, donde nadie ha iniciado
+    sesión. Ahí cambian tres cosas:
+
+      · consulta una ruta pública que solo alcanza los artículos marcados como
+        públicos (el filtro está en AsistenteIA, no acá);
+      · no muestra enlaces ni imágenes de los artículos, porque esas rutas
+        exigen sesión y mandarían a la persona de vuelta al login;
+      · la salida a una persona es el formulario de invitados, no el de tickets.
+
+    Está parametrizado en vez de duplicado a propósito: dos archivos casi
+    iguales terminan divergiendo, y el que se olvida de actualizar es siempre
+    el que menos se mira.
 --}}
+@php($publico = $publico ?? false)
 <style>
 .bur-lanzador {
     position: fixed; right: 22px; bottom: 22px; z-index: 1040;
@@ -37,8 +53,10 @@
     background: #2563eb; color: #fff; padding: 16px 18px;
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
-.bur-cabecera h2 { margin: 0; font-size: 1.05rem; font-weight: 700; }
+.bur-cabecera h2 { margin: 0; font-size: 1.05rem; font-weight: 700; letter-spacing: .01em; }
 .bur-cabecera p  { margin: 3px 0 0; font-size: .84rem; opacity: .92; }
+.bur-marca { display: flex; align-items: center; gap: 11px; }
+.bur-marca svg { flex-shrink: 0; }
 .bur-cerrar {
     background: rgba(255,255,255,.18); border: none; color: #fff;
     width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
@@ -91,13 +109,17 @@
     border: 2px solid #dbeafe; border-radius: 12px;
     background: #eff6ff; overflow: hidden;
 }
-.bur-guia > a {
+/* El span es la variante sin sesión: mismo aspecto, pero no es un enlace
+   porque la ruta del artículo exige estar autenticado. */
+.bur-guia > a,
+.bur-guia > span {
     display: flex; align-items: center; gap: 10px;
     padding: 13px 15px; color: #1d4ed8; text-decoration: none;
     font-size: .95rem; font-weight: 700; line-height: 1.4;
 }
 .bur-guia > a:hover { background: #dbeafe; color: #1e40af; }
-.bur-guia > a i { flex-shrink: 0; }
+.bur-guia > a i,
+.bur-guia > span i { flex-shrink: 0; }
 
 /* Las capturas se muestran aquí mismo: hacer clic para verlas ya es una
    barrera para quien no está habituado a navegar. */
@@ -138,9 +160,23 @@
 
 <div class="bur-panel" id="burPanel" role="dialog" aria-modal="false" aria-labelledby="burTitulo">
     <div class="bur-cabecera">
-        <div>
-            <h2 id="burTitulo">¿Necesitas ayuda?</h2>
-            <p>Cuéntame qué te pasa y te oriento.</p>
+        <div class="bur-marca">
+            {{-- Corona sobre un globo de diálogo: DIMAK + king. Va en línea y no
+                 como archivo de imagen para que se vea aunque la sesión no esté
+                 iniciada, sin depender de una ruta que exija permisos. --}}
+            <svg width="36" height="36" viewBox="0 0 32 32" aria-hidden="true">
+                <path d="M7.5 9.2 L11 12.8 L16 6.6 L21 12.8 L24.5 9.2 L23.4 14.6 L8.6 14.6 Z"
+                      fill="#fbbf24"/>
+                <rect x="6" y="16" width="20" height="12.5" rx="5" fill="#fff"/>
+                <path d="M11 28 L11 30.6 L14.6 28 Z" fill="#fff"/>
+                <circle cx="12" cy="22.2" r="1.55" fill="#2563eb"/>
+                <circle cx="16" cy="22.2" r="1.55" fill="#2563eb"/>
+                <circle cx="20" cy="22.2" r="1.55" fill="#2563eb"/>
+            </svg>
+            <div>
+                <h2 id="burTitulo">DIMAKING</h2>
+                <p>Cuéntame qué te pasa y te oriento.</p>
+            </div>
         </div>
         <button type="button" class="bur-cerrar" id="burCerrar" aria-label="Cerrar la ayuda">✕</button>
     </div>
@@ -148,7 +184,11 @@
     <div class="bur-cuerpo">
         <p class="bur-ejemplos">
             Escríbelo con tus palabras, como se lo contarías a un compañero.<br>
-            Por ejemplo: <b>“no se ve nada en la pantalla”</b> o <b>“no puedo imprimir”</b>.
+            @if ($publico)
+                Por ejemplo: <b>“no me acepta la contraseña”</b> o <b>“no recuerdo mi usuario”</b>.
+            @else
+                Por ejemplo: <b>“no se ve nada en la pantalla”</b> o <b>“no puedo imprimir”</b>.
+            @endif
         </p>
 
         <form class="bur-forma" id="burForma">
@@ -171,10 +211,20 @@
     </div>
 
     <div class="bur-pie">
-        <p>¿Prefieres que te ayude una persona?</p>
-        <a href="{{ route('tickets.create') }}" class="bur-ticket">
-            <i class="fas fa-headset" aria-hidden="true"></i> Pedir ayuda a soporte
-        </a>
+        @if ($publico)
+            {{-- Sin sesión no existe "crear ticket": la salida es el formulario
+                 de invitados, que no exige cuenta. Quien no puede entrar es
+                 justamente el que más necesita esta puerta. --}}
+            <p>¿Sigues sin poder entrar?</p>
+            <a href="{{ route('tickets.guest.create') }}" class="bur-ticket">
+                <i class="fas fa-headset" aria-hidden="true"></i> Escribirle a soporte
+            </a>
+        @else
+            <p>¿Prefieres que te ayude una persona?</p>
+            <a href="{{ route('tickets.create') }}" class="bur-ticket">
+                <i class="fas fa-headset" aria-hidden="true"></i> Pedir ayuda a soporte
+            </a>
+        @endif
     </div>
 </div>
 
@@ -228,7 +278,7 @@
         articulos.textContent = '';
 
         try {
-            const r = await fetch('{{ route('ayuda.asistente') }}', {
+            const r = await fetch('{{ $publico ? route('asistente.publico') : route('ayuda.asistente') }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -250,14 +300,19 @@
                 const caja = document.createElement('div');
                 caja.className = 'bur-guia';
 
-                const a = document.createElement('a');
-                a.href = f.url;
+                // Antes de iniciar sesión se muestra el título de la guía, pero
+                // no como enlace: la ruta del artículo exige sesión y el clic
+                // devolvería a la persona al login del que quiere salir.
+                const a = document.createElement(f.url ? 'a' : 'span');
+                if (f.url) { a.href = f.url; }
                 const icono = document.createElement('i');
                 icono.className = 'fas fa-book-open';
                 icono.setAttribute('aria-hidden', 'true');
                 a.appendChild(icono);
                 a.appendChild(document.createTextNode(
-                    (f.imagenes && f.imagenes.length ? 'Ver la guía con imágenes: ' : 'Ver la guía: ') + f.titulo
+                    f.url
+                        ? (f.imagenes && f.imagenes.length ? 'Ver la guía con imágenes: ' : 'Ver la guía: ') + f.titulo
+                        : f.titulo
                 ));
                 caja.appendChild(a);
 

@@ -21,6 +21,7 @@ class Articulo extends Model
         'categoria_id',
         'subcategoria_id',
         'is_active',
+        'publico',
         'created_by',
     ];
 
@@ -28,6 +29,7 @@ class Articulo extends Model
     {
         return [
             'is_active' => 'boolean',
+            'publico'   => 'boolean',
         ];
     }
 
@@ -63,6 +65,19 @@ class Articulo extends Model
     public function scopeActivos($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Artículos que puede leer alguien sin haber iniciado sesión.
+     *
+     * Los consulta el asistente de la pantalla de login, donde no se sabe
+     * quién pregunta. Son los que soporte marcó explícitamente: dudas de
+     * acceso y contraseñas, que es lo que la persona necesita justo antes
+     * de entrar. Todo lo demás exige sesión.
+     */
+    public function scopePublicos($query)
+    {
+        return $query->where('publico', true);
     }
 
     /**

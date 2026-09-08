@@ -63,6 +63,8 @@ class ArticuloController extends Controller
 
     public function update(Request $request, Articulo $articulo)
     {
+        $eraPublico = $articulo->publico;
+
         $articulo->update($this->validar($request));
 
         $this->actualizarDescripciones($request, $articulo);
@@ -72,6 +74,16 @@ class ArticuloController extends Controller
         AuditLog::record('articulo.updated', 'Articulo', $articulo->id, [
             'title' => $articulo->title,
         ]);
+
+        // Se registra aparte porque no es un cambio de contenido: es exponer
+        // un artículo a cualquiera que llegue a la pantalla de login, o dejar
+        // de hacerlo. Conviene poder responder después quién y cuándo.
+        if ($eraPublico !== $articulo->publico) {
+            AuditLog::record('articulo.visibilidad_publica', 'Articulo', $articulo->id, [
+                'title'   => $articulo->title,
+                'publico' => $articulo->publico,
+            ]);
+        }
 
         return redirect()
             ->route('admin.articulos.index')
@@ -188,6 +200,9 @@ class ArticuloController extends Controller
             'content'         => 'required|string|max:10000',
             'categoria_id'    => 'nullable|exists:categorias,id',
             'subcategoria_id' => 'nullable|exists:subcategorias,id',
+            // Solo llega desde el formulario de edición. Si no viene, el
+            // artículo conserva lo que tenía, y uno nuevo nace privado.
+            'publico'         => 'sometimes|boolean',
         ], [
             'required' => 'El campo :attribute es obligatorio.',
             'max'      => 'El campo :attribute no puede superar los :max caracteres.',

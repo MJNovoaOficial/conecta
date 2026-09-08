@@ -46,9 +46,13 @@ class AsistenteIA
     /**
      * Busca y calcula qué tan relacionada está la consulta con lo encontrado.
      *
+     * Con $soloPublicos la búsqueda se limita a los artículos que soporte marcó
+     * como legibles sin sesión. Es el filtro que separa al asistente de la
+     * pantalla de login del que ve un trabajador ya autenticado.
+     *
      * @return array{articulos:\Illuminate\Support\Collection, relevancia:float}
      */
-    private function buscar(string $pregunta): array
+    private function buscar(string $pregunta, bool $soloPublicos = false): array
     {
         $vacio = ['articulos' => collect(), 'relevancia' => 0.0];
         $palabras = Articulo::palabrasClave($pregunta);
@@ -58,6 +62,7 @@ class AsistenteIA
         }
 
         $articulos = Articulo::activos()
+            ->when($soloPublicos, fn ($q) => $q->publicos())
             ->with('imagenes')
             ->conPuntaje($pregunta)
             ->limit((int) config('chatbot.articulos_contexto', 2))
@@ -80,17 +85,23 @@ class AsistenteIA
     /**
      * @return array{tipo:string, texto:string, fuentes:\Illuminate\Support\Collection}
      */
-    public function responder(string $pregunta): array
+    public function responder(string $pregunta, bool $soloPublicos = false): array
     {
-        ['articulos' => $articulos, 'relevancia' => $relevancia] = $this->buscar($pregunta);
+        ['articulos' => $articulos, 'relevancia' => $relevancia] = $this->buscar($pregunta, $soloPublicos);
 
         if ($articulos->isEmpty()) {
-            return $this->sinCobertura();
+            return $this->sinCobertura($soloPublicos);
         }
 
         $soloArticulos = [
             'tipo'    => self::SOLO_ARTICULOS,
-            'texto'   => 'Encontré esto en las guías de soporte. Revisa si alguna trata tu problema:',
+            // Sin sesión el título no es un enlace, así que "revisa si alguna
+            // trata tu problema" mandaría a la persona a hacer clic en algo que
+            // no se puede abrir.
+            'texto'   => $soloPublicos
+                ? 'Esto es lo más parecido que encontré en las guías de acceso. '
+                  . 'Si no es tu caso, escríbenos con el botón de abajo.'
+                : 'Encontré esto en las guías de soporte. Revisa si alguna trata tu problema:',
             'fuentes' => $articulos,
         ];
 
@@ -103,7 +114,15 @@ class AsistenteIA
         // Coincidencia débil: se muestra el artículo pero no se le pide al
         // modelo que lo explique. Que la persona lea el título y decida es
         // preferible a una explicación segura y sin fundamento.
-        if ($relevancia < (float) config('chatbot.umbral_relevancia', 1.8)) {
+        //
+        // Antes de iniciar sesión el umbral es más bajo, porque ahí "mostrar el
+        // artículo" es solo mostrar su título: la ruta para leerlo exige sesión.
+        // Ver la explicación completa en config/chatbot.php.
+        $umbral = $soloPublicos
+            ? (float) config('chatbot.umbral_relevancia_publico', 1.5)
+            : (float) config('chatbot.umbral_relevancia', 2.5);
+
+        if ($relevancia < $umbral) {
             return $soloArticulos;
         }
 
@@ -125,12 +144,20 @@ class AsistenteIA
         ];
     }
 
-    private function sinCobertura(): array
+    /**
+     * Antes de iniciar sesión el mensaje cambia: quien pregunta ahí no puede
+     * abrir un ticket normal, pero sí uno como invitado. Mandarlo a "abre un
+     * ticket" sin decirle cómo lo deja en el mismo lugar donde estaba.
+     */
+    private function sinCobertura(bool $soloPublicos = false): array
     {
         return [
             'tipo'    => self::SIN_COBERTURA,
-            'texto'   => 'No encontré nada sobre eso en la base de conocimiento. '
-                       . 'Abre un ticket y soporte lo revisa.',
+            'texto'   => $soloPublicos
+                ? 'No encontré nada sobre eso en las guías que puedo mostrar antes de '
+                  . 'iniciar sesión. Si no logras entrar, escríbenos y soporte lo revisa.'
+                : 'No encontré nada sobre eso en la base de conocimiento. '
+                  . 'Abre un ticket y soporte lo revisa.',
             'fuentes' => collect(),
         ];
     }
