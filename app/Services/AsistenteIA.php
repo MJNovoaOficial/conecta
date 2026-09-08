@@ -131,8 +131,14 @@ class AsistenteIA
         if ($texto === null) {
             return [
                 'tipo'    => self::NO_DISPONIBLE,
-                'texto'   => 'El asistente no está disponible en este momento. '
-                           . 'Los artículos de abajo tratan sobre lo que consultaste.',
+                // Sin sesión no sirve mandar a "los artículos de abajo": se ven
+                // los títulos pero no se pueden abrir. Ahí la salida útil es
+                // escribirle a soporte, que sí funciona sin cuenta.
+                'texto'   => $soloPublicos
+                    ? 'El asistente no está disponible en este momento. '
+                      . 'Escríbenos con el botón de abajo y soporte te ayuda a entrar.'
+                    : 'El asistente no está disponible en este momento. '
+                      . 'Los artículos de abajo tratan sobre lo que consultaste.',
                 'fuentes' => $articulos,
             ];
         }
