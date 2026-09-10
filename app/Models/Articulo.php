@@ -98,6 +98,29 @@ class Articulo extends Model
         'necesito', 'puedo', 'pude', 'hacer', 'hago', 'veo', 'ver', 'donde',
         'cuando', 'porque', 'sobre', 'desde', 'hasta', 'algo', 'alguien',
         'favor', 'ayuda', 'ayudar',
+        // "queda" arma la frase ("dónde queda", "se me queda") sin decir nada
+        // del problema. Hacía calzar "dónde queda Recursos Humanos" con el
+        // artículo de programas que se quedan cargando.
+        //
+        // "hay" parece igual de vacía y NO se agrega a propósito. Medido: sacarla
+        // subía "hay reunión mañana" de 2.0 a 3.0 de relevancia —dos palabras en
+        // vez de tres para el mismo puntaje—, y con eso cruzaba el umbral del
+        // modelo, que pasaba a explicar el artículo del audio de Teams a quien
+        // preguntaba por una reunión.
+        'queda',
+    ];
+
+    /**
+     * Terminaciones que raiz() quita, de la más larga a la más corta.
+     *
+     * El orden importa: si "-o" estuviera antes que "-isimo", "lentisimo"
+     * quedaría en "lentisim" y no calzaría con "lento".
+     */
+    private const TERMINACIONES = [
+        'isimos', 'isimas', 'isimo', 'isima', 'amente', 'mente',
+        'aciones', 'iciones', 'acion', 'icion', 'ando', 'iendo',
+        'adas', 'idas', 'ados', 'idos', 'ada', 'ida', 'ado', 'ido',
+        'ar', 'er', 'ir', 'as', 'es', 'os', 'a', 'e', 'o', 's',
     ];
 
     /**
@@ -124,18 +147,53 @@ class Articulo extends Model
     }
 
     /**
+     * Raíz de una palabra, para que las distintas formas de un mismo verbo o
+     * sustantivo calcen entre sí.
+     *
+     * La búsqueda compara fragmentos de texto, y "imprimir" no es un fragmento
+     * de "imprime". Quien escribía "no puedo imprimir" no encontraba el
+     * artículo "La impresora no imprime", que además era el ejemplo que
+     * sugería la propia burbuja de ayuda. Sin la terminación, "imprim" calza
+     * con las dos formas.
+     *
+     * Es simple a propósito: corta terminaciones comunes del español y nunca
+     * deja una raíz de menos de 4 letras. Más corta empieza a calzar dentro de
+     * palabras que no tienen nada que ver.
+     *
+     * Medido sobre 35 consultas escritas como las escribiría una persona, no
+     * copiadas de los síntomas: la persona ve el artículo correcto en 35 (antes
+     * 33), y las consultas ajenas a soporte no encontraron nada nuevo.
+     */
+    public static function raiz(string $palabra): string
+    {
+        if (mb_strlen($palabra) <= 4) {
+            return $palabra;
+        }
+
+        foreach (self::TERMINACIONES as $terminacion) {
+            $largo = mb_strlen($palabra) - mb_strlen($terminacion);
+
+            if ($largo >= 4 && str_ends_with($palabra, $terminacion)) {
+                return mb_substr($palabra, 0, $largo);
+            }
+        }
+
+        return $palabra;
+    }
+
+    /**
      * Cómo se compara una palabra contra un campo: [operador, patrón].
      *
-     * Las palabras normales se buscan como fragmento, así "carpeta" encuentra
-     * "carpetas". Las siglas de dos letras, en cambio, tienen que calzar como
-     * palabra completa: buscar "ip" como fragmento coincide dentro de "equipo",
-     * y terminaba respondiendo sobre el cable de red a quien preguntaba por su
-     * dirección IP.
+     * Las palabras normales se buscan por su raíz y como fragmento, así
+     * "carpeta" encuentra "carpetas" e "imprimir" encuentra "imprime". Las
+     * siglas de dos letras, en cambio, tienen que calzar como palabra completa:
+     * buscar "ip" como fragmento coincide dentro de "equipo", y terminaba
+     * respondiendo sobre el cable de red a quien preguntaba por su dirección IP.
      */
     private static function comparacion(string $palabra): array
     {
         if (mb_strlen($palabra) > 2) {
-            return ['LIKE', "%{$palabra}%"];
+            return ['LIKE', '%' . self::raiz($palabra) . '%'];
         }
 
         return ['REGEXP', '\\b' . preg_quote($palabra, '/') . '\\b'];

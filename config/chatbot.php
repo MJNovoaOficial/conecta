@@ -58,9 +58,21 @@ return [
     | le sirve. Equivocarse dejando que el modelo explique un artículo que no
     | viene al caso es caro, porque lo explica con seguridad.
     |
-    | Medido sobre frases naturales, del estilo que invita la burbuja de ayuda:
-    | las consultas que la base cubre dieron entre 1.0 y 5.5, y las ajenas entre
-    | 0.33 y 0.75.
+    | Medido sobre 35 consultas escritas como las escribiría una persona —no
+    | copiadas de los síntomas, que ya están pensados para calzar— y 8
+    | preguntas ajenas a soporte:
+    |
+    |   consultas válidas   de 1.67 a 6.0    pasan las 35
+    |   preguntas ajenas    de 0 a 3.0       pasan 3 de 8
+    |
+    | Las tres ajenas que pasan son coincidencias literales: "licencia médica"
+    | con la licencia de Office, "reunión mañana" con el audio de las reuniones
+    | de Teams, "el sistema SAP" con los sistemas que no cargan. Para la
+    | búsqueda son la misma palabra. Ningún umbral las separa sin dejar fuera
+    | consultas válidas: se probó además exigir que calzara una proporción
+    | mínima de las palabras de la consulta, y las coberturas de los dos grupos
+    | se superponen por completo ("word se quedó pegado", válida, calza en un
+    | tercio de sus palabras, igual que "el sistema SAP").
     */
     'umbral_articulos' => env('CHATBOT_UMBRAL_ARTICULOS', 0.9),
 
@@ -77,6 +89,11 @@ return [
     | búsqueda ambos son "sistema"—. Esa consulta ajena puntúa 2.0, más que
     | varias consultas legítimas. No hay un valor que separe los dos grupos
     | limpiamente.
+    |
+    | Y hay un caso que el umbral no alcanza a frenar: "necesito una licencia
+    | médica" puntúa 3.0 contra "Office pide activar la licencia", y el modelo
+    | lo explica. Es el único de las 8 preguntas ajenas medidas. Separarlo
+    | exige entender el significado de la frase, no contar palabras.
     |
     | Por eso el umbral quedó alto: prefiere dejar sin explicación una consulta
     | válida (que igual recibe el artículo) antes que explicar con seguridad un
@@ -100,18 +117,20 @@ return [
     | contraseñas a alguien que preguntó otra cosa, y la respuesta siempre dice
     | de qué artículo salió.
     |
-    | Medido sobre frases naturales de la pantalla de login:
+    | Medido sobre frases naturales de la pantalla de login, con la búsqueda
+    | por raíz de las palabras ("recupero" calza con "recuperar"):
     |
-    |   "olvide mi contrasena"                    5.50
+    |   "olvide mi contrasena"                    6.00
     |   "cuenta bloqueada por intentos fallidos"  5.25
-    |   "olvide mi contrasena, como la recupero"  2.33
-    |   "como recupero mi contrasena olvidada"    2.25
+    |   "como recupero mi contrasena olvidada"    4.67
+    |   "olvide mi contrasena, como la recupero"  3.33
     |   "no me acepta la contrasena al entrar"    2.00
-    |   "no puedo iniciar sesion"                 0.50
+    |   "no puedo iniciar sesion"                 1.00
     |
     | En 1.5 pasan las cinco primeras y queda fuera la última, que es
-    | efectivamente vaga. Con el umbral general de 2.5 pasaban solo dos: las
-    | cortas, que son justo las que no escribe quien está apurado y molesto.
+    | efectivamente vaga. Con el umbral general de 2.5 quedaría fuera también
+    | "no me acepta la contraseña al entrar", que es justo lo que escribe quien
+    | está apurado y molesto.
     */
     'umbral_relevancia_publico' => env('CHATBOT_UMBRAL_PUBLICO', 1.5),
 
