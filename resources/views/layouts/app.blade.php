@@ -920,11 +920,18 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-{{-- Ayuda flotante. Va al final del body para quedar sobre el resto de la
-     página, y solo con sesión iniciada: consulta rutas que exigen estar
-     autenticado. --}}
+{{-- DIMAKING, la ayuda flotante. Va al final del body para quedar sobre el
+     resto de la página.
+
+     Con sesión ve toda la base de conocimiento. Sin sesión —la pantalla de
+     login, sobre todo— solo los artículos marcados como públicos: quien
+     pregunta ahí no se ha identificado. Ver partials/burbuja_ayuda. --}}
 @auth
     @include('partials.burbuja_ayuda')
 @endauth
+
+@guest
+    @include('partials.burbuja_ayuda', ['publico' => true])
+@endguest
 </body>
 </html>

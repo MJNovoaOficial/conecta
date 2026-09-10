@@ -7,32 +7,40 @@ return [
     | Horario laboral para los plazos de SLA
     |--------------------------------------------------------------------------
     |
-    | Los plazos de respuesta y resolución se cuentan en horas de trabajo, no en
-    | horas de reloj. Sin esto, un ticket de prioridad media creado un viernes a
-    | las 17:00 tenía plazo de respuesta el sábado a la 1 de la madrugada: vencía
-    | antes de que alguien llegara el lunes, por bien que trabajara soporte.
+    | Apagado: la mesa de ayuda atiende los siete días con turnos, incluido el
+    | nocturno, que resuelve lo que le corresponde y escala al turno de día lo
+    | que no. Como hay alguien de guardia a cualquier hora, el plazo debe correr
+    | a cualquier hora: contarlo en horas de reloj mide al equipo de verdad.
     |
-    | Contar solo el horario hábil hace que el porcentaje de cumplimiento mida al
-    | equipo y no al calendario.
+    | Esto no vuelve atrás el trabajo del horario laboral, lo deja disponible.
+    | La razón por la que antes estaba mal contar de noche era que no había
+    | nadie trabajando de noche. Ahora sí lo hay, y la medida correcta cambia.
+    |
+    | Si algún día la empresa vuelve a atender solo en horario de oficina, basta
+    | con poner SLA_HORARIO_LABORAL=true en el .env y ajustar las horas de abajo:
+    | los plazos vuelven a saltarse noches, fines de semana y feriados sin tocar
+    | una línea de código.
     |
     */
 
     'horario_laboral' => [
 
-        // En false los plazos vuelven a contarse en horas corridas, como antes.
-        'activo' => env('SLA_HORARIO_LABORAL', true),
+        // En false los plazos se cuentan en horas corridas, de lunes a domingo
+        // y a cualquier hora. Es lo que corresponde con turnos 24/7.
+        'activo' => env('SLA_HORARIO_LABORAL', false),
 
         // Días de la semana en formato ISO: 1 es lunes y 7 es domingo.
-        'dias' => [1, 2, 3, 4, 5],
+        // Los siete, porque los turnos cubren también el fin de semana.
+        // Solo se usan cuando 'activo' está en true.
+        'dias' => [1, 2, 3, 4, 5, 6, 7],
 
-        // PENDIENTE DE CONFIRMAR con la jefatura: estos son valores de partida,
-        // no el horario real de la empresa. Cambiarlos altera todos los plazos
-        // de los tickets nuevos.
-        'inicio' => env('SLA_HORA_INICIO', '08:30'),
-        'fin'    => env('SLA_HORA_FIN', '18:30'),
+        // Solo se usan cuando 'activo' está en true. Con turnos las 24 horas
+        // no hay hora de apertura ni de cierre que aplicar.
+        'inicio' => env('SLA_HORA_INICIO', '00:00'),
+        'fin'    => env('SLA_HORA_FIN', '23:59'),
 
-        // Feriados en formato Y-m-d. Un ticket que cae en uno de estos días
-        // espera al siguiente día hábil, igual que un fin de semana.
+        // Feriados en formato Y-m-d. Con el horario apagado no se aplican: los
+        // turnos también cubren los feriados. Quedan por si se vuelve a activar.
         'feriados' => [
             // '2026-09-18',
             // '2026-09-19',
@@ -57,9 +65,9 @@ return [
     /*
     | Prioridades que se cuentan las 24 horas, sin esperar al horario laboral.
     |
-    | Vacío a propósito: hoy todas las prioridades respetan el horario. Si la
-    | empresa define turnos de emergencia, agregar aquí 'critical' hace que esos
-    | tickets corran su plazo también de noche y en fin de semana.
+    | Sin efecto mientras 'activo' esté en false, porque en ese caso ya se
+    | cuentan así todas. Queda por si se vuelve a activar el horario y se
+    | quiere que las críticas sigan corriendo de noche.
     */
     'prioridades_24_7' => [],
 

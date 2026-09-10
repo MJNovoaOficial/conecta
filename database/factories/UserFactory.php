@@ -30,6 +30,10 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            // Sin esto el usuario nace inactivo y no puede iniciar sesión, que
+            // es una forma confusa de que fallen las pruebas.
+            'role' => 'user',
+            'is_active' => true,
         ];
     }
 
@@ -41,5 +45,23 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    /** Alguien de la mesa de ayuda: ve y atiende los tickets de todos. */
+    public function soporte(): static
+    {
+        return $this->state(fn () => ['role' => 'support']);
+    }
+
+    /** Administrador: además configura la plataforma. */
+    public function administrador(): static
+    {
+        return $this->state(fn () => ['role' => 'admin']);
+    }
+
+    /** Cuenta desactivada, que no debería poder entrar. */
+    public function desactivado(): static
+    {
+        return $this->state(fn () => ['is_active' => false]);
     }
 }

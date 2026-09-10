@@ -97,6 +97,26 @@
                     @error('content') <span class="kb-error">{{ $message }}</span> @enderror
                 </div>
 
+                {{-- Visibilidad antes de iniciar sesión. Apagado por defecto: un
+                     artículo nuevo no se publica solo. --}}
+                <div class="kb-campo" style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:8px;padding:14px 16px;">
+                    <label for="publico" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-weight:600;">
+                        <input type="hidden" name="publico" value="0">
+                        <input type="checkbox" id="publico" name="publico" value="1"
+                               style="margin-top:3px;width:17px;height:17px;flex-shrink:0;cursor:pointer;"
+                               {{ old('publico', $articulo->publico) ? 'checked' : '' }}>
+                        <span>Mostrar en la pantalla de login, sin iniciar sesión</span>
+                    </label>
+                    <span class="ayuda" style="margin-left:27px;">
+                        DIMAKING podrá usar este artículo para responderle a alguien que
+                        <b>todavía no entró</b> a la plataforma. Márcalo solo si el contenido
+                        puede leerlo cualquiera que llegue a la página: sirve para dudas de
+                        acceso y contraseñas. No lo marques si menciona sistemas internos,
+                        nombres de servidores, datos de personas o procedimientos privados.
+                    </span>
+                    @error('publico') <span class="kb-error">{{ $message }}</span> @enderror
+                </div>
+
                 {{-- Imágenes de apoyo.
                      Los manuales que circulan por correo son pasos con una
                      captura en cada uno. Esto reproduce ese formato dentro de

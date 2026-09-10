@@ -20,9 +20,9 @@ use Illuminate\Support\Facades\Log;
  * Hasta ahora el semáforo del listado solo avisaba a quien estuviera mirando la
  * pantalla: un ticket crítico podía vencer sin que nadie se enterara.
  *
- * Avisa una sola vez por ticket. La marca queda en sla_warned_at y se vuelve a
- * armar si el plazo cambia, para que un ticket al que le corrieron la fecha
- * reciba su aviso nuevo.
+ * Avisa una sola vez por ticket. La marca queda en sla_warned_for, que guarda
+ * DE QUÉ plazo se avisó y no cuándo: así, si a un ticket le corren la fecha,
+ * la marca deja de coincidir y recibe un aviso nuevo.
  */
 class SendSlaWarningsJob implements ShouldQueue
 {
