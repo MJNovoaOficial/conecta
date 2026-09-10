@@ -23,8 +23,23 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+        <!--
+            Las pruebas corren sobre MySQL, no sobre SQLite en memoria.
+
+            SQLite es mas rapido, pero la plataforma usa funciones que solo
+            existen en MySQL: REGEXP para buscar siglas de dos letras en los
+            articulos, FIELD para ordenar el listado de tickets por prioridad,
+            y DATE_FORMAT en el panel de administracion. Sobre SQLite esas
+            pantallas no se pueden probar, y son de las mas usadas.
+
+            Probar sobre el mismo motor que corre en produccion evita ademas
+            una prueba que pasa aqui y falla alla.
+
+            OJO: conecta_testing es una base APARTE de conecta. Las pruebas la
+            vacian entera en cada corrida. Nunca apuntar esto a la base real.
+        -->
+        <env name="DB_CONNECTION" value="mysql"/>
+        <env name="DB_DATABASE" value="conecta_testing"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
