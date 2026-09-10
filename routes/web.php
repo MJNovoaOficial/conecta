@@ -60,6 +60,16 @@ Route::post('/tickets/guest/{token}/reopen',  [TicketController::class, 'guestRe
 Route::post('/asistente', [AsistenteController::class, 'preguntarPublico'])
     ->middleware('throttle:5,1')->name('asistente.publico');
 
+// Encuesta de satisfacción: quien pidió la ayuda califica la atención una vez
+// cerrado el ticket. Las dos entradas —con cuenta y como invitado— van juntas
+// para que se lean como una sola funcionalidad; por eso la de usuarios declara
+// su propio middleware de sesión en vez de vivir dentro del grupo protegido.
+Route::post('/tickets/{ticket}/encuesta', [\App\Http\Controllers\EncuestaController::class, 'responder'])
+    ->middleware('auth')->name('encuesta.responder');
+Route::post('/tickets/guest/{token}/encuesta', [\App\Http\Controllers\EncuestaController::class, 'responderInvitado'])
+    ->where('token', '[A-Za-z0-9]{40}')
+    ->middleware('throttle:10,1')->name('encuesta.invitado');
+
 // AJAX público — catálogo (para formularios de invitados)
 Route::get('/api/categorias/{categoria}/subcategorias', [CategoryController::class, 'getSubcategorias'])->name('api.subcategorias');
 Route::get('/api/subcategorias/{subcategoria}/tipos',   [CategoryController::class, 'getTipos'])->name('api.tipos');

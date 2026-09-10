@@ -354,6 +354,15 @@ class ReportController extends Controller
                     ? round($tickets->avg(fn($t) => $priorityWeight[$t->priority] ?? 2), 2)
                     : null;
 
+                // Satisfacción de las personas atendidas. Se cuenta por
+                // agente_id de la encuesta y no por los tickets asignados hoy:
+                // la calificación queda con quien atendía cuando se respondió.
+                $encuestas         = \App\Models\EncuestaSatisfaccion::where('agente_id', $agent->id);
+                $satisfactionCount = (clone $encuestas)->count();
+                $satisfactionAvg   = $satisfactionCount > 0
+                    ? round((float) (clone $encuestas)->avg('calificacion'), 1)
+                    : null;
+
                 return [
                     'agent'              => $agent,
                     'attended'           => $attended,
@@ -366,6 +375,8 @@ class ReportController extends Controller
                         ? round($slowestTicket->created_at->diffInMinutes($slowestTicket->resolved_at) / 60, 1)
                         : null,
                     'complexity_score'   => $complexityScore,
+                    'satisfaction_avg'   => $satisfactionAvg,
+                    'satisfaction_count' => $satisfactionCount,
                 ];
             });
 

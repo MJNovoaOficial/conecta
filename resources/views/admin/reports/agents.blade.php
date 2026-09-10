@@ -132,6 +132,24 @@
                         </div>
                     </div>
 
+                    {{-- Satisfacción: lo que calificaron las personas atendidas --}}
+                    <div style="padding:10px 12px;border-radius:8px;border:1px solid #fde68a;background:#fffbeb;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                        <div style="font-size:.7rem;color:#92400e;font-weight:700;text-transform:uppercase;">
+                            <i class="fas fa-star me-1"></i>Satisfacción
+                        </div>
+                        @if($a['satisfaction_avg'] !== null)
+                            <div style="text-align:right;">
+                                <span style="font-size:1.2rem;vertical-align:middle;" aria-hidden="true">{{ \App\Models\EncuestaSatisfaccion::CARAS[(int) round($a['satisfaction_avg'])] }}</span>
+                                <span style="font-size:1.25rem;font-weight:800;color:#1a2332;">{{ $a['satisfaction_avg'] }}</span><small style="font-size:.72rem;color:#64748b;">/5</small>
+                                <div style="font-size:.7rem;color:#92400e;">
+                                    {{ $a['satisfaction_count'] }} {{ $a['satisfaction_count'] === 1 ? 'respuesta' : 'respuestas' }}
+                                </div>
+                            </div>
+                        @else
+                            <div style="font-size:.76rem;color:#a8a29e;">Sin respuestas todavía</div>
+                        @endif
+                    </div>
+
                     {{-- Barra de complejidad --}}
                     @if($a['complexity_score'] !== null)
                     <div class="complexity-bar">
