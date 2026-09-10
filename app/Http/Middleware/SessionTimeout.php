@@ -23,6 +23,18 @@ class SessionTimeout
             return $next($request);
         }
 
+        // Una cuenta desactivada pierde el acceso aunque ya tuviera una sesión
+        // abierta en otro navegador antes del cambio administrativo.
+        if (!Auth::user()->is_active) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('home')->with('error',
+                'Tu cuenta está desactivada. Contacta a un administrador.'
+            );
+        }
+
         $timeout = (int) env('SESSION_TIMEOUT_MINUTES', self::DEFAULT_TIMEOUT);
         $lastActivity = $request->session()->get('last_activity_at');
 

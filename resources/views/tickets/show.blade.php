@@ -804,6 +804,8 @@
 @endauth
 
 {{-- Modal Derivar --}}
+@auth
+@if(Auth::user()->isSupport() || Auth::user()->isAdmin())
 <div class="modal fade" id="forwardModal" tabindex="-1">
     <div class="modal-dialog">
         <form method="POST" action="/tickets/{{ $ticket->id }}/forward">
@@ -838,6 +840,8 @@
         </form>
     </div>
 </div>
+@endif
+@endauth
 
 {{-- Modal: Solicitar Información Adicional (RF-ST-15 / RNG-01) --}}
 @auth
