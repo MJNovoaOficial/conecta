@@ -49,21 +49,25 @@
 }
 .bur-panel.abierto { display: flex; }
 
+/* Cabecera clara para que el logo se vea con sus colores de marca. Sobre el
+   azul anterior, el "king" —que es azul— se perdía contra el fondo. */
 .bur-cabecera {
-    background: #2563eb; color: #fff; padding: 16px 18px;
+    background: #fff; color: #0f172a; padding: 15px 18px 13px;
+    border-bottom: 1px solid #e2e8f0;
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
-.bur-cabecera h2 { margin: 0; font-size: 1.05rem; font-weight: 700; letter-spacing: .01em; }
-.bur-cabecera p  { margin: 3px 0 0; font-size: .84rem; opacity: .92; }
-.bur-marca { display: flex; align-items: center; gap: 11px; }
-.bur-marca svg { flex-shrink: 0; }
+.bur-cabecera h2 { margin: 0; line-height: 0; }
+.bur-cabecera p  { margin: 7px 0 0; font-size: .84rem; color: #64748b; }
+/* Ancho fijo y alto automático: el logo conserva su proporción y no depende
+   de que la imagen haya cargado para que la cabecera tenga su altura. */
+.bur-marca img { display: block; width: 172px; height: auto; }
 .bur-cerrar {
-    background: rgba(255,255,255,.18); border: none; color: #fff;
+    background: #f1f5f9; border: none; color: #475569;
     width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
     font-size: 1.05rem; flex-shrink: 0; line-height: 1;
 }
-.bur-cerrar:hover { background: rgba(255,255,255,.3); }
-.bur-cerrar:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.bur-cerrar:hover { background: #e2e8f0; color: #0f172a; }
+.bur-cerrar:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
 
 .bur-cuerpo { padding: 16px 18px; overflow-y: auto; flex: 1; }
 
@@ -161,20 +165,18 @@
 <div class="bur-panel" id="burPanel" role="dialog" aria-modal="false" aria-labelledby="burTitulo">
     <div class="bur-cabecera">
         <div class="bur-marca">
-            {{-- Corona sobre un globo de diálogo: DIMAK + king. Va en línea y no
-                 como archivo de imagen para que se vea aunque la sesión no esté
-                 iniciada, sin depender de una ruta que exija permisos. --}}
-            <svg width="36" height="36" viewBox="0 0 32 32" aria-hidden="true">
-                <path d="M7.5 9.2 L11 12.8 L16 6.6 L21 12.8 L24.5 9.2 L23.4 14.6 L8.6 14.6 Z"
-                      fill="#fbbf24"/>
-                <rect x="6" y="16" width="20" height="12.5" rx="5" fill="#fff"/>
-                <path d="M11 28 L11 30.6 L14.6 28 Z" fill="#fff"/>
-                <circle cx="12" cy="22.2" r="1.55" fill="#2563eb"/>
-                <circle cx="16" cy="22.2" r="1.55" fill="#2563eb"/>
-                <circle cx="20" cy="22.2" r="1.55" fill="#2563eb"/>
-            </svg>
             <div>
-                <h2 id="burTitulo">DIMAKING</h2>
+                {{-- El logo va dentro del h2 y el texto alternativo hace de
+                     nombre accesible del panel, que lo referencia por
+                     aria-labelledby. Sin ese alt, quien usa lector de pantalla
+                     abriría un diálogo sin nombre.
+
+                     Se sirve desde public/ y no por FileController: tiene que
+                     verse también en la pantalla de login, donde no hay sesión
+                     y las rutas de archivos privados no responden. --}}
+                <h2 id="burTitulo">
+                    <img src="{{ asset('images/dimaking.png') }}" alt="DIMAKING">
+                </h2>
                 <p>Cuéntame qué te pasa y te oriento.</p>
             </div>
         </div>
