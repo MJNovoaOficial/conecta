@@ -101,8 +101,8 @@ Route::middleware('auth')->group(function () {
 
     // ── Tickets ──────────────────────────────────────────────────────
     Route::get('/tickets/my-stats', [TicketController::class, 'myStats'])->name('tickets.my-stats');
-    // Se conserva el conjunto de rutas REST original; solo la vista sensible
-    // recibe autorización explícita en la ruta, además de la del controlador.
+    // Se conserva el conjunto REST original. Las operaciones sensibles validan
+    // además la capacidad específica sobre el ticket en la propia ruta.
     Route::resource('tickets', TicketController::class)->except(['show']);
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])
         ->middleware('can:view,ticket')->name('tickets.show');

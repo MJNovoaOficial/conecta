@@ -26,14 +26,14 @@ class RouteAccessSecurityTest extends TestCase
         $this->withoutVite();
     }
 
-    public function test_anonymous_visitors_are_redirected_from_sensitive_pages(): void
+    public function test_visitantes_sin_sesion_son_redirigidos_desde_paginas_sensibles(): void
     {
         $this->get(route('admin.dashboard'))->assertRedirect(route('login'));
         $this->get(route('tickets.index'))->assertRedirect(route('login'));
         $this->get(route('profile.index'))->assertRedirect(route('login'));
     }
 
-    public function test_inactive_accounts_cannot_log_in_or_keep_an_existing_session(): void
+    public function test_cuentas_inactivas_no_pueden_iniciar_ni_conservar_sesion(): void
     {
         $department = $this->createDepartment('Cuentas');
         $inactiveAdmin = $this->createUser('admin', $department);
@@ -58,7 +58,7 @@ class RouteAccessSecurityTest extends TestCase
         $this->assertAuthenticatedAs($activeUser);
     }
 
-    public function test_non_admin_roles_cannot_open_any_administration_tab_by_url(): void
+    public function test_roles_no_administradores_no_abren_pestanas_administrativas_por_url(): void
     {
         $department = $this->createDepartment('Seguridad');
         $regularUser = $this->createUser('user', $department);
@@ -95,7 +95,7 @@ class RouteAccessSecurityTest extends TestCase
             ->assertOk();
     }
 
-    public function test_every_administration_route_keeps_both_access_middlewares(): void
+    public function test_todas_las_rutas_administrativas_conservan_ambos_middleware_de_acceso(): void
     {
         $adminRoutes = collect(app('router')->getRoutes()->getRoutes())
             ->filter(fn ($route) => str_starts_with($route->uri(), 'admin/'));
@@ -108,7 +108,7 @@ class RouteAccessSecurityTest extends TestCase
         }
     }
 
-    public function test_sensitive_ticket_routes_keep_object_level_authorization(): void
+    public function test_rutas_sensibles_de_tickets_conservan_autorizacion_por_objeto(): void
     {
         $expectedMiddleware = [
             'tickets.show' => 'can:view,ticket',
@@ -133,7 +133,7 @@ class RouteAccessSecurityTest extends TestCase
         }
     }
 
-    public function test_regular_users_cannot_open_support_statistics_by_url(): void
+    public function test_usuario_comun_no_abre_estadisticas_de_soporte_por_url(): void
     {
         $department = $this->createDepartment('Mesa de ayuda');
         $regularUser = $this->createUser('user', $department);
@@ -143,7 +143,7 @@ class RouteAccessSecurityTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_a_user_cannot_view_another_users_ticket_or_attachment_by_guessing_ids(): void
+    public function test_usuario_no_ve_ticket_ni_adjunto_ajeno_adivinando_ids(): void
     {
         $department = $this->createDepartment('Operaciones');
         $owner = $this->createUser('user', $department);
@@ -175,7 +175,7 @@ class RouteAccessSecurityTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_a_ticket_owner_cannot_invoke_support_actions_with_crafted_requests(): void
+    public function test_propietario_no_invoca_acciones_de_soporte_con_peticiones_manipuladas(): void
     {
         $department = $this->createDepartment('Infraestructura');
         $owner = $this->createUser('user', $department);
@@ -203,7 +203,22 @@ class RouteAccessSecurityTest extends TestCase
         $this->assertSame('medium', $ticket->priority);
     }
 
-    public function test_a_user_cannot_modify_another_users_ticket_by_changing_its_id(): void
+    public function test_asignacion_rechaza_como_destino_a_un_usuario_comun(): void
+    {
+        $department = $this->createDepartment('Asignaciones');
+        $owner = $this->createUser('user', $department);
+        $admin = $this->createUser('admin', $department);
+        $regularUser = $this->createUser('user', $department);
+        $ticket = $this->createTicket($owner, $department);
+
+        $this->actingAs($admin)
+            ->post(route('tickets.assignTo', $ticket), ['user_id' => $regularUser->id])
+            ->assertSessionHasErrors('user_id');
+
+        $this->assertNull($ticket->fresh()->assigned_to);
+    }
+
+    public function test_usuario_no_modifica_ticket_ajeno_cambiando_el_id(): void
     {
         $department = $this->createDepartment('Privacidad');
         $owner = $this->createUser('user', $department);
@@ -224,7 +239,7 @@ class RouteAccessSecurityTest extends TestCase
         $this->assertDatabaseCount('comentarios_ticket', 0);
     }
 
-    public function test_notification_ids_do_not_expose_or_modify_another_users_notifications(): void
+    public function test_ids_de_notificacion_no_exponen_ni_modifican_notificaciones_ajenas(): void
     {
         $department = $this->createDepartment('Notificaciones');
         $owner = $this->createUser('user', $department);
@@ -252,7 +267,7 @@ class RouteAccessSecurityTest extends TestCase
         $this->assertNotNull($notification->fresh()->read_at);
     }
 
-    public function test_internal_comment_attachments_are_not_exposed_to_the_ticket_owner(): void
+    public function test_adjuntos_de_comentarios_internos_no_se_exponen_al_propietario(): void
     {
         Storage::fake('local');
 
@@ -298,7 +313,7 @@ class RouteAccessSecurityTest extends TestCase
             ->assertOk();
     }
 
-    public function test_images_from_inactive_knowledge_articles_are_only_visible_to_admins(): void
+    public function test_imagenes_de_articulos_inactivos_solo_son_visibles_para_administradores(): void
     {
         Storage::fake('local');
 
@@ -327,7 +342,7 @@ class RouteAccessSecurityTest extends TestCase
             ->assertOk();
     }
 
-    public function test_support_keeps_status_access_but_cannot_invoke_assigned_only_actions(): void
+    public function test_soporte_conserva_cambio_de_estado_pero_no_acciones_del_agente_asignado(): void
     {
         $department = $this->createDepartment('Soporte');
         $owner = $this->createUser('user', $department);
@@ -358,7 +373,7 @@ class RouteAccessSecurityTest extends TestCase
         $this->assertDatabaseCount('comentarios_ticket', 0);
     }
 
-    public function test_support_can_take_a_free_ticket_and_then_manage_it(): void
+    public function test_soporte_puede_tomar_un_ticket_libre_y_luego_gestionarlo(): void
     {
         $department = $this->createDepartment('Aplicaciones');
         $owner = $this->createUser('user', $department);
@@ -380,7 +395,7 @@ class RouteAccessSecurityTest extends TestCase
         $this->assertSame(Ticket::STATUS_RESOLVED, $ticket->fresh()->status);
     }
 
-    public function test_guest_ticket_page_preserves_history_without_rendering_management_forms(): void
+    public function test_pagina_de_invitado_conserva_historial_sin_formularios_de_gestion(): void
     {
         $department = $this->createDepartment('Servicio al cliente');
         $support = $this->createUser('support', $department);
@@ -412,7 +427,7 @@ class RouteAccessSecurityTest extends TestCase
             ->assertDontSee(route('tickets.assignTo', $ticket), false);
     }
 
-    public function test_malformed_guest_tracking_links_are_rejected(): void
+    public function test_enlaces_de_seguimiento_de_invitado_malformados_son_rechazados(): void
     {
         $this->get('/tickets/guest/123')->assertNotFound();
         $this->post('/tickets/guest/not-a-valid-token/comment', [
@@ -420,7 +435,7 @@ class RouteAccessSecurityTest extends TestCase
         ])->assertNotFound();
     }
 
-    public function test_avatar_route_rejects_paths_instead_of_plain_filenames(): void
+    public function test_ruta_de_avatar_rechaza_rutas_en_lugar_de_nombres_de_archivo(): void
     {
         $department = $this->createDepartment('Perfiles');
         $user = $this->createUser('user', $department);

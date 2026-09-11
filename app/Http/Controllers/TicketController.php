@@ -136,7 +136,7 @@ class TicketController extends Controller
             'closed'       => (clone $countQuery)->where('status', Ticket::STATUS_CLOSED)->count(),
         ];
 
-        $departments = Department::where('is_active', true)->get();
+        $departments  = Department::where('is_active', true)->get();
         $categorias   = Categoria::orderBy('name')->get();
         $supportUsers = ($user->isSupport() || $user->isAdmin())
             ? User::whereIn('role',['support','admin'])->where('is_active',true)->orderBy('name')->get()
@@ -207,7 +207,7 @@ class TicketController extends Controller
 
     public function create()
     {
-        $departments  = Department::where('is_active', true)->get();
+        $departments = Department::where('is_active', true)->get();
         $recentTickets = Ticket::where('user_id', Auth::id())
             ->orderBy('created_at', 'desc')
             ->limit(5)
@@ -220,7 +220,7 @@ class TicketController extends Controller
      */
     public function guestCreate()
     {
-        $departments  = Department::where('is_active', true)->get();
+        $departments = Department::where('is_active', true)->get();
         return view('tickets.guest_create', compact('departments'));
     }
 
@@ -422,7 +422,7 @@ class TicketController extends Controller
     {
         $this->authorize('view', $ticket);
         $ticket->load(['user', 'assignedTo', 'department', 'comments.user', 'comments.attachments', 'attachments', 'history.user']);
-        $departments = Department::where('is_active', true)->get();
+        $departments  = Department::where('is_active', true)->get();
         $supportUsers = User::whereIn('role', ['support', 'admin'])->where('is_active', true)->get();
         return view('tickets.panel', compact('ticket', 'departments', 'supportUsers'));
     }
