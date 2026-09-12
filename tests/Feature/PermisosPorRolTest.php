@@ -214,32 +214,18 @@ class PermisosPorRolTest extends TestCase
         $this->assertSame(Ticket::STATUS_OPEN, $ajeno->fresh()->status);
     }
 
-    public function test_un_usuario_puede_marcar_su_propio_ticket_como_resuelto(): void
+    public function test_un_usuario_no_puede_cambiar_el_estado_de_su_propio_ticket(): void
     {
-        // Esta prueba deja constancia de lo que hoy PASA, no de lo que debería
-        // pasar. A diferencia de asignar, priorizar o derivar —que tienen una
-        // segunda comprobación de "soy admin o soy el agente asignado"—,
-        // updateStatus se queda con authorize('update'), y esa regla incluye al
-        // creador del ticket.
-        //
-        // El resultado es que el solicitante puede marcar su propio ticket como
-        // resuelto sin que soporte lo haya tocado. No es un agujero de datos,
-        // pero ensucia el cumplimiento de SLA: el ticket cuenta como resuelto
-        // en los reportes.
-        //
-        // Queda pendiente de decidir con jefatura. Si se restringe, esta prueba
-        // se da vuelta y pasa a exigir 403.
+        // El solicitante confirma una resolución mediante tickets.close;
+        // el selector de estado queda reservado para soporte.
         $dueno  = User::factory()->create();
         $ticket = $this->ticketDe($dueno);
 
         $this->actingAs($dueno)
-            ->put(route('tickets.updateStatus', $ticket), ['status' => 'resolved']);
+            ->put(route('tickets.updateStatus', $ticket), ['status' => 'resolved'])
+            ->assertForbidden();
 
-        $this->assertSame(
-            Ticket::STATUS_RESOLVED,
-            $ticket->fresh()->status,
-            'comportamiento actual: el creador puede cambiar el estado de su propio ticket'
-        );
+        $this->assertSame(Ticket::STATUS_OPEN, $ticket->fresh()->status);
     }
 
     public function test_un_agente_asignado_si_puede_cambiar_la_prioridad(): void

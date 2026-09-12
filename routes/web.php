@@ -39,14 +39,15 @@ Route::post('/reset-password',         [ForgotPasswordController::class, 'resetP
 // Tickets de invitados (sin autenticación)
 Route::get('/tickets/guest',         [TicketController::class, 'guestCreate'])->name('tickets.guest.create');
 Route::post('/tickets/guest',        [TicketController::class, 'guestStore'])->name('tickets.guest.store');
-Route::get('/tickets/guest/{token}', [TicketController::class, 'guestShow'])->name('tickets.guest.show');
+Route::get('/tickets/guest/{token}', [TicketController::class, 'guestShow'])
+    ->where('token', '[A-Za-z0-9]{40}')->name('tickets.guest.show');
 // El invitado responde con el token de su enlace. Sin esta ruta, pedirle
 // información era un callejón sin salida: no tenía cómo contestar y el ticket
 // se cerraba solo por falta de respuesta.
 Route::post('/tickets/guest/{token}/comment', [TicketController::class, 'guestComment'])
-    ->name('tickets.guest.comment');
+    ->where('token', '[A-Za-z0-9]{40}')->name('tickets.guest.comment');
 Route::post('/tickets/guest/{token}/reopen',  [TicketController::class, 'guestReopen'])
-    ->name('tickets.guest.reopen');
+    ->where('token', '[A-Za-z0-9]{40}')->name('tickets.guest.reopen');
 
 // Asistente de la pantalla de login, sin sesión iniciada.
 //
@@ -98,7 +99,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/avatar',   [ProfileController::class, 'uploadAvatar'])->name('profile.avatar');
 
     // Archivos privados — servidos con control de acceso (Reunión 4 seguridad)
-    Route::get('/files/avatar/{filename}',           [FileController::class, 'serveAvatar'])->name('files.avatar')->where('filename', '.+');
+    Route::get('/files/avatar/{filename}', [FileController::class, 'serveAvatar'])
+        ->where('filename', '[A-Za-z0-9][A-Za-z0-9._-]*')->name('files.avatar');
     Route::get('/files/attachment/{attachment}',     [FileController::class, 'serveAttachment'])->name('files.attachment');
     Route::get('/files/manual/{manual}',             [FileController::class, 'serveManual'])->name('files.manual');
     Route::get('/files/articulo-imagen/{imagen}',    [FileController::class, 'serveArticuloImagen'])->name('files.articulo-imagen');
@@ -108,19 +110,33 @@ Route::middleware('auth')->group(function () {
     Route::get('/manuales/{manual}/download',     [ManualController::class, 'download'])->name('manuales.download');
 
     // ── Tickets ──────────────────────────────────────────────────────
-    Route::get('/tickets/my-stats',  [TicketController::class, 'myStats'])->name('tickets.my-stats');
-    Route::resource('tickets', TicketController::class);
-    Route::post('/tickets/{ticket}/comment',     [TicketController::class, 'addComment'])->name('tickets.addComment');
-    Route::put('/tickets/{ticket}/status',       [TicketController::class, 'updateStatus'])->name('tickets.updateStatus');
-    Route::put('/tickets/{ticket}/priority',     [TicketController::class, 'updatePriority'])->name('tickets.updatePriority');
-    Route::put('/tickets/{ticket}/classify',     [TicketController::class, 'updateClassification'])->name('tickets.updateClassification');
-    Route::post('/tickets/{ticket}/assign',      [TicketController::class, 'assignTo'])->name('tickets.assignTo');
-    Route::post('/tickets/{ticket}/self-assign', [TicketController::class, 'selfAssign'])->name('tickets.selfAssign');
-    Route::post('/tickets/{ticket}/forward',     [TicketController::class, 'forward'])->name('tickets.forward');
-    Route::post('/tickets/{ticket}/close',       [TicketController::class, 'close'])->name('tickets.close');
+    Route::get('/tickets/my-stats', [TicketController::class, 'myStats'])->name('tickets.my-stats');
+    // Se conserva el conjunto REST original. Las operaciones sensibles validan
+    // además la capacidad específica sobre el ticket en la propia ruta.
+    Route::resource('tickets', TicketController::class)->except(['show']);
+    Route::get('/tickets/{ticket}', [TicketController::class, 'show'])
+        ->middleware('can:view,ticket')->name('tickets.show');
+    Route::post('/tickets/{ticket}/comment', [TicketController::class, 'addComment'])
+        ->middleware('can:comment,ticket')->name('tickets.addComment');
+    Route::put('/tickets/{ticket}/status', [TicketController::class, 'updateStatus'])
+        ->middleware('can:changeStatus,ticket')->name('tickets.updateStatus');
+    Route::put('/tickets/{ticket}/priority', [TicketController::class, 'updatePriority'])
+        ->middleware('can:staff,ticket')->name('tickets.updatePriority');
+    Route::put('/tickets/{ticket}/classify', [TicketController::class, 'updateClassification'])
+        ->middleware('can:staff,ticket')->name('tickets.updateClassification');
+    Route::post('/tickets/{ticket}/assign', [TicketController::class, 'assignTo'])
+        ->middleware('can:staff,ticket')->name('tickets.assignTo');
+    Route::post('/tickets/{ticket}/self-assign', [TicketController::class, 'selfAssign'])
+        ->middleware('can:selfAssign,ticket')->name('tickets.selfAssign');
+    Route::post('/tickets/{ticket}/forward', [TicketController::class, 'forward'])
+        ->middleware('can:staff,ticket')->name('tickets.forward');
+    Route::post('/tickets/{ticket}/close', [TicketController::class, 'close'])
+        ->middleware('can:close,ticket')->name('tickets.close');
     // El solicitante reabre su ticket cuando la solución no resolvió el problema.
-    Route::post('/tickets/{ticket}/reopen',      [TicketController::class, 'reopen'])->name('tickets.reopen');
-    Route::get('/tickets/{ticket}/panel',        [TicketController::class, 'panel'])->name('tickets.panel');
+    Route::post('/tickets/{ticket}/reopen', [TicketController::class, 'reopen'])
+        ->middleware('can:reopen,ticket')->name('tickets.reopen');
+    Route::get('/tickets/{ticket}/panel', [TicketController::class, 'panel'])
+        ->middleware('can:view,ticket')->name('tickets.panel');
 
     // ── Notificaciones ────────────────────────────────────────────────
     Route::get('/notifications',                         [NotificationController::class, 'index'])->name('notifications.index');

@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 
 class TicketController extends Controller
@@ -528,7 +529,7 @@ class TicketController extends Controller
 
     public function addComment(Request $request, Ticket $ticket)
     {
-        $this->authorize('update', $ticket);
+        $this->authorize('comment', $ticket);
 
         // Rate limiting: máximo 20 comentarios por hora
         $throttleKey = 'add_comment:' . Auth::id() . ':' . $ticket->id;
@@ -555,6 +556,12 @@ class TicketController extends Controller
             'comment' => 'mensaje',
             'attachments' => 'adjuntos',
         ]);
+
+        // Solicitar información cambia el estado y los plazos del ticket. No
+        // debe poder activarse agregando request_info a una petición manual.
+        if ($request->boolean('request_info')) {
+            $this->authorize('manage', $ticket);
+        }
 
         // Verificar permisos para comentarios internos
         if ($request->boolean('is_internal') && !Auth::user()->isAdmin() && !Auth::user()->isSupport()) {
@@ -650,7 +657,7 @@ class TicketController extends Controller
 
     public function updateStatus(Request $request, Ticket $ticket)
     {
-        $this->authorize('update', $ticket);
+        $this->authorize('changeStatus', $ticket);
 
         $request->validate([
             'status' => 'required|in:open,in_progress,pending_user,forwarded,resolved,closed',
@@ -702,7 +709,7 @@ class TicketController extends Controller
 
     public function assignTo(Request $request, Ticket $ticket)
     {
-        $this->authorize('update', $ticket);
+        $this->authorize('staff', $ticket);
 
         $user = Auth::user();
 
@@ -711,7 +718,14 @@ class TicketController extends Controller
             return back()->with('error', 'Solo el administrador o el agente asignado pueden reasignar este ticket.');
         }
         $request->validate([
-            'user_id' => 'required|exists:usuarios,id',
+            'user_id' => [
+                'required',
+                Rule::exists('usuarios', 'id')->where(
+                    fn ($query) => $query
+                        ->whereIn('role', ['support', 'admin'])
+                        ->where('is_active', true)
+                ),
+            ],
         ]);
 
         $oldAssigned = $ticket->assigned_to;
@@ -749,7 +763,7 @@ class TicketController extends Controller
      */
     public function selfAssign(Ticket $ticket)
     {
-        $this->authorize('update', $ticket);
+        $this->authorize('selfAssign', $ticket);
 
         $user = Auth::user();
 
@@ -804,7 +818,7 @@ class TicketController extends Controller
 
     public function forward(Request $request, Ticket $ticket)
     {
-        $this->authorize('update', $ticket);
+        $this->authorize('staff', $ticket);
 
         $user = Auth::user();
 
@@ -874,7 +888,7 @@ class TicketController extends Controller
      */
     public function updatePriority(Request $request, Ticket $ticket)
     {
-        $this->authorize('update', $ticket);
+        $this->authorize('staff', $ticket);
 
         $user = Auth::user();
         if (!$user->isAdmin() && $ticket->assigned_to !== $user->id) {
@@ -907,7 +921,7 @@ class TicketController extends Controller
      */
     public function updateClassification(Request $request, Ticket $ticket)
     {
-        $this->authorize('update', $ticket);
+        $this->authorize('staff', $ticket);
 
         $user = Auth::user();
         if (!$user->isAdmin() && $ticket->assigned_to !== $user->id) {
@@ -949,7 +963,7 @@ class TicketController extends Controller
      */
     public function reopen(Request $request, Ticket $ticket)
     {
-        $this->authorize('update', $ticket);
+        $this->authorize('reopen', $ticket);
 
         $user    = Auth::user();
         $esDueno = $ticket->user_id === $user->id;
@@ -1069,7 +1083,7 @@ class TicketController extends Controller
 
     public function close(Request $request, Ticket $ticket)
     {
-        $this->authorize('update', $ticket);
+        $this->authorize('close', $ticket);
 
         $user = Auth::user();
 
@@ -1234,4 +1248,3 @@ class TicketController extends Controller
     }
 
 }
-
