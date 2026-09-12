@@ -693,6 +693,8 @@
     @endif
     @endguest
 
+    @include('partials.encuesta_satisfaccion')
+
     <div class="side-card">
         <div class="side-card-header"><i class="fas fa-info-circle me-1"></i> Información</div>
         <div class="side-card-body" style="padding:10px 16px;">

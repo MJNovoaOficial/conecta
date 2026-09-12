@@ -102,6 +102,32 @@ class Ticket extends Model
         return $this->hasMany(TicketHistory::class)->orderBy('created_at', 'desc');
     }
 
+    /**
+     * La calificación que dejó quien pidió la ayuda.
+     */
+    public function encuesta()
+    {
+        return $this->hasOne(EncuestaSatisfaccion::class);
+    }
+
+    /**
+     * Si corresponde pedirle a quien abrió el ticket que califique la atención.
+     *
+     * Solo con el ticket cerrado. Mientras está resuelto, la persona tiene que
+     * decidir si confirma la solución o reabre, y pedirle una nota en el mismo
+     * momento mezcla las dos cosas.
+     *
+     * Quedan fuera los que cerró el sistema por falta de respuesta: se cerraron
+     * porque el solicitante no contestó, y no es justo que eso le baje la
+     * calificación al agente.
+     */
+    public function admiteEncuesta(): bool
+    {
+        return $this->status === self::STATUS_CLOSED
+            && ! $this->encuesta()->exists()
+            && ! $this->history()->where('action', 'auto_closed')->exists();
+    }
+
     // Métodos para invitados
     public function isGuestTicket()
     {
