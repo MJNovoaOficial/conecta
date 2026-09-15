@@ -90,7 +90,36 @@ class CategoryController extends Controller
     //  SUBCATEGORÍAS
     // ══════════════════════════════════════════
 
+    public function subcategorias()
+    {
+        $subcategorias = Subcategoria::with(['categoria', 'tiposIncidente'])
+            ->withCount('tiposIncidente')
+            ->orderBy('categoria_id')
+            ->orderBy('name')
+            ->get();
+        $categorias = Categoria::where('is_active', true)->orderBy('name')->get();
+
+        return view('admin.categories.subcategorias', compact('subcategorias', 'categorias'));
+    }
+
     public function storeSubcategoria(Request $request, Categoria $categoria)
+    {
+        return $this->createSubcategoria($request, $categoria);
+    }
+
+    public function storeSubcategoriaFromAdmin(Request $request)
+    {
+        $request->validate([
+            'categoria_id' => 'required|exists:categorias,id',
+        ]);
+
+        return $this->createSubcategoria(
+            $request,
+            Categoria::findOrFail($request->integer('categoria_id'))
+        );
+    }
+
+    private function createSubcategoria(Request $request, Categoria $categoria)
     {
         $request->validate([
             'name'        => 'required|string|max:100',

@@ -177,6 +177,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/categories',                                   [CategoryController::class, 'store'])->name('admin.categories.store');
         Route::put('/categories/{categoria}',                        [CategoryController::class, 'update'])->name('admin.categories.update');
         Route::delete('/categories/{categoria}',                     [CategoryController::class, 'destroy'])->name('admin.categories.destroy');
+        Route::get('/subcategorias',                                  [CategoryController::class, 'subcategorias'])->name('admin.subcategorias.index');
+        Route::post('/subcategorias',                                 [CategoryController::class, 'storeSubcategoriaFromAdmin'])->name('admin.subcategorias.store-direct');
         Route::post('/categories/{categoria}/subcategorias',         [CategoryController::class, 'storeSubcategoria'])->name('admin.subcategorias.store');
         Route::put('/subcategorias/{subcategoria}',                  [CategoryController::class, 'updateSubcategoria'])->name('admin.subcategorias.update');
         Route::delete('/subcategorias/{subcategoria}',               [CategoryController::class, 'destroySubcategoria'])->name('admin.subcategorias.destroy');
