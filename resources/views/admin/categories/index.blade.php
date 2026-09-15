@@ -341,6 +341,10 @@
                                 </div>
                                 <div style="display:flex;gap:.3rem;">
                                     <button class="btn btn-sm btn-outline" style="padding:.2rem .5rem;font-size:.75rem;"
+                                            onclick="openEditSub({{ $sub->id }}, '{{ addslashes($sub->name) }}', '{{ addslashes($sub->description ?? '') }}', {{ $sub->is_active ? 'true' : 'false' }})">
+                                        <i class="bi bi-pencil"></i> Editar
+                                    </button>
+                                    <button class="btn btn-sm btn-outline" style="padding:.2rem .5rem;font-size:.75rem;"
                                             onclick="openAddTipo({{ $sub->id }}, '{{ addslashes($sub->name) }}')">
                                         <i class="bi bi-plus"></i> Tipo
                                     </button>
@@ -414,6 +418,34 @@
     </div>
 </div>
 
+{{-- Modal: Editar subcategoría --}}
+<div id="modal-edit-sub" class="admin-modal">
+    <div class="card" style="width:420px;margin:0;">
+        <div class="card-body">
+            <h3 style="font-size:1rem;font-weight:600;margin-bottom:1rem;">Editar Subcategoría</h3>
+            <form id="form-edit-sub" method="POST">
+                @csrf @method('PUT')
+                <div class="form-group">
+                    <label class="form-label">Nombre *</label>
+                    <input type="text" name="name" id="edit-sub-name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Descripción</label>
+                    <textarea name="description" id="edit-sub-desc" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="form-group" style="display:flex;align-items:center;gap:.5rem;">
+                    <input type="checkbox" name="is_active" id="edit-sub-active" value="1" style="width:16px;height:16px;">
+                    <label for="edit-sub-active" class="form-label" style="margin:0;">Activa</label>
+                </div>
+                <div style="display:flex;gap:.5rem;margin-top:1rem;">
+                    <button type="submit" class="btn btn-primary" style="flex:1;">Guardar</button>
+                    <button type="button" class="btn btn-outline" onclick="closeEditSub()" style="flex:1;">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {{-- Modal: Añadir tipo de incidente --}}
 <div id="modal-add-tipo" class="admin-modal">
     <div class="card" style="width:400px;margin:0;">
@@ -471,6 +503,17 @@ function closeEditCat() {
     document.getElementById('modal-edit-cat').style.display = 'none';
 }
 
+function openEditSub(id, name, desc, active) {
+    document.getElementById('form-edit-sub').action = '/admin/subcategorias/' + id;
+    document.getElementById('edit-sub-name').value = name;
+    document.getElementById('edit-sub-desc').value = desc;
+    document.getElementById('edit-sub-active').checked = active;
+    document.getElementById('modal-edit-sub').style.display = 'flex';
+}
+function closeEditSub() {
+    document.getElementById('modal-edit-sub').style.display = 'none';
+}
+
 function openAddTipo(subId, subName) {
     document.getElementById('form-add-tipo').action = '/admin/subcategorias/' + subId + '/tipos';
     document.getElementById('tipo-modal-sub').textContent = 'Subcategoría: ' + subName;
@@ -481,7 +524,7 @@ function closeAddTipo() {
 }
 
 // Clic fuera cierra modales
-['modal-edit-cat','modal-add-tipo'].forEach(id => {
+['modal-edit-cat','modal-edit-sub','modal-add-tipo'].forEach(id => {
     document.getElementById(id).addEventListener('click', function(e) {
         if (e.target === this) this.style.display = 'none';
     });
