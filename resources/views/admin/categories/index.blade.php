@@ -89,7 +89,6 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: .75rem;
     gap: .65rem;
 }
 
@@ -98,8 +97,26 @@
     align-items: center;
     gap: .6rem;
     min-width: 0;
+    flex: 1;
     flex-wrap: wrap;
 }
+
+.cat-open-btn {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    flex-wrap: wrap;
+    text-align: left;
+    background: none;
+    border: 0;
+    padding: .25rem 0;
+    width: 100%;
+    cursor: pointer;
+}
+
+.cat-open-btn:hover .cat-name,
+.cat-open-btn:focus-visible .cat-name { color: #2563eb; }
+.cat-open-btn:focus-visible { outline: 2px solid #3b82f6; outline-offset: 4px; border-radius: 4px; }
 
 .cat-name {
     font-weight: 700;
@@ -159,15 +176,8 @@
     border-color: #dbe3ef;
 }
 
-.btn-toggle-cat i {
-    color: #64748b;
-}
-
 .sublist {
-    display: none;
-    padding-left: 1.25rem;
-    border-left: 2px dashed #d9e4f3;
-    margin-left: .45rem;
+    padding: .25rem 1.25rem 1rem;
 }
 
 .subcat-row {
@@ -213,6 +223,33 @@
     border-radius: 14px;
     border: 1px solid #dce6f4;
     box-shadow: 0 20px 45px rgba(15, 23, 42, .28);
+}
+
+.admin-modal .card.category-modal-card {
+    width: min(760px, calc(100vw - 24px));
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+}
+
+.category-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.category-modal-head h2 { margin: 0; font-size: 1.1rem; }
+.category-modal-close { background: none; border: 0; font-size: 1.5rem; cursor: pointer; line-height: 1; }
+.category-form-error { padding: .65rem .8rem; margin-bottom: .75rem; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; }
+.add-type-form { display: flex; gap: .5rem; margin-top: .65rem; }
+.add-type-form .form-control { flex: 1; min-width: 0; }
+
+@media (max-width: 640px) {
+    .cat-row-head { align-items: flex-start; flex-direction: column; }
+    .add-sub-form, .add-type-form { flex-wrap: wrap; }
+    .add-sub-form .form-control, .add-type-form .form-control { min-width: 100%; }
 }
 
 @media (max-width: 1050px) {
@@ -286,7 +323,7 @@
         </div>
     </div>
 
-    {{-- Panel derecho: Lista de categorías expandible --}}
+    {{-- Panel derecho: cada categoría abre su detalle --}}
     <div>
         @if($categorias->isEmpty())
             <div class="empty-state">
@@ -300,16 +337,17 @@
                     {{-- Cabecera de categoría --}}
                     <div class="cat-row-head">
                         <div class="cat-head-meta">
-                            <button class="btn-toggle-cat" onclick="toggleCat({{ $cat->id }})" style="background:none;border:none;cursor:pointer;padding:0;">
-                                <i class="bi bi-chevron-down text-muted" id="icon-cat-{{ $cat->id }}" style="transition:.2s;"></i>
+                            <button type="button" class="cat-open-btn" onclick="openCategory({{ $cat->id }})"
+                                    aria-haspopup="dialog" aria-controls="category-modal-{{ $cat->id }}">
+                                <span class="cat-name">{{ $cat->name }}</span>
+                                <span class="badge {{ $cat->is_active ? 'bg-success' : 'bg-secondary' }}" style="font-size:.65rem;">
+                                    {{ $cat->is_active ? 'Activa' : 'Inactiva' }}
+                                </span>
+                                <span class="cat-stats">
+                                    {{ $cat->subcategorias_count }} subcategorías · {{ $cat->tickets_count }} tickets
+                                </span>
+                                <i class="bi bi-chevron-right text-muted" aria-hidden="true"></i>
                             </button>
-                            <span class="cat-name">{{ $cat->name }}</span>
-                            <span class="badge {{ $cat->is_active ? 'bg-success' : 'bg-secondary' }}" style="font-size:.65rem;">
-                                {{ $cat->is_active ? 'Activa' : 'Inactiva' }}
-                            </span>
-                            <span class="cat-stats">
-                                {{ $cat->subcategorias_count }} subcategorías · {{ $cat->tickets_count }} tickets
-                            </span>
                         </div>
                         <div class="cat-actions">
                             <button type="button" class="cat-action-btn" onclick="openEditCat({{ $cat->id }}, '{{ addslashes($cat->name) }}', '{{ addslashes($cat->description ?? '') }}', {{ $cat->is_active ? 'true' : 'false' }})">
@@ -330,8 +368,19 @@
                         </div>
                     </div>
 
-                    {{-- Subcategorías --}}
-                    <div id="sublist-{{ $cat->id }}" class="sublist">
+                    {{-- Subcategorías y tipos de esta categoría --}}
+                    <div id="category-modal-{{ $cat->id }}" class="admin-modal category-detail-modal"
+                         role="dialog" aria-modal="true" aria-labelledby="category-title-{{ $cat->id }}">
+                    <div class="card category-modal-card">
+                        <div class="category-modal-head">
+                            <h2 id="category-title-{{ $cat->id }}">{{ $cat->name }}</h2>
+                            <button type="button" class="category-modal-close" onclick="closeCategory({{ $cat->id }})"
+                                    aria-label="Cerrar categoría">&times;</button>
+                        </div>
+                    <div class="sublist">
+                        @if($errors->any() && old('category_context') == $cat->id)
+                            <div class="category-form-error" role="alert">{{ $errors->first() }}</div>
+                        @endif
                         @foreach($cat->subcategorias as $sub)
                         <div class="subcat-row" style="border:1px solid var(--border-color);border-radius:.5rem;padding:.6rem 1rem;margin-bottom:.5rem;background:var(--bg-secondary);">
                             <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -340,10 +389,6 @@
                                     <span style="font-size:.75rem;color:var(--text-muted);margin-left:.5rem;">{{ $sub->tiposIncidente->count() }} tipos</span>
                                 </div>
                                 <div style="display:flex;gap:.3rem;">
-                                    <button class="btn btn-sm btn-outline" style="padding:.2rem .5rem;font-size:.75rem;"
-                                            onclick="openAddTipo({{ $sub->id }}, '{{ addslashes($sub->name) }}')">
-                                        <i class="bi bi-plus"></i> Tipo
-                                    </button>
                                     <form method="POST" action="{{ route('admin.subcategorias.destroy', $sub) }}" onsubmit="return confirm('¿Eliminar esta subcategoría?')">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-outline" style="padding:.2rem .5rem;font-size:.75rem;color:var(--danger);">
@@ -366,18 +411,32 @@
                                 @endforeach
                             </div>
                             @endif
+                            <form method="POST" action="{{ route('admin.tipos.store', $sub) }}" class="add-type-form">
+                                @csrf
+                                <input type="hidden" name="category_context" value="{{ $cat->id }}">
+                                <input type="hidden" name="form_context" value="type-{{ $sub->id }}">
+                                <input type="text" name="name" class="form-control" maxlength="150"
+                                       value="{{ old('form_context') === 'type-'.$sub->id ? old('name') : '' }}"
+                                       placeholder="Nuevo tipo de incidente" aria-label="Nuevo tipo de incidente para {{ $sub->name }}" required>
+                                <button type="submit" class="btn btn-sm btn-primary">Añadir tipo</button>
+                            </form>
                         </div>
                         @endforeach
 
                         {{-- Añadir subcategoría --}}
                         <form method="POST" action="{{ route('admin.subcategorias.store', $cat) }}" class="add-sub-form">
                             @csrf
+                            <input type="hidden" name="category_context" value="{{ $cat->id }}">
+                            <input type="hidden" name="form_context" value="category-{{ $cat->id }}">
                             <input type="text" name="name" class="form-control"
+                                   value="{{ old('form_context') === 'category-'.$cat->id ? old('name') : '' }}"
                                    placeholder="Nueva subcategoría…" required>
                             <button type="submit" class="btn btn-sm btn-primary">
                                 <i class="bi bi-plus-lg"></i> Añadir
                             </button>
                         </form>
+                    </div>
+                    </div>
                     </div>
                 </div>
             </div>
@@ -414,27 +473,6 @@
     </div>
 </div>
 
-{{-- Modal: Añadir tipo de incidente --}}
-<div id="modal-add-tipo" class="admin-modal">
-    <div class="card" style="width:400px;margin:0;">
-        <div class="card-body">
-            <h3 style="font-size:1rem;font-weight:600;margin-bottom:.25rem;">Añadir Tipo de Incidente</h3>
-            <p id="tipo-modal-sub" style="font-size:.85rem;color:var(--text-muted);margin-bottom:1rem;"></p>
-            <form id="form-add-tipo" method="POST">
-                @csrf
-                <div class="form-group">
-                    <label class="form-label">Nombre del tipo *</label>
-                    <input type="text" name="name" class="form-control" placeholder="Ej: Activación de licencia" required>
-                </div>
-                <div style="display:flex;gap:.5rem;">
-                    <button type="submit" class="btn btn-primary" style="flex:1;">Crear</button>
-                    <button type="button" class="btn btn-outline" onclick="closeAddTipo()" style="flex:1;">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>{{-- /modal-add-tipo --}}
-
 </div>{{-- /admin-content --}}
 </div>{{-- /admin-layout --}}
 @endsection
@@ -452,12 +490,17 @@
 
 @push('scripts')
 <script>
-function toggleCat(id) {
-    const list = document.getElementById('sublist-' + id);
-    const icon = document.getElementById('icon-cat-' + id);
-    const hidden = list.style.display === 'none';
-    list.style.display = hidden ? 'block' : 'none';
-    icon.style.transform = hidden ? 'rotate(-180deg)' : '';
+let lastCategoryTrigger = null;
+function openCategory(id) {
+    lastCategoryTrigger = document.activeElement;
+    const modal = document.getElementById('category-modal-' + id);
+    if (!modal) return;
+    modal.style.display = 'flex';
+    modal.querySelector('.category-modal-close').focus();
+}
+function closeCategory(id) {
+    document.getElementById('category-modal-' + id).style.display = 'none';
+    lastCategoryTrigger?.focus();
 }
 
 function openEditCat(id, name, desc, active) {
@@ -471,20 +514,25 @@ function closeEditCat() {
     document.getElementById('modal-edit-cat').style.display = 'none';
 }
 
-function openAddTipo(subId, subName) {
-    document.getElementById('form-add-tipo').action = '/admin/subcategorias/' + subId + '/tipos';
-    document.getElementById('tipo-modal-sub').textContent = 'Subcategoría: ' + subName;
-    document.getElementById('modal-add-tipo').style.display = 'flex';
-}
-function closeAddTipo() {
-    document.getElementById('modal-add-tipo').style.display = 'none';
-}
-
 // Clic fuera cierra modales
-['modal-edit-cat','modal-add-tipo'].forEach(id => {
+['modal-edit-cat'].forEach(id => {
     document.getElementById(id).addEventListener('click', function(e) {
         if (e.target === this) this.style.display = 'none';
     });
 });
+document.querySelectorAll('.category-detail-modal').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) closeCategory(this.id.replace('category-modal-', ''));
+    });
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const openModal = document.querySelector('.category-detail-modal[style*="display: flex"]');
+        if (openModal) closeCategory(openModal.id.replace('category-modal-', ''));
+    }
+});
+@if(old('category_context') || session('open_category'))
+openCategory(@json((int) (old('category_context') ?: session('open_category'))));
+@endif
 </script>
 @endpush

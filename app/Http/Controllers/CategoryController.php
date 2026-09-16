@@ -134,7 +134,8 @@ class CategoryController extends Controller
 
         AuditLog::record('subcategoria.created', 'Subcategoria', $sub->id, ['name' => $sub->name, 'categoria' => $categoria->name]);
 
-        return back()->with('success', "Subcategoría \"{$sub->name}\" creada.");
+        return back()->with('success', "Subcategoría \"{$sub->name}\" creada.")
+            ->with('open_category', $categoria->id);
     }
 
     public function updateSubcategoria(Request $request, Subcategoria $subcategoria)
@@ -157,11 +158,14 @@ class CategoryController extends Controller
     public function destroySubcategoria(Subcategoria $subcategoria)
     {
         if ($subcategoria->tickets()->count() > 0) {
-            return back()->with('error', 'No se puede eliminar: la subcategoría tiene tickets asociados.');
+            return back()->with('error', 'No se puede eliminar: la subcategoría tiene tickets asociados.')
+                ->with('open_category', $subcategoria->categoria_id);
         }
 
+        $categoriaId = $subcategoria->categoria_id;
         $subcategoria->delete();
-        return back()->with('success', "Subcategoría eliminada.");
+        return back()->with('success', "Subcategoría eliminada.")
+            ->with('open_category', $categoriaId);
     }
 
     // ══════════════════════════════════════════
@@ -181,17 +185,21 @@ class CategoryController extends Controller
             'is_active'   => true,
         ]);
 
-        return back()->with('success', "Tipo de incidente \"{$tipo->name}\" creado.");
+        return back()->with('success', "Tipo de incidente \"{$tipo->name}\" creado.")
+            ->with('open_category', $subcategoria->categoria_id);
     }
 
     public function destroyTipo(TipoIncidente $tipo)
     {
         if ($tipo->tickets()->count() > 0) {
-            return back()->with('error', 'No se puede eliminar: el tipo tiene tickets asociados.');
+            return back()->with('error', 'No se puede eliminar: el tipo tiene tickets asociados.')
+                ->with('open_category', $tipo->subcategoria->categoria_id);
         }
 
+        $categoriaId = $tipo->subcategoria->categoria_id;
         $tipo->delete();
-        return back()->with('success', "Tipo de incidente eliminado.");
+        return back()->with('success', "Tipo de incidente eliminado.")
+            ->with('open_category', $categoriaId);
     }
 
     // ══════════════════════════════════════════

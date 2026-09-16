@@ -17,7 +17,6 @@
         // para llegar.
         ['route' => 'ayuda.index', 'icon' => 'fas fa-life-ring', 'label' => 'Ver Centro de Ayuda', 'key' => 'ayuda'],
         ['route' => 'admin.categories.index', 'icon' => 'fas fa-tags', 'label' => 'Categorías', 'key' => 'categories'],
-        ['route' => 'admin.subcategorias.index', 'icon' => 'fas fa-sitemap', 'label' => 'Subcategorías', 'key' => 'subcategories'],
         ['route' => 'admin.sla.index', 'icon' => 'fas fa-clock', 'label' => 'Configurar SLA', 'key' => 'sla'],
         ['route' => 'admin.departments.index', 'icon' => 'fas fa-building', 'label' => 'Departamentos', 'key' => 'departments'],
         ['route' => 'admin.users.index', 'icon' => 'fas fa-users', 'label' => 'Usuarios', 'key' => 'users'],
