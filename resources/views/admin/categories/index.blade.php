@@ -188,6 +188,15 @@
     background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
 
+.subcat-head { display:flex; justify-content:space-between; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.subcat-actions { display:flex; gap:.3rem; }
+.sub-edit-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.55rem; margin-top:.7rem; padding:.7rem; border:1px solid var(--border-color); border-radius:.5rem; }
+.sub-edit-form[hidden] { display:none; }
+.sub-edit-form .form-group { margin:0; }
+.sub-edit-form .form-control { width:100%; }
+.sub-edit-wide { grid-column:1 / -1; }
+@media (max-width:600px) { .sub-edit-form { grid-template-columns:1fr; } }
+
 .add-sub-form {
     display: flex;
     gap: .5rem;
@@ -290,14 +299,14 @@
                     @csrf
                     <div class="form-group">
                         <label class="form-label">Nombre *</label>
-                        <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
-                               value="{{ old('name') }}" placeholder="Ej: Software, Hardware…" required>
-                        @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <input type="text" name="name" class="form-control @if(!old('category_context')) @error('name') is-invalid @enderror @endif"
+                               value="{{ old('category_context') ? '' : old('name') }}" placeholder="Ej: Software, Hardware…" required>
+                        @if(!old('category_context')) @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror @endif
                     </div>
                     <div class="form-group">
                         <label class="form-label">Descripción</label>
                         <textarea name="description" class="form-control" rows="2"
-                                  placeholder="Descripción opcional…">{{ old('description') }}</textarea>
+                                  placeholder="Descripción opcional…">{{ old('category_context') ? '' : old('description') }}</textarea>
                     </div>
                     <button type="submit" class="btn btn-primary" style="width:100%;">
                         <i class="bi bi-plus-lg"></i> Crear Categoría
@@ -383,12 +392,16 @@
                         @endif
                         @foreach($cat->subcategorias as $sub)
                         <div class="subcat-row" style="border:1px solid var(--border-color);border-radius:.5rem;padding:.6rem 1rem;margin-bottom:.5rem;background:var(--bg-secondary);">
-                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div class="subcat-head">
                                 <div>
                                     <span style="font-weight:500;font-size:.88rem;">{{ $sub->name }}</span>
+                                    <span class="badge {{ $sub->is_active ? 'bg-success' : 'bg-secondary' }}" style="font-size:.65rem;">{{ $sub->is_active ? 'Activa' : 'Inactiva' }}</span>
                                     <span style="font-size:.75rem;color:var(--text-muted);margin-left:.5rem;">{{ $sub->tiposIncidente->count() }} tipos</span>
                                 </div>
-                                <div style="display:flex;gap:.3rem;">
+                                <div class="subcat-actions">
+                                    <button type="button" class="btn btn-sm btn-outline" style="padding:.2rem .5rem;font-size:.75rem;"
+                                            onclick="toggleSubcategoryEdit({{ $sub->id }})" aria-controls="subcategory-edit-{{ $sub->id }}"
+                                            aria-expanded="{{ old('form_context') === 'edit-'.$sub->id ? 'true' : 'false' }}">Editar</button>
                                     <form method="POST" action="{{ route('admin.subcategorias.destroy', $sub) }}" onsubmit="return confirm('¿Eliminar esta subcategoría?')">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-outline" style="padding:.2rem .5rem;font-size:.75rem;color:var(--danger);">
@@ -397,6 +410,33 @@
                                     </form>
                                 </div>
                             </div>
+                            <form method="POST" action="{{ route('admin.subcategorias.update', $sub) }}" class="sub-edit-form"
+                                  id="subcategory-edit-{{ $sub->id }}" @if(old('form_context') !== 'edit-'.$sub->id) hidden @endif>
+                                @csrf @method('PUT')
+                                <input type="hidden" name="category_context" value="{{ $cat->id }}">
+                                <input type="hidden" name="form_context" value="edit-{{ $sub->id }}">
+                                <div class="form-group">
+                                    <label class="form-label" for="sub-edit-name-{{ $sub->id }}">Nombre *</label>
+                                    <input type="text" name="name" id="sub-edit-name-{{ $sub->id }}" class="form-control" maxlength="100" required
+                                           value="{{ old('form_context') === 'edit-'.$sub->id ? old('name') : $sub->name }}">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="sub-edit-active-{{ $sub->id }}">Estado</label>
+                                    <select name="is_active" id="sub-edit-active-{{ $sub->id }}" class="form-control">
+                                        @php($editActive = old('form_context') === 'edit-'.$sub->id ? old('is_active', $sub->is_active) : $sub->is_active)
+                                        <option value="1" @selected($editActive)>Activa</option>
+                                        <option value="0" @selected(!$editActive)>Inactiva</option>
+                                    </select>
+                                </div>
+                                <div class="form-group sub-edit-wide">
+                                    <label class="form-label" for="sub-edit-desc-{{ $sub->id }}">Descripción</label>
+                                    <textarea name="description" id="sub-edit-desc-{{ $sub->id }}" class="form-control" rows="2" maxlength="500">{{ old('form_context') === 'edit-'.$sub->id ? old('description') : $sub->description }}</textarea>
+                                </div>
+                                <div class="sub-edit-wide" style="display:flex;gap:.5rem;">
+                                    <button type="submit" class="btn btn-sm btn-primary">Guardar</button>
+                                    <button type="button" class="btn btn-sm btn-outline" onclick="toggleSubcategoryEdit({{ $sub->id }})">Cancelar</button>
+                                </div>
+                            </form>
                             {{-- Tipos de incidente --}}
                             @if($sub->tiposIncidente->count() > 0)
                             <div style="margin-top:.4rem;display:flex;flex-wrap:wrap;gap:.3rem;">
@@ -501,6 +541,15 @@ function openCategory(id) {
 function closeCategory(id) {
     document.getElementById('category-modal-' + id).style.display = 'none';
     lastCategoryTrigger?.focus();
+}
+
+function toggleSubcategoryEdit(id) {
+    const form = document.getElementById('subcategory-edit-' + id);
+    const button = document.querySelector('[aria-controls="subcategory-edit-' + id + '"]');
+    if (!form || !button) return;
+    form.hidden = !form.hidden;
+    button.setAttribute('aria-expanded', String(!form.hidden));
+    if (!form.hidden) form.querySelector('input[name="name"]').focus();
 }
 
 function openEditCat(id, name, desc, active) {
