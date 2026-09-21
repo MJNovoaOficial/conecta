@@ -1,8 +1,12 @@
 @extends('layouts.app')
 @section('title', 'Manuales — Admin')
 
+@section('styles')
+@include('admin.manuales._layout_styles')
+@endsection
+
 @section('content')
-<div class="admin-layout">
+<div class="admin-layout manuales-layout">
     @include('layouts.admin_sidebar', ['active' => 'manuales'])
     <div class="admin-content-wrap">
         <div class="admin-wrapper">

@@ -2,6 +2,7 @@
 @section('title', 'Subir Manual — Admin')
 
 @section('styles')
+@include('admin.manuales._layout_styles')
 <style>
 .form-label-custom { font-size: 0.82rem; font-weight: 600; color: #4a5568; margin-bottom: 5px; display: block; }
 .form-control-custom {
@@ -21,7 +22,7 @@
 @endsection
 
 @section('content')
-<div class="admin-layout">
+<div class="admin-layout manuales-layout">
     @include('layouts.admin_sidebar', ['active' => 'manuales'])
     <div class="admin-content-wrap">
         <div class="admin-wrapper" style="max-width:600px;">
