@@ -9,6 +9,7 @@ use App\Models\Subcategoria;
 use App\Models\TipoIncidente;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class PriorityRuleController extends Controller
 {
@@ -30,10 +31,14 @@ class PriorityRuleController extends Controller
     {
         $request->validate([
             'categoria_id'      => 'required|exists:categorias,id',
-            'subcategoria_id'   => 'nullable|exists:subcategorias,id',
-            'tipo_incidente_id' => 'nullable|exists:tipos_incidente,id',
+            'subcategoria_id'   => ['nullable', 'required_with:tipo_incidente_id', Rule::exists('subcategorias', 'id')->where('categoria_id', $request->input('categoria_id'))],
+            'tipo_incidente_id' => ['nullable', Rule::exists('tipos_incidente', 'id')->where('subcategoria_id', $request->input('subcategoria_id'))],
             'priority'          => 'required|in:low,medium,high,critical',
             'description'       => 'nullable|string|max:200',
+        ], [
+            'subcategoria_id.required_with' => 'Selecciona una subcategoría para ese tipo de incidente.',
+            'subcategoria_id.exists' => 'La subcategoría no corresponde a la categoría seleccionada.',
+            'tipo_incidente_id.exists' => 'El tipo de incidente no corresponde a la subcategoría seleccionada.',
         ]);
 
         $rule = PriorityRule::create($request->only(
@@ -60,10 +65,14 @@ class PriorityRuleController extends Controller
     {
         $request->validate([
             'categoria_id'      => 'required|exists:categorias,id',
-            'subcategoria_id'   => 'nullable|exists:subcategorias,id',
-            'tipo_incidente_id' => 'nullable|exists:tipos_incidente,id',
+            'subcategoria_id'   => ['nullable', 'required_with:tipo_incidente_id', Rule::exists('subcategorias', 'id')->where('categoria_id', $request->input('categoria_id'))],
+            'tipo_incidente_id' => ['nullable', Rule::exists('tipos_incidente', 'id')->where('subcategoria_id', $request->input('subcategoria_id'))],
             'priority'          => 'required|in:low,medium,high,critical',
             'description'       => 'nullable|string|max:200',
+        ], [
+            'subcategoria_id.required_with' => 'Selecciona una subcategoría para ese tipo de incidente.',
+            'subcategoria_id.exists' => 'La subcategoría no corresponde a la categoría seleccionada.',
+            'tipo_incidente_id.exists' => 'El tipo de incidente no corresponde a la subcategoría seleccionada.',
         ]);
 
         $oldData = $priorityRule->toArray();

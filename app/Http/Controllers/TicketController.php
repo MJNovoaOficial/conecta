@@ -236,12 +236,15 @@ class TicketController extends Controller
         $request->validate([
             'title'             => 'required|string|max:255',
             'description'       => 'nullable|string|max:10000',
-            'subcategoria_id'   => 'nullable|exists:subcategorias,id',
-            'tipo_incidente_id' => 'nullable|exists:tipos_incidente,id',
+            'subcategoria_id'   => 'nullable|required_with:tipo_incidente_id|exists:subcategorias,id',
+            'tipo_incidente_id' => ['nullable', Rule::exists('tipos_incidente', 'id')->where('subcategoria_id', $request->input('subcategoria_id'))],
             'device_type'       => 'nullable|string|max:100',
             'department_id'     => 'nullable|integer|exists:departamentos,id',
             'attachments'       => 'nullable|array|max:5',
             'attachments.*'     => 'file|max:51200', // 50 MB para videos
+        ], [
+            'subcategoria_id.required_with' => 'Selecciona una subcategoría para ese tipo de incidente.',
+            'tipo_incidente_id.exists' => 'El tipo de incidente no corresponde a la subcategoría seleccionada.',
         ]);
 
         // Prioridad asignada automáticamente según reglas configuradas
@@ -330,12 +333,15 @@ class TicketController extends Controller
             'guest_department'  => 'nullable|string|max:255',
             'title'             => 'required|string|max:255',
             'description'       => 'nullable|string|max:10000',
-            'subcategoria_id'   => 'nullable|exists:subcategorias,id',
-            'tipo_incidente_id' => 'nullable|exists:tipos_incidente,id',
+            'subcategoria_id'   => 'nullable|required_with:tipo_incidente_id|exists:subcategorias,id',
+            'tipo_incidente_id' => ['nullable', Rule::exists('tipos_incidente', 'id')->where('subcategoria_id', $request->input('subcategoria_id'))],
             'device_type'       => 'nullable|string|max:100',
             'department_id'     => 'nullable|integer|exists:departamentos,id',
             'attachments'       => 'nullable|array|max:5',
             'attachments.*'     => 'file|max:51200', // 50 MB para videos
+        ], [
+            'subcategoria_id.required_with' => 'Selecciona una subcategoría para ese tipo de incidente.',
+            'tipo_incidente_id.exists' => 'El tipo de incidente no corresponde a la subcategoría seleccionada.',
         ]);
 
         $ticketNumber = 'TK-' . date('YmdHis') . '-' . rand(1000, 9999);
@@ -929,8 +935,11 @@ class TicketController extends Controller
         }
 
         $request->validate([
-            'subcategoria_id'   => 'nullable|exists:subcategorias,id',
-            'tipo_incidente_id' => 'nullable|exists:tipos_incidente,id',
+            'subcategoria_id'   => 'nullable|required_with:tipo_incidente_id|exists:subcategorias,id',
+            'tipo_incidente_id' => ['nullable', Rule::exists('tipos_incidente', 'id')->where('subcategoria_id', $request->input('subcategoria_id'))],
+        ], [
+            'subcategoria_id.required_with' => 'Selecciona una subcategoría para ese tipo de incidente.',
+            'tipo_incidente_id.exists' => 'El tipo de incidente no corresponde a la subcategoría seleccionada.',
         ]);
 
         $ticket->update([
