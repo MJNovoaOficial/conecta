@@ -19,5 +19,6 @@ Artisan::command('inspire', function () {
 Schedule::job(new \App\Jobs\AutoCloseTicketJob)->everyFiveMinutes();
 
 // Aviso antes de que un ticket incumpla su plazo de resolución. Avisa una sola
-// vez por ticket: la marca queda en la columna sla_warned_at.
+// vez por ticket: la marca queda en sla_warned_for, que guarda DE QUÉ plazo se
+// avisó. Si a un ticket le corren la fecha, recibe un aviso nuevo.
 Schedule::job(new \App\Jobs\SendSlaWarningsJob)->everyFiveMinutes();
