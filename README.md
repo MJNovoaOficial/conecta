@@ -111,6 +111,29 @@ post_max_size       = 80M
 Sin esto la plataforma sigue funcionando: avisa cuál es el tamaño máximo real
 en vez de fallar con una pantalla de error, pero nadie podrá adjuntar un video.
 
+**`upload_tmp_dir` también hay que configurarlo, y este sí rompe cosas sin
+avisar.** Antes de guardar cualquier archivo subido, PHP lo escribe primero en
+una carpeta temporal. Si esa carpeta no existe o el usuario con el que corre
+IIS no tiene permiso de escritura ahí, PHP recibe el archivo pero no logra
+guardarlo, y la subida falla con un error 500 (`ValueError: Path must not be
+empty`, en `FilesystemAdapter::putFileAs`). No es un caso aislado: es el mismo
+mecanismo detrás de subir un manual, adjuntar un archivo a un ticket, la foto
+de perfil y las imágenes de artículos — si falla, fallan los cuatro.
+
+```ini
+upload_tmp_dir = "C:\php-uploads-tmp"
+```
+
+```powershell
+New-Item -ItemType Directory -Force "C:\php-uploads-tmp"
+icacls "C:\php-uploads-tmp" /grant "IIS_IUSRS:(OI)(CI)M" /T
+```
+
+Después de tocar el `php.ini`, siempre `iisreset`. Y conviene probar las
+cuatro subidas (manual, adjunto de ticket, avatar, imagen de artículo) antes
+de dar por terminado el despliegue: es fácil que la plataforma se vea andando
+mientras esto queda roto, porque nadie sube un archivo el primer día.
+
 ### 2. Instalar la aplicación
 
 ```bash
@@ -294,7 +317,7 @@ No basta con que la página cargue. Comprobar una por una:
 | Entrar con el administrador creado en el paso 5 | Entra y ve el panel |
 | Abrir un ticket como invitado, con un correo real | **Llega el correo** con el enlace de seguimiento |
 | `SELECT COUNT(*) FROM jobs;` un minuto después | Devuelve 0. Si crece, el consumidor de la cola no está corriendo |
-| Adjuntar un archivo de ~20 MB | Se adjunta sin error |
+| Subir un manual, adjuntar un archivo a un ticket, cambiar el avatar, y agregar una imagen a un artículo | Las **cuatro** se guardan sin error 500 (ver `upload_tmp_dir` en el paso 1) |
 | Abrir el asistente en la pantalla de login | Responde algo sobre contraseñas |
 | Revisar `storage/logs/laravel.log` | Sin errores nuevos |
 
