@@ -608,100 +608,13 @@ function filterTable(q) {
     });
 }
 
-function mfmt(cmd) {
-    document.getElementById('modalEditor').focus();
-    document.execCommand(cmd, false, null);
-    syncModalEditor();
-}
-function syncModalEditor() {
-    document.getElementById('modalDescField').value = document.getElementById('modalEditor').innerHTML;
-}
-function submitModalTicket() {
-    syncModalEditor();
-    const text = document.getElementById('modalEditor').innerText.trim();
-    if (!text) { document.getElementById('modalDescField').value = ''; }
-    document.getElementById('modalTicketForm').submit();
-}
-
-// ── AJAX: cargar subcategorías del catálogo ──────────────────────
-function loadModalSubcats(catId) {
-    const subSel  = document.getElementById('modalSubcatSelect');
-    const tipoSel = document.getElementById('modalTipoSelect');
-
-    // Resetear tipo
-    tipoSel.innerHTML = '<option value="">Seleccionar tipo (opcional)...</option>';
-    tipoSel.disabled = true;
-
-    if (!catId) {
-        subSel.innerHTML = '<option value="">Primero selecciona categoría...</option>';
-        subSel.disabled = true;
-        return;
-    }
-
-    subSel.innerHTML = '<option value="">Cargando...</option>';
-    subSel.disabled = true;
-
-    fetch(`/api/categorias/${catId}/subcategorias`)
-        .then(r => r.json())
-        .then(data => {
-            subSel.innerHTML = '<option value="">Seleccionar subcategoría...</option>';
-            data.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.id;
-                opt.textContent = s.name;
-                subSel.appendChild(opt);
-            });
-            subSel.disabled = false;
-        })
-        .catch(() => {
-            subSel.innerHTML = '<option value="">Error al cargar</option>';
-        });
-}
-
-// ── AJAX: cargar tipos de incidente ──────────────────────────────
-function loadModalTipos(subcatId) {
-    const tipoSel = document.getElementById('modalTipoSelect');
-
-    if (!subcatId) {
-        tipoSel.innerHTML = '<option value="">Seleccionar tipo (opcional)...</option>';
-        tipoSel.disabled = true;
-        return;
-    }
-
-    tipoSel.innerHTML = '<option value="">Cargando...</option>';
-    tipoSel.disabled = true;
-
-    fetch(`/api/subcategorias/${subcatId}/tipos`)
-        .then(r => r.json())
-        .then(data => {
-            tipoSel.innerHTML = '<option value="">Sin tipo específico</option>';
-            data.forEach(t => {
-                const opt = document.createElement('option');
-                opt.value = t.id;
-                opt.textContent = t.name;
-                tipoSel.appendChild(opt);
-            });
-            tipoSel.disabled = (data.length === 0);
-        })
-        .catch(() => {
-            tipoSel.innerHTML = '<option value="">Sin tipos</option>';
-        });
-}
-
-// ── Reset modal al cerrar ────────────────────────────────────────
-document.getElementById('newTicketModal').addEventListener('hidden.bs.modal', function() {
-    document.getElementById('modalTicketForm').reset();
-    document.getElementById('modalEditor').innerHTML = '';
-    document.getElementById('modalDescField').value = '';
-    document.getElementById('modalFileNames').textContent = '';
-    // Resetear selectores de clasificación
-    const subSel  = document.getElementById('modalSubcatSelect');
-    const tipoSel = document.getElementById('modalTipoSelect');
-    subSel.innerHTML  = '<option value="">Primero selecciona categoría...</option>';
-    subSel.disabled   = true;
-    tipoSel.innerHTML = '<option value="">Seleccionar tipo (opcional)...</option>';
-    tipoSel.disabled  = true;
-});
+// La carga de subcategoría/tipo y el reset del modal al cerrarlo viven en
+// layouts/app.blade.php (window.loadModalSubcats, window.loadModalTipos y su
+// propio listener de 'hidden.bs.modal'). Antes había una copia duplicada
+// aquí, de una versión anterior del modal con editor de texto enriquecido
+// (con un elemento #modalEditor que ya no existe): esa copia no comprobaba
+// que los elementos existieran antes de usarlos, así que tiraba un error de
+// JavaScript cada vez que se cerraba el modal en esta página.
 </script>
 @endsection
 

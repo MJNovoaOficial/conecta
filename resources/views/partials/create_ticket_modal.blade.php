@@ -1,7 +1,24 @@
 {{--
-  Partial reutilizable: Modal para abrir nuevo ticket — Versión simplificada (Reunión 4).
-  Solo 3 campos visibles: Asunto, Descripción, Adjuntos.
-  Clasificación opcional colapsada bajo "Más detalles".
+  Partial reutilizable: Modal para abrir nuevo ticket.
+
+  La clasificación (categoría → subcategoría → tipo) va visible, justo
+  después del asunto, y no detrás de un acordeón "opcional". Es lo único
+  del formulario que decide la prioridad del ticket (PriorityRule::resolve):
+  sin ella, cualquier ticket nace con prioridad media, sea cual sea el
+  problema real. Escondida y marcada "opcional" casi nadie la abría.
+
+  Sigue sin ser obligatoria —igual que en tickets/create.blade.php—, porque
+  exigirla bloquearía a alguien que no sabe bien qué elegir. La cadena de
+  categoria→subcategoria→tipo (`loadModalSubcats`, `loadModalTipos`) vive en
+  el layout global (resources/views/layouts/app.blade.php), no aquí: así
+  funciona en cualquier página que incluya este modal, no solo en la que lo
+  declaró.
+
+  No pide Departamento ni Dispositivo: con sesión, el departamento se toma de
+  la cuenta (o de la regla automática por categoría, si aplica) y no hay
+  Dispositivo en ningún formulario con sesión. Ese es terreno de
+  tickets/guest_create.blade.php, donde sí hace falta porque el invitado no
+  tiene cuenta de la que tomarlo.
 --}}
 <div class="modal fade" id="newTicketModal" tabindex="-1" aria-labelledby="newTicketModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -40,7 +57,34 @@
             </div>
           </div>
 
-          {{-- ───────────────────────── CAMPO 2: Descripción simple ─────────────────────── --}}
+          {{-- ───────────────────────── CAMPO 2: Clasificación (visible, no colapsada) ──── --}}
+          <div class="mb-3" style="background:#f7f9fc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;">
+            <div style="font-size:0.8rem;color:#4a5568;margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+              <i class="fas fa-sliders-h" style="color:#3498db;"></i>
+              <span><strong>Ayúdanos a priorizar tu ticket.</strong> El sistema asigna la urgencia según lo que elijas aquí.</span>
+            </div>
+
+            <label class="form-label fw-semibold" style="font-size:0.8rem;color:#4a5568;">Categoría del problema</label>
+            <select id="modalCatSelect" class="form-select mb-2"
+                    style="border-radius:7px;border-color:#e2e8f0;font-size:0.85rem;"
+                    onchange="loadModalSubcats(this.value)">
+              <option value="">No sé / No aplica</option>
+              @foreach(App\Models\Categoria::where('is_active', true)->orderBy('name')->get() as $cat)
+              <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+              @endforeach
+            </select>
+            <select id="modalSubcatSelect" name="subcategoria_id" class="form-select mb-2"
+                    style="border-radius:7px;border-color:#e2e8f0;font-size:0.85rem;"
+                    onchange="loadModalTipos(this.value)" disabled>
+              <option value="">Primero selecciona categoría...</option>
+            </select>
+            <select id="modalTipoSelect" name="tipo_incidente_id" class="form-select"
+                    style="border-radius:7px;border-color:#e2e8f0;font-size:0.85rem;" disabled>
+              <option value="">Seleccionar tipo (opcional)...</option>
+            </select>
+          </div>
+
+          {{-- ───────────────────────── CAMPO 3: Descripción simple ─────────────────────── --}}
           <div class="mb-3">
             <label class="form-label fw-semibold" style="font-size:0.88rem;color:#2d3748;">
               <i class="fas fa-comment-dots me-1" style="color:#9b59b6;"></i>
@@ -52,7 +96,7 @@
                       placeholder="Describe el problema con más detalle..."></textarea>
           </div>
 
-          {{-- ───────────────────────── CAMPO 3: Adjuntos ───────────────────────────────── --}}
+          {{-- ───────────────────────── CAMPO 4: Adjuntos ───────────────────────────────── --}}
           <div class="mb-3">
             <label class="form-label fw-semibold" style="font-size:0.88rem;color:#2d3748;">
               <i class="fas fa-paperclip me-1" style="color:#e67e22;"></i>
@@ -68,43 +112,6 @@
             <input type="file" id="modalAttach" name="attachments[]" multiple style="display:none;"
                    accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,.webm"
                    onchange="document.getElementById('modalFileNames').textContent = Array.from(this.files).map(f=>f.name).join(', ')">
-          </div>
-
-          {{-- ─────────────────── SECCIÓN COLAPSADA: Más detalles (opcional) ────────────── --}}
-          <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">
-            <button type="button" id="toggleDetails"
-                    onclick="toggleMoreDetails()"
-                    style="width:100%;padding:10px 14px;background:#f7f9fc;border:none;text-align:left;
-                           font-size:0.82rem;color:#718096;font-weight:600;cursor:pointer;
-                           display:flex;align-items:center;justify-content:space-between;">
-              <span><i class="fas fa-sliders-h me-2" style="color:#a0aec0;"></i>Más detalles <span style="font-weight:400;">(opcional)</span></span>
-              <i class="fas fa-chevron-down" id="detailsChevron" style="transition:transform .2s;"></i>
-            </button>
-            <div id="moreDetailsSection" style="display:none;padding:16px 14px;border-top:1px solid #f0f2f5;">
-
-              {{-- Categoría --}}
-              <div class="mb-1">
-                <label class="form-label fw-semibold" style="font-size:0.83rem;color:#4a5568;">Categoría</label>
-                <select id="modalCatSelect" class="form-select mb-2"
-                        style="border-radius:7px;border-color:#e2e8f0;font-size:0.87rem;"
-                        onchange="loadModalSubcats(this.value)">
-                  <option value="">No sé / No aplica</option>
-                  @foreach(App\Models\Categoria::where('is_active', true)->orderBy('name')->get() as $cat)
-                  <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                  @endforeach
-                </select>
-                <select id="modalSubcatSelect" name="subcategoria_id" class="form-select mb-2"
-                        style="border-radius:7px;border-color:#e2e8f0;font-size:0.87rem;"
-                        onchange="loadModalTipos(this.value)" disabled>
-                  <option value="">Primero selecciona categoría...</option>
-                </select>
-                <select id="modalTipoSelect" name="tipo_incidente_id" class="form-select"
-                        style="border-radius:7px;border-color:#e2e8f0;font-size:0.87rem;" disabled>
-                  <option value="">Tipo de incidente (opcional)...</option>
-                </select>
-              </div>
-
-            </div>
           </div>
 
         </form>
@@ -126,14 +133,6 @@
 </div>
 
 <script>
-function toggleMoreDetails() {
-    const section = document.getElementById('moreDetailsSection');
-    const chevron = document.getElementById('detailsChevron');
-    const open = section.style.display === 'block';
-    section.style.display = open ? 'none' : 'block';
-    chevron.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
-}
-
 function enviarTicketSimplificado() {
     const titleField = document.getElementById('modalTitleField');
     if (!titleField || !titleField.value.trim()) {
@@ -148,26 +147,23 @@ function enviarTicketSimplificado() {
     document.getElementById('modalTicketForm').submit();
 }
 
-// Resetear modal al cerrar
+// Al cerrar el modal, además del form.reset() nativo, se limpia el estado de
+// error del asunto: form.reset() no toca los estilos inline que puso
+// enviarTicketSimplificado() cuando faltaba completarlo.
+//
+// La cadena de categoría→subcategoría→tipo y el resto de los campos ya
+// quedan cubiertos por el listener global en layouts/app.blade.php, que
+// corre en cualquier página que incluya este modal.
 document.addEventListener('DOMContentLoaded', function () {
     var modalEl = document.getElementById('newTicketModal');
     if (modalEl) {
         modalEl.addEventListener('hidden.bs.modal', function () {
-            var form = document.getElementById('modalTicketForm');
-            if (form) form.reset();
-            var fileNames = document.getElementById('modalFileNames');
-            if (fileNames) fileNames.textContent = '';
             var titleField = document.getElementById('modalTitleField');
             if (titleField) {
                 titleField.style.borderColor = '';
                 titleField.style.boxShadow = '';
                 titleField.placeholder = 'Ej: No puedo entrar a mi correo, la impresora no imprime...';
             }
-            // Cerrar "más detalles" si estaba abierto
-            var det = document.getElementById('moreDetailsSection');
-            if (det) det.style.display = 'none';
-            var chev = document.getElementById('detailsChevron');
-            if (chev) chev.style.transform = 'rotate(0deg)';
         });
     }
 });

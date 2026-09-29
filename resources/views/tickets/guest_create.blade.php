@@ -107,10 +107,63 @@ textarea.form-control-custom { resize: vertical; min-height: 90px; }
                         @error('title')<div class="field-err">{{ $message }}</div>@enderror
                     </div>
 
-                    {{-- Campo 2: Descripción --}}
+                    {{-- Campo 2: Clasificación — visible, no detrás de un acordeón "opcional".
+                         Es lo que decide la prioridad del ticket (PriorityRule::resolve): sin
+                         subcategoría, el ticket nace con prioridad media sea cual sea el
+                         problema real. Sigue sin ser obligatoria, igual que en el resto de
+                         los formularios de ticket: exigirla bloquearía a un invitado que no
+                         sabe bien qué elegir. --}}
+                    <div style="margin-bottom: 16px;background:#f7f9fc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;">
+                        <div style="font-size: 0.78rem; color: #4a5568; margin-bottom: 10px; display:flex; align-items:center; gap:8px;">
+                            <i class="fas fa-sliders-h" style="color:#3498db;"></i>
+                            <span><strong>Ayúdanos a priorizar tu ticket.</strong> El sistema asigna la urgencia según lo que elijas aquí.</span>
+                        </div>
+
+                        <div style="margin-bottom: 10px;">
+                            <label class="form-label-custom">Área / Departamento</label>
+                            <div style="position: relative;">
+                                <span style="position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #a0aec0; font-size: 0.82rem;"><i class="fas fa-building"></i></span>
+                                <input type="text" name="guest_department"
+                                       class="form-control-custom @error('guest_department') is-invalid @enderror"
+                                       style="padding-left: 32px;"
+                                       value="{{ old('guest_department') }}"
+                                       placeholder="Ej: Ventas, Contabilidad...">
+                            </div>
+                            @error('guest_department')<div class="field-err">{{ $message }}</div>@enderror
+                        </div>
+
+                        <div style="margin-bottom: 10px;">
+                            <label class="form-label-custom">Departamento del sistema</label>
+                            <select name="department_id" class="form-control-custom @error('department_id') is-invalid @enderror">
+                                <option value="">No sé / No aplica</option>
+                                @foreach($departments as $dept)
+                                    <option value="{{ $dept->id }}" {{ old('department_id') == $dept->id ? 'selected' : '' }}>{{ $dept->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('department_id')<div class="field-err">{{ $message }}</div>@enderror
+                        </div>
+
+                        <label class="form-label-custom">Categoría del problema</label>
+                        <select id="guestCatSelect" class="form-control-custom mb-2" onchange="loadGuestSubcats(this.value)">
+                            <option value="">No sé / No aplica</option>
+                            @foreach(App\Models\Categoria::where('is_active', true)->orderBy('name')->get() as $cat)
+                            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+                        <select id="guestSubcatSelect" name="subcategoria_id" class="form-control-custom mb-2"
+                                onchange="loadGuestTipos(this.value)" disabled>
+                            <option value="">Primero selecciona categoría...</option>
+                        </select>
+                        <select id="guestTipoSelect" name="tipo_incidente_id" class="form-control-custom" disabled>
+                            <option value="">Tipo de incidente (opcional)...</option>
+                        </select>
+                        @error('subcategoria_id')<div class="field-err">{{ $message }}</div>@enderror
+                    </div>
+
+                    {{-- Campo 3: Descripción --}}
                     <div style="margin-bottom: 14px;">
                         <label class="form-label-custom">
-                            Más detalles <small style="font-weight:400;color:#a0aec0;">(opcional)</small>
+                            Cuéntanos más <small style="font-weight:400;color:#a0aec0;">(opcional)</small>
                         </label>
                         <textarea name="description" rows="3"
                                   class="form-control-custom @error('description') is-invalid @enderror"
@@ -118,7 +171,7 @@ textarea.form-control-custom { resize: vertical; min-height: 90px; }
                         @error('description')<div class="field-err">{{ $message }}</div>@enderror
                     </div>
 
-                    {{-- Campo 3: Adjuntos --}}
+                    {{-- Campo 4: Adjuntos --}}
                     <div style="margin-bottom: 16px;">
                         <label class="form-label-custom">
                             Adjuntar archivo o video <small style="font-weight:400;color:#a0aec0;">(opcional — máx. 5 archivos)</small>
@@ -135,66 +188,6 @@ textarea.form-control-custom { resize: vertical; min-height: 90px; }
                                accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.mp4,.mov,.webm"
                                onchange="showFiles(this)">
                         @error('attachments.*')<div class="field-err">{{ $message }}</div>@enderror
-                    </div>
-
-                    {{-- Acordeón: más detalles opcionales --}}
-                    <div style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;margin-bottom:20px;">
-                        <button type="button" id="btnGuestDetails"
-                                onclick="toggleGuestDetails()"
-                                style="width:100%;padding:10px 14px;background:#f7f9fc;border:none;text-align:left;
-                                       font-size:0.82rem;color:#718096;font-weight:600;cursor:pointer;
-                                       display:flex;align-items:center;justify-content:space-between;">
-                            <span><i class="fas fa-sliders-h me-2" style="color:#a0aec0;"></i>Más detalles <span style="font-weight:400;">(opcional)</span></span>
-                            <i class="fas fa-chevron-down" id="guestChevron" style="transition:transform .2s;"></i>
-                        </button>
-                        <div id="guestDetailsSection" style="display:none;padding:16px 14px;border-top:1px solid #f0f2f5;">
-
-                            {{-- Área / Departamento (texto libre) --}}
-                            <div style="margin-bottom: 14px;">
-                                <label class="form-label-custom">Área / Departamento</label>
-                                <div style="position: relative;">
-                                    <span style="position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #a0aec0; font-size: 0.82rem;"><i class="fas fa-building"></i></span>
-                                    <input type="text" name="guest_department"
-                                           class="form-control-custom @error('guest_department') is-invalid @enderror"
-                                           style="padding-left: 32px;"
-                                           value="{{ old('guest_department') }}"
-                                           placeholder="Ej: Ventas, Contabilidad...">
-                                </div>
-                                @error('guest_department')<div class="field-err">{{ $message }}</div>@enderror
-                            </div>
-
-                            {{-- Departamento (select) --}}
-                            <div style="margin-bottom: 14px;">
-                                <label class="form-label-custom">Departamento del sistema</label>
-                                <select name="department_id" class="form-control-custom @error('department_id') is-invalid @enderror">
-                                    <option value="">No sé / No aplica</option>
-                                    @foreach($departments as $dept)
-                                        <option value="{{ $dept->id }}" {{ old('department_id') == $dept->id ? 'selected' : '' }}>{{ $dept->name }}</option>
-                                    @endforeach
-                                </select>
-                                @error('department_id')<div class="field-err">{{ $message }}</div>@enderror
-                            </div>
-
-                            {{-- Categoría --}}
-                            <div style="margin-bottom: 10px;">
-                                <label class="form-label-custom">Categoría</label>
-                                <select id="guestCatSelect" class="form-control-custom mb-2" onchange="loadGuestSubcats(this.value)">
-                                    <option value="">No sé / No aplica</option>
-                                    @foreach(App\Models\Categoria::where('is_active', true)->orderBy('name')->get() as $cat)
-                                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                                    @endforeach
-                                </select>
-                                <select id="guestSubcatSelect" name="subcategoria_id" class="form-control-custom mb-2"
-                                        onchange="loadGuestTipos(this.value)" disabled>
-                                    <option value="">Primero selecciona categoría...</option>
-                                </select>
-                                <select id="guestTipoSelect" name="tipo_incidente_id" class="form-control-custom" disabled>
-                                    <option value="">Tipo de incidente (opcional)...</option>
-                                </select>
-                                @error('subcategoria_id')<div class="field-err">{{ $message }}</div>@enderror
-                            </div>
-
-                        </div>
                     </div>
 
                     <button type="submit" class="btn-submit-ticket">
@@ -235,14 +228,6 @@ textarea.form-control-custom { resize: vertical; min-height: 90px; }
 function showFiles(input) {
     const names = Array.from(input.files).map(f => f.name).join(', ');
     document.getElementById('fileNames').textContent = names;
-}
-
-function toggleGuestDetails() {
-    const section = document.getElementById('guestDetailsSection');
-    const chevron = document.getElementById('guestChevron');
-    const open = section.style.display === 'block';
-    section.style.display = open ? 'none' : 'block';
-    chevron.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
 }
 
 function loadGuestSubcats(catId) {
