@@ -1,8 +1,7 @@
 {{--
   Partial reutilizable: Modal para abrir nuevo ticket — Versión simplificada (Reunión 4).
   Solo 3 campos visibles: Asunto, Descripción, Adjuntos.
-  Campos técnicos (Categoría, Departamento, Dispositivo) colapsados bajo "Más detalles".
-  Requiere que $departments esté disponible en la vista que lo incluya.
+  Clasificación opcional colapsada bajo "Más detalles".
 --}}
 <div class="modal fade" id="newTicketModal" tabindex="-1" aria-labelledby="newTicketModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -82,31 +81,6 @@
               <i class="fas fa-chevron-down" id="detailsChevron" style="transition:transform .2s;"></i>
             </button>
             <div id="moreDetailsSection" style="display:none;padding:16px 14px;border-top:1px solid #f0f2f5;">
-
-              {{-- Departamento --}}
-              <div class="mb-3">
-                <label class="form-label fw-semibold" style="font-size:0.83rem;color:#4a5568;">Departamento</label>
-                <select name="department_id" class="form-select" style="border-radius:7px;border-color:#e2e8f0;font-size:0.87rem;">
-                  <option value="">No sé / No aplica</option>
-                  @foreach($departments as $dept)
-                    <option value="{{ $dept->id }}">{{ $dept->name }}</option>
-                  @endforeach
-                </select>
-              </div>
-
-              {{-- Dispositivo --}}
-              <div class="mb-3">
-                <label class="form-label fw-semibold" style="font-size:0.83rem;color:#4a5568;">Dispositivo</label>
-                <select name="device_type" class="form-select" style="border-radius:7px;border-color:#e2e8f0;font-size:0.87rem;">
-                  <option value="">No aplica</option>
-                  <option value="laptop">Laptop</option>
-                  <option value="desktop">Desktop / PC</option>
-                  <option value="tablet">Tablet</option>
-                  <option value="phone">Teléfono</option>
-                  <option value="printer">Impresora</option>
-                  <option value="other">Otro</option>
-                </select>
-              </div>
 
               {{-- Categoría --}}
               <div class="mb-1">

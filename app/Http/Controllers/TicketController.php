@@ -239,7 +239,6 @@ class TicketController extends Controller
             'subcategoria_id'   => 'nullable|required_with:tipo_incidente_id|exists:subcategorias,id',
             'tipo_incidente_id' => ['nullable', Rule::exists('tipos_incidente', 'id')->where('subcategoria_id', $request->input('subcategoria_id'))],
             'device_type'       => 'nullable|string|max:100',
-            'department_id'     => 'nullable|integer|exists:departamentos,id',
             'attachments'       => 'nullable|array|max:5',
             'attachments.*'     => 'file|max:51200', // 50 MB para videos
         ], [
@@ -253,14 +252,12 @@ class TicketController extends Controller
             $request->tipo_incidente_id ? (int) $request->tipo_incidente_id : null
         );
 
-        // Departamento: primero la regla automática, si no el del formulario y,
-        // como último recurso, el del propio usuario. Desde que el formulario
-        // simplificado dejó el campo opcional, este respaldo evita que el ticket
-        // quede sin departamento y no aparezca en las bandejas por área.
+        // Con sesión, usar el departamento de la cuenta salvo que una regla
+        // de categoría determine el destino del ticket.
         $subcatCatId = Subcategoria::find($request->subcategoria_id)?->categoria_id;
         $departmentId = ($subcatCatId && $auto = CategoryDepartmentRule::resolve($subcatCatId))
             ? $auto
-            : ($request->department_id ?: Auth::user()->department_id);
+            : Auth::user()->department_id;
 
         // Generar número de ticket único
         $ticketNumber = 'TK-' . date('YmdHis') . '-' . rand(1000, 9999);

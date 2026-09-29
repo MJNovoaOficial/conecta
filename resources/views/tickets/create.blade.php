@@ -68,7 +68,7 @@
         <form method="POST" action="{{ route('tickets.store') }}" enctype="multipart/form-data">
             @csrf
 
-            {{-- SECCIÓN: Asunto y Departamento --}}
+            {{-- SECCIÓN: Información del ticket --}}
             <div class="form-section">
                 <div class="form-section-header">Información del Ticket</div>
                 <div class="form-section-body">
@@ -87,21 +87,7 @@
                     </div>
 
                     <div class="row g-3 mb-4">
-                        <div class="col-md-5">
-                            <label class="form-label-custom">Departamento *</label>
-                            <select name="department_id" class="form-control-custom @error('department_id') is-invalid @enderror" required>
-                                <option value="">Seleccionar departamento...</option>
-                                @foreach($departments as $dept)
-                                    <option value="{{ $dept->id }}" {{ old('department_id') == $dept->id ? 'selected' : '' }}>
-                                        {{ $dept->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('department_id')
-                                <div style="color:#e74c3c; font-size:0.78rem; margin-top:4px;">{{ $message }}</div>
-                            @enderror
-                        </div>
-                        <div class="col-md-3">
+                        <div class="col-12">
                             <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;font-size:.8rem;color:#1d4ed8;display:flex;align-items:center;gap:8px;">
                                 <i class="fas fa-magic" style="font-size:.9rem;"></i>
                                 <div>
@@ -109,21 +95,6 @@
                                     <div style="color:#3b82f6;">El sistema la asignará según la categoría seleccionada.</div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label-custom">Tipo de Dispositivo *</label>
-                            <select name="device_type" class="form-control-custom @error('device_type') is-invalid @enderror" required>
-                                <option value="">Seleccionar...</option>
-                                <option value="laptop"  {{ old('device_type') == 'laptop'  ? 'selected' : '' }}>Laptop</option>
-                                <option value="desktop" {{ old('device_type') == 'desktop' ? 'selected' : '' }}>Desktop</option>
-                                <option value="tablet"  {{ old('device_type') == 'tablet'  ? 'selected' : '' }}>Tablet</option>
-                                <option value="phone"   {{ old('device_type') == 'phone'   ? 'selected' : '' }}>Teléfono</option>
-                                <option value="printer" {{ old('device_type') == 'printer' ? 'selected' : '' }}>Impresora</option>
-                                <option value="other"   {{ old('device_type') == 'other'   ? 'selected' : '' }}>Otro</option>
-                            </select>
-                            @error('device_type')
-                                <div style="color:#e74c3c; font-size:0.78rem; margin-top:4px;">{{ $message }}</div>
-                            @enderror
                         </div>
                     </div>
 
