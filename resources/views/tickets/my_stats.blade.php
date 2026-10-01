@@ -142,5 +142,3 @@ new Chart(ctx, {
 @endif
 </script>
 @endsection
-
-@include('partials.create_ticket_modal')

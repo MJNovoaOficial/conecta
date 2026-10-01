@@ -112,7 +112,7 @@
 
             <p class="art-nota">
                 Si no te sirvió, lo revisaremos. Puedes
-                <a href="{{ route('tickets.create') }}" style="color:#3498db;">abrir un ticket</a>
+                <a href="{{ route('tickets.create') }}" data-bs-toggle="modal" data-bs-target="#newTicketModal" style="color:#3498db;">abrir un ticket</a>
                 y te ayudamos.
             </p>
         </div>

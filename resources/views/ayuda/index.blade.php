@@ -168,7 +168,7 @@
             @else
                 <p>Todavía no hay artículos publicados.</p>
             @endif
-            <a href="{{ route('tickets.create') }}" class="ayuda-btn-ticket">
+            <a href="{{ route('tickets.create') }}" class="ayuda-btn-ticket" data-bs-toggle="modal" data-bs-target="#newTicketModal">
                 <i class="fas fa-plus-circle"></i> Abrir un ticket de soporte
             </a>
         </div>
@@ -208,7 +208,7 @@
 
         <div style="text-align:center;margin-top:26px;padding-top:22px;border-top:1px solid #e8ecf0;">
             <p style="font-size:.86rem;color:#718096;margin:0 0 13px;">¿No encontraste lo que buscabas?</p>
-            <a href="{{ route('tickets.create') }}" class="ayuda-btn-ticket">
+            <a href="{{ route('tickets.create') }}" class="ayuda-btn-ticket" data-bs-toggle="modal" data-bs-target="#newTicketModal">
                 <i class="fas fa-plus-circle"></i> Abrir un ticket de soporte
             </a>
         </div>

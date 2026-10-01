@@ -619,5 +619,3 @@ function filterTable(q) {
 @endsection
 
 {{-- Modal simplificado de nuevo ticket (Reunión 4) --}}
-@include('partials.create_ticket_modal')
-

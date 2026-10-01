@@ -102,17 +102,19 @@ class TicketRequestFieldsTest extends TestCase
         $department = Department::create(['name' => 'Ventas', 'is_active' => true]);
         $this->get(route('tickets.guest.create'))->assertOk()
             ->assertSee('name="department_id"', false)
+            ->assertSee('Ventas')
+            ->assertDontSee('name="guest_department"', false)
             ->assertDontSee('name="device_type"', false);
 
         $this->post(route('tickets.guest.store'), [
             'guest_name' => 'Ana', 'guest_email' => 'ana@example.test',
-            'guest_department' => 'Ventas', 'department_id' => $department->id,
+            'department_id' => $department->id,
             'title' => 'Necesito ayuda',
         ])->assertSessionHasNoErrors()->assertRedirect();
 
         $ticket = Ticket::sole();
         $this->assertNull($ticket->user_id);
         $this->assertEquals($department->id, $ticket->department_id);
-        $this->assertSame('Ventas', $ticket->guest_department);
+        $this->assertNull($ticket->guest_department);
     }
 }

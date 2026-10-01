@@ -121,19 +121,6 @@ textarea.form-control-custom { resize: vertical; min-height: 90px; }
 
                         <div style="margin-bottom: 10px;">
                             <label class="form-label-custom">Área / Departamento</label>
-                            <div style="position: relative;">
-                                <span style="position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #a0aec0; font-size: 0.82rem;"><i class="fas fa-building"></i></span>
-                                <input type="text" name="guest_department"
-                                       class="form-control-custom @error('guest_department') is-invalid @enderror"
-                                       style="padding-left: 32px;"
-                                       value="{{ old('guest_department') }}"
-                                       placeholder="Ej: Ventas, Contabilidad...">
-                            </div>
-                            @error('guest_department')<div class="field-err">{{ $message }}</div>@enderror
-                        </div>
-
-                        <div style="margin-bottom: 10px;">
-                            <label class="form-label-custom">Departamento del sistema</label>
                             <select name="department_id" class="form-control-custom @error('department_id') is-invalid @enderror">
                                 <option value="">No sé / No aplica</option>
                                 @foreach($departments as $dept)

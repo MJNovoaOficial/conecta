@@ -235,7 +235,8 @@
             </a>
         @else
             <p>¿Prefieres que te ayude una persona?</p>
-            <a href="{{ route('tickets.create') }}" class="bur-ticket">
+            <a href="{{ route('tickets.create') }}" class="bur-ticket" id="burAbrirTicket"
+               data-bs-toggle="modal" data-bs-target="#newTicketModal">
                 <i class="fas fa-headset" aria-hidden="true"></i> Pedir ayuda a soporte
             </a>
         @endif
@@ -271,6 +272,8 @@
 
     lanzador.addEventListener('click', abrir);
     cerrar.addEventListener('click', ocultar);
+    const abrirTicket = document.getElementById('burAbrirTicket');
+    if (abrirTicket) abrirTicket.addEventListener('click', ocultar);
 
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && panel.classList.contains('abierto')) { ocultar(); }
