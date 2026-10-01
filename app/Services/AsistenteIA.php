@@ -95,29 +95,29 @@ class AsistenteIA
 
         $soloArticulos = [
             'tipo'    => self::SOLO_ARTICULOS,
-            // Sin sesión el título no es un enlace, así que "revisa si alguna
-            // trata tu problema" mandaría a la persona a hacer clic en algo que
-            // no se puede abrir.
+            // Debajo de este texto la burbuja muestra los pasos de la guía
+            // (AsistenteController los agrega). Sin sesión cambia la salida:
+            // no hay ticket normal, hay que escribirle a soporte como invitado.
             'texto'   => $soloPublicos
                 ? 'Esto es lo más parecido que encontré en las guías de acceso. '
                   . 'Si no es tu caso, escríbenos con el botón de abajo.'
-                : 'Encontré esto en las guías de soporte. Revisa si alguna trata tu problema:',
+                : 'Esto es lo que encontré en las guías de soporte. '
+                  . 'Si con estos pasos no se soluciona, pide ayuda con el botón verde de abajo.',
             'fuentes' => $articulos,
         ];
 
-        // Sin servidor de modelos igual se entrega el artículo: es la mitad del
-        // valor y no depende de ninguna decisión de infraestructura.
+        // Sin servidor de modelos igual se entregan los pasos del artículo: son
+        // casi todo el valor y no dependen de ninguna decisión de infraestructura.
         if (! $this->disponible()) {
             return $soloArticulos;
         }
 
         // Coincidencia débil: se muestra el artículo pero no se le pide al
-        // modelo que lo explique. Que la persona lea el título y decida es
+        // modelo que lo explique. Que la persona lea la guía y decida es
         // preferible a una explicación segura y sin fundamento.
         //
-        // Antes de iniciar sesión el umbral es más bajo, porque ahí "mostrar el
-        // artículo" es solo mostrar su título: la ruta para leerlo exige sesión.
-        // Ver la explicación completa en config/chatbot.php.
+        // Antes de iniciar sesión el umbral es más bajo. Ver la explicación
+        // completa en config/chatbot.php.
         $umbral = $soloPublicos
             ? (float) config('chatbot.umbral_relevancia_publico', 1.5)
             : (float) config('chatbot.umbral_relevancia', 2.5);
@@ -131,12 +131,12 @@ class AsistenteIA
         if ($texto === null) {
             return [
                 'tipo'    => self::NO_DISPONIBLE,
-                // Sin sesión no sirve mandar a "los artículos de abajo": se ven
-                // los títulos pero no se pueden abrir. Ahí la salida útil es
-                // escribirle a soporte, que sí funciona sin cuenta.
+                // Los pasos de la guía se ven abajo también sin sesión. Lo que
+                // cambia es la salida: sin cuenta, la ayuda de una persona es
+                // escribirle a soporte como invitado.
                 'texto'   => $soloPublicos
-                    ? 'El asistente no está disponible en este momento. '
-                      . 'Escríbenos con el botón de abajo y soporte te ayuda a entrar.'
+                    ? 'El asistente no está disponible en este momento, pero abajo tienes '
+                      . 'los pasos de la guía. Si no logras entrar, escríbenos con el botón de abajo.'
                     : 'El asistente no está disponible en este momento. '
                       . 'Los artículos de abajo tratan sobre lo que consultaste.',
                 'fuentes' => $articulos,

@@ -22,8 +22,8 @@ class AsistenteController extends Controller
      * No exige que el asistente esté encendido.
      *
      * Con el servidor de modelos apagado igual devuelve los artículos que
-     * tratan la consulta, así la ayuda sirve desde el primer día y mejora sola
-     * cuando el servidor esté disponible.
+     * tratan la consulta, con sus pasos, así la ayuda sirve desde el primer
+     * día y mejora sola cuando el servidor esté disponible.
      */
     public function preguntar(Request $request, AsistenteIA $asistente): JsonResponse
     {
@@ -42,7 +42,7 @@ class AsistenteController extends Controller
                     'url'         => $imagen->url,
                     'descripcion' => $imagen->descripcion,
                 ])->values(),
-            ])->values(),
+            ] + $this->pasos($resultado, $articulo))->values(),
         ]);
     }
 
@@ -52,10 +52,11 @@ class AsistenteController extends Controller
      * Solo consulta los artículos marcados como públicos, que son los de
      * acceso y contraseñas: lo que la persona necesita justo antes de entrar.
      *
-     * Devuelve el texto de la explicación y los títulos, pero no enlaces ni
-     * imágenes. No es una restricción de seguridad extra —el filtro de verdad
-     * es scopePublicos()— sino que esas rutas exigen sesión: un enlace acá
-     * mandaría a la persona de vuelta al login del que está tratando de salir.
+     * Devuelve el texto de la explicación, los títulos y los pasos, pero no
+     * enlaces ni imágenes. No es una restricción de seguridad extra —el filtro
+     * de verdad es scopePublicos()— sino que esas rutas exigen sesión: un
+     * enlace acá mandaría a la persona de vuelta al login del que está
+     * tratando de salir.
      */
     public function preguntarPublico(Request $request, AsistenteIA $asistente): JsonResponse
     {
@@ -65,9 +66,28 @@ class AsistenteController extends Controller
             'tipo'    => $resultado['tipo'],
             'texto'   => $resultado['texto'],
             'fuentes' => $resultado['fuentes']
-                ->map(fn ($articulo) => ['titulo' => $articulo->title])
+                ->map(fn ($articulo) => ['titulo' => $articulo->title] + $this->pasos($resultado, $articulo))
                 ->values(),
         ]);
+    }
+
+    /**
+     * Los pasos del artículo, cuando el modelo no los explicó.
+     *
+     * Sin servidor de modelos —o con una coincidencia débil— la respuesta era
+     * solo el título de la guía, y la persona tenía que salir del chat para
+     * leerla. Sin sesión ni eso: el título no es un enlace. En producción eso
+     * se vio como "el asistente no conversa, manda a páginas de manuales".
+     * Los pasos ya están escritos para leerse tal cual, así que se muestran
+     * en la misma burbuja.
+     *
+     * Cuando el modelo sí respondió no se envían: repetirían su explicación.
+     */
+    private function pasos(array $resultado, $articulo): array
+    {
+        return $resultado['tipo'] === AsistenteIA::RESPUESTA
+            ? []
+            : ['pasos' => $articulo->content];
     }
 
     private function pregunta(Request $request): string
