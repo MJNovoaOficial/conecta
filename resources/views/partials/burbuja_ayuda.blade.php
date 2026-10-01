@@ -6,8 +6,9 @@
     es grande, el texto pide lo mínimo ("cuéntame qué te pasa") y siempre queda
     a la vista la salida de emergencia: hablar con una persona.
 
-    No depende del servidor de modelos. Si está apagado, igual entrega el
-    artículo que corresponde; si está encendido, además lo explica.
+    No depende del servidor de modelos. Si está apagado, muestra aquí mismo los
+    pasos del artículo que corresponde; si está encendido, además los explica
+    con sus palabras.
 
     ── Dos modos ──────────────────────────────────────────────────────────────
 
@@ -124,6 +125,17 @@
 .bur-guia > a:hover { background: #dbeafe; color: #1e40af; }
 .bur-guia > a i,
 .bur-guia > span i { flex-shrink: 0; }
+
+/* Los pasos de la guía, cuando el modelo no los explicó. pre-wrap respeta los
+   saltos de línea con que soporte escribe la lista numerada. */
+.bur-pasos {
+    padding: 0 15px 14px; color: #1e293b;
+    font-size: .93rem; line-height: 1.6; white-space: pre-wrap;
+}
+.bur-mas > summary {
+    padding: 0 15px 13px; cursor: pointer; color: #1d4ed8;
+    font-size: .9rem; font-weight: 600;
+}
 
 /* Las capturas se muestran aquí mismo: hacer clic para verlas ya es una
    barrera para quien no está habituado a navegar. */
@@ -298,7 +310,7 @@
             texto.textContent = d.texto;
             texto.classList.toggle('aviso', d.tipo !== 'respuesta' && d.tipo !== 'solo_articulos');
 
-            (d.fuentes || []).forEach(function (f) {
+            (d.fuentes || []).forEach(function (f, i) {
                 const caja = document.createElement('div');
                 caja.className = 'bur-guia';
 
@@ -317,6 +329,29 @@
                         : f.titulo
                 ));
                 caja.appendChild(a);
+
+                // Sin explicación del modelo llegan los pasos, y se muestran
+                // aquí: mandar a la persona a otra página para leerlos es
+                // perderla. La primera guía es la que más calza y va abierta;
+                // la segunda queda a un clic, para no llenar la burbuja con
+                // dos guías completas.
+                if (f.pasos) {
+                    const pasos = document.createElement('div');
+                    pasos.className = 'bur-pasos';
+                    pasos.textContent = f.pasos;
+
+                    if (i === 0) {
+                        caja.appendChild(pasos);
+                    } else {
+                        const mas = document.createElement('details');
+                        mas.className = 'bur-mas';
+                        const resumen = document.createElement('summary');
+                        resumen.textContent = 'Ver los pasos de esta guía';
+                        mas.appendChild(resumen);
+                        mas.appendChild(pasos);
+                        caja.appendChild(mas);
+                    }
+                }
 
                 // Las capturas se muestran dentro de la respuesta. Pedirle a
                 // alguien que haga clic para verlas es perder justamente a

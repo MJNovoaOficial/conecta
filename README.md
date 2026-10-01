@@ -124,6 +124,69 @@ php artisan migrate:fresh --seed
 
 ---
 
+## DIMAKING, el asistente
+
+DIMAKING responde con la base de conocimiento (`Ayuda` en el menú). Funciona
+en dos modos:
+
+- **Sin IA** (por defecto, `CHATBOT_ENABLED=false`): busca la guía que trata
+  la consulta y muestra sus pasos dentro del chat.
+- **Con IA**: además, un modelo de lenguaje que corre en un servidor de la
+  empresa (Ollama) explica la guía con sus palabras. Ninguna consulta sale de
+  la red interna, y el modelo no inventa: si no hay una guía sobre el tema, no
+  responde.
+
+En los dos modos, DIMAKING solo sabe lo que está en la base de conocimiento.
+Si responde "No encontré nada" a preguntas comunes, faltan artículos, no IA.
+
+### Cargar las guías de ejemplo
+
+El proyecto trae 26 guías de soporte escritas (impresora, VPN, Outlook,
+contraseñas, etc.). Conviene revisarlas antes, porque son genéricas:
+
+```bash
+php artisan db:seed --class=ArticuloSeeder --force
+```
+
+No duplica las que ya existen con el mismo título. Cada guía se asocia a su
+categoría por nombre; si la categoría no existe, queda sin categoría.
+
+### Activar la IA (opcional)
+
+Requiere unos 5 GB de RAM libres para el modelo `qwen2.5:7b`. Sin tarjeta de
+video cada respuesta tarda 15-20 segundos.
+
+1. Instalar Ollama (https://ollama.com) en el servidor y descargar el modelo:
+   ```bash
+   ollama pull qwen2.5:7b
+   ```
+2. Dejar `ollama serve` corriendo al iniciar el servidor (por ejemplo, como
+   tarea programada). **No depender de la aplicación de escritorio**: su
+   actualizador automático dejó la instalación inutilizable dos veces durante
+   las pruebas.
+3. Comprobar que responde:
+   ```bash
+   curl http://127.0.0.1:11434/api/tags
+   ```
+4. En el `.env`:
+   ```env
+   CHATBOT_ENABLED=true
+   CHATBOT_URL=http://127.0.0.1:11434
+   CHATBOT_MODEL=qwen2.5:7b
+   ```
+5. `php artisan config:clear`
+
+Para saber en qué modo está, pregunta en DIMAKING algo que calce con el título
+de una guía (por ejemplo "la impresora no imprime"):
+
+| Respuesta | Modo |
+|---|---|
+| "Esto es lo que encontré en las guías…" y los pasos | Sin IA |
+| Un párrafo propio después de unos segundos | Con IA |
+| Aviso amarillo "El asistente no está disponible…" | IA activada, pero Ollama no responde |
+
+---
+
 ## Solución de problemas frecuentes
 
 **Error: `SQLSTATE[HY000] [1049] Unknown database 'conecta'`**

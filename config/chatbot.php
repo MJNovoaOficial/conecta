@@ -131,6 +131,11 @@ return [
     | efectivamente vaga. Con el umbral general de 2.5 quedaría fuera también
     | "no me acepta la contraseña al entrar", que es justo lo que escribe quien
     | está apurado y molesto.
+    |
+    | Nota posterior: desde que la burbuja muestra los pasos del artículo cuando
+    | el modelo no los explica (AsistenteController::pasos), quedarse corto ya
+    | no deja un título suelto en ninguno de los dos modos. El umbral se dejó
+    | igual: moverlo exige volver a medir, no solo cambiar el argumento.
     */
     'umbral_relevancia_publico' => env('CHATBOT_UMBRAL_PUBLICO', 1.5),
 
