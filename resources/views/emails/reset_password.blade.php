@@ -11,11 +11,11 @@
     <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
       <!-- Header -->
       <tr>
-        <td style="background:linear-gradient(135deg,#1a2332 0%,#2d4a6e 100%);padding:32px 40px;text-align:center;">
+        <td bgcolor="#1a2332" style="background-color:#1a2332;padding:32px 40px;text-align:center;">
           <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">
             🔐 Conecta Mesa de Ayuda
           </h1>
-          <p style="margin:6px 0 0;color:rgba(255,255,255,0.7);font-size:13px;">Sistema de Soporte Dimak</p>
+          <p style="margin:6px 0 0;color:#ccd6e4;font-size:13px;">Sistema de Soporte Dimak</p>
         </td>
       </tr>
       <!-- Content -->
@@ -33,10 +33,16 @@
           <table width="100%" cellpadding="0" cellspacing="0">
             <tr>
               <td align="center" style="padding:8px 0 28px;">
-                <a href="{{ $resetUrl }}"
-                   style="display:inline-block;background:linear-gradient(135deg,#4f8cff,#2563eb);color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:14px 36px;border-radius:8px;letter-spacing:0.2px;">
-                  Restablecer mi contraseña
-                </a>
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td align="center" bgcolor="#2563eb" style="background-color:#2563eb;border-radius:8px;padding:14px 36px;">
+                      <a href="{{ $resetUrl }}"
+                         style="display:inline-block;background-color:#2563eb;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;line-height:22px;letter-spacing:0.2px;">
+                        Restablecer mi contraseña
+                      </a>
+                    </td>
+                  </tr>
+                </table>
               </td>
             </tr>
           </table>
