@@ -25,7 +25,7 @@
         <div class="admin-wrapper">
             <div class="admin-page-header">
                 <h1><i class="fas fa-sitemap" style="color:#3498db; margin-right:8px;"></i>Editar Departamento</h1>
-                <a href="{{ route('admin.departments') }}" class="btn-back-admin">&#8592; Volver</a>
+                <a href="{{ route('admin.departments.index') }}" class="btn-back-admin">&#8592; Volver</a>
             </div>
             <div class="admin-card" style="padding:24px;">
                 <form method="POST" action="{{ route('admin.departments.update', $department) }}">
