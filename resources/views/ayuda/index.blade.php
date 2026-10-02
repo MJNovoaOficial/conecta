@@ -118,6 +118,7 @@
                 Te respondo con lo que dicen los artículos de soporte. Si no está ahí, te lo digo.
             </p>
 
+            <div id="asisHistorial" hidden style="font-size:.9rem;color:#475569;overflow-wrap:anywhere;"></div>
             <form class="asis-fila" id="asisForm">
                 <input type="text" id="asisPregunta" maxlength="500" autocomplete="off"
                        placeholder="Ej: me llegó un correo raro pidiendo mi contraseña">
@@ -218,6 +219,7 @@
 </div>
 
 @if(config('chatbot.enabled'))
+@include('partials.dimaking_conversacion_script')
 <script>
 (function () {
     const form     = document.getElementById('asisForm');
@@ -227,6 +229,11 @@
     const cargando = document.getElementById('asisCargando');
     const texto    = document.getElementById('asisTexto');
     const fuentes  = document.getElementById('asisFuentes');
+    const historial = document.getElementById('asisHistorial');
+    const conversacion = window.crearConversacionDimaking(
+        {{ Illuminate\Support\Js::from(session(App\Services\AsistenteIA::claveHistorial((int) auth()->id()), [])) }}, false
+    );
+    conversacion.mostrar(historial);
 
     form.addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -235,6 +242,7 @@
         if (pregunta.length < 4) { return; }
 
         boton.disabled  = true;
+        conversacion.mostrar(historial);
         caja.classList.add('visible');
         cargando.style.display = 'flex';
         texto.style.display    = 'none';
@@ -248,16 +256,24 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     'Accept': 'application/json',
                 },
-                body: JSON.stringify({ pregunta: pregunta }),
+                body: JSON.stringify(conversacion.datos(pregunta)),
             });
 
-            if (!r.ok) { throw new Error('respuesta ' + r.status); }
+            if (!r.ok) {
+                if (r.status === 401 || r.status === 419) {
+                    conversacion.vaciar();
+                    conversacion.mostrar(historial);
+                }
+                throw new Error('respuesta ' + r.status);
+            }
             const d = await r.json();
+            conversacion.registrar(pregunta, d.texto);
+            input.value = '';
 
             // textContent, nunca innerHTML: lo que devuelve el modelo se muestra
             // como texto plano y no puede inyectar etiquetas en la página.
             texto.textContent = d.texto;
-            texto.classList.toggle('aviso', d.tipo !== 'respuesta');
+            texto.classList.toggle('aviso', d.tipo !== 'respuesta' && d.tipo !== 'cortesia');
 
             (d.fuentes || []).forEach(function (f) {
                 const caja = document.createElement('div');

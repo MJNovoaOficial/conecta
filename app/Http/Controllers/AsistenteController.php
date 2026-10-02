@@ -27,7 +27,12 @@ class AsistenteController extends Controller
      */
     public function preguntar(Request $request, AsistenteIA $asistente): JsonResponse
     {
-        $resultado = $asistente->responder($this->pregunta($request));
+        $pregunta = $this->pregunta($request);
+        $clave = AsistenteIA::claveHistorial((int) $request->user()->id);
+        $historial = $request->session()->get($clave, []);
+        $resultado = $asistente->responder($pregunta, historial: $historial);
+        $historial[] = ['pregunta' => $pregunta, 'respuesta' => mb_substr($resultado['texto'], 0, 2000)];
+        $request->session()->put($clave, array_slice($historial, -AsistenteIA::MAX_TURNOS));
 
         return response()->json([
             'tipo'    => $resultado['tipo'],
@@ -60,7 +65,13 @@ class AsistenteController extends Controller
      */
     public function preguntarPublico(Request $request, AsistenteIA $asistente): JsonResponse
     {
-        $resultado = $asistente->responder($this->pregunta($request), soloPublicos: true);
+        $pregunta = $this->pregunta($request);
+        $historial = $request->validate([
+            'historial' => ['sometimes', 'array', 'max:'.AsistenteIA::MAX_TURNOS],
+            'historial.*' => ['array:pregunta'],
+            'historial.*.pregunta' => ['required', 'string', 'max:500'],
+        ])['historial'] ?? [];
+        $resultado = $asistente->responder($pregunta, soloPublicos: true, historial: $historial);
 
         return response()->json([
             'tipo'    => $resultado['tipo'],

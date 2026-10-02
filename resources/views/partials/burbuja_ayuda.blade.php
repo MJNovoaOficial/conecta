@@ -205,6 +205,7 @@
             @endif
         </p>
 
+        <div id="burHistorial" hidden style="font-size:.9rem;color:#475569;overflow-wrap:anywhere;"></div>
         <form class="bur-forma" id="burForma">
             <label for="burPregunta">¿Qué problema tienes?</label>
             <textarea id="burPregunta" maxlength="500" autocomplete="off"
@@ -243,6 +244,7 @@
     </div>
 </div>
 
+@include('partials.dimaking_conversacion_script')
 <script>
 (function () {
     const lanzador  = document.getElementById('burLanzador');
@@ -255,6 +257,12 @@
     const espera    = document.getElementById('burEspera');
     const texto     = document.getElementById('burTexto');
     const articulos = document.getElementById('burArticulos');
+    const historial = document.getElementById('burHistorial');
+    const conversacion = window.crearConversacionDimaking(
+        {{ Illuminate\Support\Js::from(!$publico && auth()->check() ? session(App\Services\AsistenteIA::claveHistorial((int) auth()->id()), []) : []) }},
+        {{ $publico ? 'true' : 'false' }}
+    );
+    conversacion.mostrar(historial);
 
     function abrir() {
         panel.classList.add('abierto');
@@ -289,6 +297,7 @@
         }
 
         enviar.disabled = true;
+        conversacion.mostrar(historial);
         resultado.classList.add('visible');
         espera.style.display = 'flex';
         texto.style.display  = 'none';
@@ -302,16 +311,24 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     'Accept': 'application/json',
                 },
-                body: JSON.stringify({ pregunta: pregunta }),
+                body: JSON.stringify(conversacion.datos(pregunta)),
             });
 
-            if (!r.ok) { throw new Error('respuesta ' + r.status); }
+            if (!r.ok) {
+                if (r.status === 401 || r.status === 419) {
+                    conversacion.vaciar();
+                    conversacion.mostrar(historial);
+                }
+                throw new Error('respuesta ' + r.status);
+            }
             const d = await r.json();
+            conversacion.registrar(pregunta, d.texto);
+            campo.value = '';
 
             // textContent, nunca innerHTML: lo que vuelve del servidor se
             // muestra como texto y no puede inyectar etiquetas en la página.
             texto.textContent = d.texto;
-            texto.classList.toggle('aviso', d.tipo !== 'respuesta' && d.tipo !== 'solo_articulos');
+            texto.classList.toggle('aviso', d.tipo !== 'respuesta' && d.tipo !== 'solo_articulos' && d.tipo !== 'cortesia');
 
             (d.fuentes || []).forEach(function (f, i) {
                 const caja = document.createElement('div');
