@@ -13,6 +13,27 @@ class AsistenteCortesiaTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_la_orientacion_aparece_en_el_saludo_y_no_en_otras_cortesias(): void
+    {
+        Http::preventStrayRequests();
+        foreach ([false, true] as $publico) {
+            foreach (['Hola', 'Hola, ¿cómo estás?'] as $pregunta) {
+                $texto = app(AsistenteIA::class)->responder($pregunta, soloPublicos: $publico)['texto'];
+                $this->assertStringContainsString('¿Qué problema o solicitud tienes?', $texto);
+                $this->assertStringContainsString('Escríbelo con tus palabras', $texto);
+                $this->assertStringContainsString($publico ? 'no recuerdo mi usuario' : 'no puedo imprimir', $texto);
+                $this->assertStringNotContainsString($publico ? 'no puedo imprimir' : 'no recuerdo mi usuario', $texto);
+            }
+            foreach (['Gracias', 'Hasta luego'] as $pregunta) {
+                $this->assertStringNotContainsString('Escríbelo con tus palabras',
+                    app(AsistenteIA::class)->responder($pregunta, soloPublicos: $publico)['texto']);
+            }
+        }
+        $this->assertStringNotContainsString('Escríbelo con tus palabras',
+            file_get_contents(resource_path('views/partials/burbuja_ayuda.blade.php')));
+        Http::assertNothingSent();
+    }
+
     public function test_saludos_y_cortesia_funcionan_sin_consultar_ollama(): void
     {
         Http::preventStrayRequests();

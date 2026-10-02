@@ -196,15 +196,6 @@
     </div>
 
     <div class="bur-cuerpo">
-        <p class="bur-ejemplos">
-            Escríbelo con tus palabras, como se lo contarías a un compañero.<br>
-            @if ($publico)
-                Por ejemplo: <b>“no me acepta la contraseña”</b> o <b>“no recuerdo mi usuario”</b>.
-            @else
-                Por ejemplo: <b>“no se ve nada en la pantalla”</b> o <b>“no puedo imprimir”</b>.
-            @endif
-        </p>
-
         <div id="burHistorial" hidden style="font-size:.9rem;color:#475569;overflow-wrap:anywhere;"></div>
         <form class="bur-forma" id="burForma">
             <label for="burPregunta">¿Qué problema tienes?</label>

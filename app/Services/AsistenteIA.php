@@ -39,17 +39,22 @@ class AsistenteIA
         return (bool) preg_match('/^(?:[¿¡\s]*)(?:y\b|eso\b|ese\b|esa\b|lo mismo\b|el (?:primer|segundo|tercer|siguiente) paso\b|explica(?:me)? (?:el paso|eso)\b|no (?:funciono|funciona|entiendo)\b|sigue (?:igual|fallando)\b|ya (?:lo hice|probe)\b|que (?:hago ahora|sigue)\b)/u', $mensaje);
     }
 
-    private function respuestaCortesia(string $pregunta): ?string
+    private function respuestaCortesia(string $pregunta, bool $soloPublicos = false): ?string
     {
         $mensaje = Str::ascii(mb_strtolower(trim($pregunta)));
         $mensaje = trim(preg_replace('/[^a-z0-9]+/', ' ', $mensaje));
+        $orientacion = "¿Qué problema o solicitud tienes?\n\n"
+            . 'Escríbelo con tus palabras, como se lo contarías a un compañero. '
+            . ($soloPublicos
+                ? 'Por ejemplo: “no me acepta la contraseña” o “no recuerdo mi usuario”.'
+                : 'Por ejemplo: “no se ve nada en la pantalla” o “no puedo imprimir”.');
 
         // Solo frases completas: un saludo seguido de un problema sigue la búsqueda normal.
         return match ($mensaje) {
             'hola', 'hola dimaking', 'buenas', 'buen dia', 'buenos dias', 'buenas tardes', 'buenas noches'
-                => '¡Hola! Soy Dimaking, tu asistente de soporte. Cuéntame, ¿en qué te puedo ayudar?',
+                => '¡Hola! Soy Dimaking, tu asistente de soporte. '.$orientacion,
             'como estas', 'hola como estas', 'que tal', 'hola que tal', 'como te va'
-                => '¡Hola! Estoy listo para ayudarte. ¿Qué problema o solicitud tienes?',
+                => '¡Hola! Estoy listo para ayudarte. '.$orientacion,
             'gracias', 'muchas gracias', 'muchisimas gracias', 'gracias por tu ayuda', 'muchas gracias por tu ayuda'
                 => '¡De nada! Si necesitas ayuda con otro problema, cuéntamelo.',
             'adios', 'chao', 'chau', 'hasta luego', 'hasta pronto', 'nos vemos'
@@ -120,7 +125,7 @@ class AsistenteIA
      */
     public function responder(string $pregunta, bool $soloPublicos = false, array $historial = []): array
     {
-        $cortesia = $this->respuestaCortesia($pregunta);
+        $cortesia = $this->respuestaCortesia($pregunta, $soloPublicos);
         if ($cortesia !== null) {
             return ['tipo' => self::CORTESIA, 'texto' => $cortesia, 'fuentes' => collect()];
         }
