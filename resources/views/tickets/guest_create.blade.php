@@ -26,8 +26,8 @@ textarea.form-control-custom { resize: vertical; min-height: 90px; }
 @endsection
 
 @section('content')
-<div style="min-height: calc(100vh - 52px); display: flex; align-items: center; justify-content: center; padding: 24px;">
-    <div style="width: 100%; max-width: 520px;">
+<div class="public-form-page">
+    <div class="public-form-container public-form-ticket">
 
         {{-- Header --}}
         <div style="text-align: center; margin-bottom: 28px;">
@@ -61,7 +61,7 @@ textarea.form-control-custom { resize: vertical; min-height: 90px; }
                         <i class="fas fa-user me-1"></i> Tus datos
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+                    <div class="guest-identity-fields">
                         <div>
                             <label class="form-label-custom">Nombre Completo *</label>
                             <div style="position: relative;">

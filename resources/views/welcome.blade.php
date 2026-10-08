@@ -3,9 +3,9 @@
 @section('title', 'Iniciar Sesión - Conecta Mesa de Ayuda')
 
 @section('content')
-<div style="min-height: calc(100vh - 52px); display: flex; align-items: center; justify-content: center; padding: 24px;">
+<div class="public-form-page">
 
-    <div style="width: 100%; max-width: 420px;">
+    <div class="public-form-container public-form-login">
 
         {{-- Logo / Header --}}
         <div style="text-align: center; margin-bottom: 28px;">
@@ -74,7 +74,7 @@
                         @enderror
                     </div>
 
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+                    <div class="login-options" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
                         <label style="display: flex; align-items: center; gap: 7px; font-size: 0.82rem; color: #4a5568; cursor: pointer;">
                             <input type="checkbox" name="remember" style="accent-color: #3498db;">
                             Recuérdame

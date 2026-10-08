@@ -630,6 +630,7 @@
     </style>
     <link rel="stylesheet" href="{{ asset('css/premium.css') }}">
     @yield('styles')
+    <link rel="stylesheet" href="{{ asset('css/responsive.css') }}?v={{ filemtime(public_path('css/responsive.css')) }}">
 </head>
 <body>
 
@@ -640,7 +641,11 @@
     </a>
 
     @auth
-    <div class="user-menu">
+    <button class="mobile-menu-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#navbarAccountMenu"
+            aria-controls="navbarAccountMenu" aria-expanded="false" aria-label="Abrir menú de usuario">
+        <i class="fas fa-bars" aria-hidden="true"></i> Menú
+    </button>
+    <div class="user-menu collapse" id="navbarAccountMenu">
         <div class="nav-user-info" style="display:flex;align-items:center;gap:8px;">
             @if(Auth::user()->avatar_url)
                 <img src="{{ route('files.avatar', basename(Auth::user()->avatar_url)) }}"

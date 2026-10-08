@@ -3,8 +3,8 @@
 @section('title', 'Crear Cuenta - Conecta')
 
 @section('content')
-<div style="min-height: calc(100vh - 52px); display: flex; align-items: center; justify-content: center; padding: 24px;">
-    <div style="width: 100%; max-width: 460px;">
+<div class="public-form-page">
+    <div class="public-form-container public-form-register">
 
         {{-- Header --}}
         <div style="text-align: center; margin-bottom: 28px;">

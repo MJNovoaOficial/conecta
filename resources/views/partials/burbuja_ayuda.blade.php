@@ -44,6 +44,7 @@
     position: fixed; right: 22px; bottom: 22px; z-index: 1041;
     width: min(400px, calc(100vw - 32px));
     max-height: min(640px, calc(100vh - 44px));
+    max-height: min(640px, calc(100dvh - 44px));
     background: #fff; border-radius: 16px;
     box-shadow: 0 18px 50px rgba(15,23,42,.28);
     display: none; flex-direction: column; overflow: hidden;
@@ -70,7 +71,8 @@
 .bur-cerrar:hover { background: #e2e8f0; color: #0f172a; }
 .bur-cerrar:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
 
-.bur-cuerpo { padding: 16px 18px; overflow-y: auto; flex: 1; }
+.bur-cuerpo { padding: 16px 18px; overflow-y: auto; flex: 1; min-height: 0; }
+.bur-cabecera, .bur-pie { flex-shrink: 0; }
 
 .bur-ejemplos { font-size: .87rem; color: #475569; line-height: 1.6; margin: 0 0 14px; }
 .bur-ejemplos b { color: #1e293b; }
@@ -164,7 +166,7 @@
 
 @media (max-width: 480px) {
     .bur-lanzador { right: 14px; bottom: 14px; padding: 14px 18px; font-size: .96rem; }
-    .bur-panel { right: 8px; left: 8px; bottom: 8px; width: auto; max-height: calc(100vh - 20px); }
+    .bur-panel { right: 8px; left: 8px; bottom: 8px; width: auto; max-height: calc(100vh - 20px); max-height: calc(100dvh - 20px); }
 }
 </style>
 

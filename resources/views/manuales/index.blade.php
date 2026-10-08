@@ -71,7 +71,7 @@
             <p style="color:#a0aec0;font-size:0.85rem;">El equipo de soporte está preparando los manuales. Vuelve pronto.</p>
         </div>
         @else
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:16px;">
             @foreach($manuales as $manual)
             <div style="background:#fff;border-radius:12px;border:1px solid #e8ecf0;overflow:hidden;
                         box-shadow:0 2px 8px rgba(0,0,0,0.05);transition:transform .15s,box-shadow .15s;"

@@ -205,6 +205,7 @@
 @endsection
 
 @section('content')
+<div class="ticket-detail-page">
 @php
   $statusCls = ['open'=>'tk-badge-open','in_progress'=>'tk-badge-inprog','pending_user'=>'tk-badge-pending','forwarded'=>'tk-badge-fwd','resolved'=>'tk-badge-resolved','closed'=>'tk-badge-closed'];
   $priCls    = ['low'=>'tk-badge-low','medium'=>'tk-badge-medium','high'=>'tk-badge-high','critical'=>'tk-badge-critical'];
@@ -770,6 +771,7 @@
   </div>{{-- /ticket-side --}}
 
 </div>{{-- /ticket-page --}}
+</div>{{-- /ticket-detail-page --}}
 
 {{-- Modal Asignar --}}
 @auth

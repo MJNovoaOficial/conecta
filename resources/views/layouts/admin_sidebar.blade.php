@@ -97,6 +97,18 @@
 }
 </style>
 
+<details class="admin-mobile-navigation">
+    <summary><i class="fas fa-sliders-h me-2" aria-hidden="true"></i>Menú de administración</summary>
+    <nav aria-label="Administración">
+        @foreach($navItems as $item)
+            @if(\Route::has($item['route']))
+                <a href="{{ route($item['route']) }}" class="sidebar-nav-item {{ $sidebarActive === $item['key'] ? 'active' : '' }}">
+                    <i class="{{ $item['icon'] }}" aria-hidden="true"></i>{{ $item['label'] }}
+                </a>
+            @endif
+        @endforeach
+    </nav>
+</details>
 <aside class="admin-sidebar">
     <div class="sidebar-section-title">Panel Admin</div>
 

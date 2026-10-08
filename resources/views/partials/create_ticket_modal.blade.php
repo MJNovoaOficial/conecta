@@ -21,7 +21,7 @@
   tiene cuenta de la que tomarlo.
 --}}
 <div class="modal fade" id="newTicketModal" tabindex="-1" aria-labelledby="newTicketModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
     <div class="modal-content" style="border-radius:12px;border:none;box-shadow:0 10px 40px rgba(0,0,0,0.15);">
 
       {{-- HEADER --}}
@@ -29,7 +29,7 @@
         <h5 class="modal-title" style="color:#fff;font-size:1rem;font-weight:600;margin:0;" id="newTicketModalLabel">
           <i class="fas fa-life-ring me-2" style="color:#3498db;"></i>¿En qué te podemos ayudar?
         </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar formulario"></button>
       </div>
 
       {{-- BODY --}}

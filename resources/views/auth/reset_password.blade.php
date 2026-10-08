@@ -1,8 +1,8 @@
 ﻿@extends("layouts.app")
 @section("title", "Nueva Contraseña - Conecta")
 @section("content")
-<div style="min-height:calc(100vh - 52px);display:flex;align-items:center;justify-content:center;padding:24px;">
-    <div style="width:100%;max-width:420px;">
+<div class="public-form-page">
+    <div class="public-form-container public-form-login">
         <div style="text-align:center;margin-bottom:28px;">
             <h1 style="font-size:1.4rem;font-weight:700;color:#1a2332;margin:0 0 4px;">Nueva Contraseña</h1>
             <p style="color:#718096;font-size:0.85rem;margin:0;">Crea una contraseña segura para tu cuenta</p>

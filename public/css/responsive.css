@@ -1,0 +1,131 @@
+/* Adaptación compartida: los estilos de escritorio siguen en cada vista. */
+.public-form-page {
+    min-height: calc(100vh - 52px);
+    min-height: calc(100dvh - 52px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+.public-form-container { width: 100%; min-width: 0; }
+.public-form-login { max-width: 480px; }
+.public-form-register { max-width: 520px; }
+.public-form-ticket { max-width: 620px; }
+.guest-identity-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+}
+.mobile-menu-toggle { display: none; }
+.admin-mobile-navigation { display: none; }
+#navbarAccountMenu { display: flex; }
+.ticket-detail-page { max-width: 1200px; margin: 0 auto; padding: 20px 24px 80px; }
+
+@media (max-width: 991.98px) {
+    .top-navbar { padding: 0 16px; gap: 12px; }
+    .mobile-menu-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 8px 12px;
+        border: 1px solid rgba(255,255,255,.3);
+        border-radius: 6px;
+        background: transparent;
+        color: #fff;
+        font: inherit;
+    }
+    #navbarAccountMenu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: calc(100vh - 52px);
+        max-height: calc(100dvh - 52px);
+        overflow-y: auto;
+        background: #243447;
+        padding: 16px;
+        align-items: stretch;
+        flex-direction: column;
+        gap: 12px;
+        box-shadow: 0 6px 12px rgba(0,0,0,.2);
+    }
+    #navbarAccountMenu:not(.show):not(.collapsing) { display: none; }
+    #navbarAccountMenu > a,
+    #navbarAccountMenu form button { min-height: 44px; }
+    #navbarAccountMenu.collapsing { transition: none; }
+    #notifPanel { width: min(320px, calc(100vw - 32px)) !important; left: 0; right: auto !important; }
+    .ticket-page { flex-direction: column; }
+    .ticket-main, .ticket-side { width: 100%; }
+    body .admin-layout { flex-direction: column; }
+    body .admin-sidebar { display: none; }
+    .admin-mobile-navigation { display: block; background: #1a2332; color: #fff; }
+    .admin-mobile-navigation summary { padding: 14px 16px; cursor: pointer; }
+    .admin-mobile-navigation nav { max-height: 45vh; max-height: 45dvh; overflow-y: auto; }
+    .admin-mobile-navigation .sidebar-nav-item { min-height: 44px; white-space: normal; }
+    body .admin-content, body .admin-layout .admin-wrapper { padding: 20px 16px 96px; }
+    body .admin-page-header { flex-wrap: wrap; gap: 12px; }
+    body .admin-page-header > div { min-width: 0; flex-wrap: wrap; }
+    body .admin-card:has(> table) { overflow-x: auto !important; }
+    body .agent-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+    body .agent-name { overflow-wrap: anywhere; }
+}
+
+@media (max-width: 767.98px) {
+    /* 16px evita el zoom automático al enfocar campos en teléfonos. */
+    .form-control, .form-select, .form-control-custom,
+    .reply-wrap textarea, .side-status-select {
+        font-size: 1rem !important;
+        min-height: 44px;
+    }
+    .public-form-page {
+        padding: 28px 12px 96px;
+        align-items: flex-start;
+    }
+    .public-form-container .form-label-custom { font-size: .95rem; }
+    .public-form-container .btn-submit-ticket { min-height: 48px; font-size: 1rem !important; }
+    .public-form-container a { min-height: 44px; align-content: center; }
+    .public-form-container h1 { font-size: 1.6rem !important; }
+    .public-form-container h2 { font-size: 1.1rem !important; }
+    .login-options { flex-wrap: wrap; gap: 8px 16px; }
+    .login-options label { min-height: 44px; }
+    .guest-identity-fields { grid-template-columns: minmax(0, 1fr); }
+    .content-card-header, .page-header { flex-wrap: wrap; gap: 12px; }
+    .content-card-search { max-width: 100%; }
+    .content-card-search input { width: 100%; min-height: 44px; font-size: 1rem; }
+    .breadcrumb-bar { flex-wrap: wrap; }
+    .page-wrapper { padding-bottom: 96px; }
+    .admin-layout input:not([type="checkbox"]):not([type="radio"]),
+    .admin-layout select, .admin-layout textarea { font-size: 1rem !important; min-height: 44px; }
+    .ticket-detail-page { padding: 16px 12px 96px; }
+    .tk-header { padding: 20px 16px; }
+    .tk-title, .tk-desc, .c-body, .att-pill, .info-list .val { overflow-wrap: anywhere; }
+    .tk-desc, .c-body { font-size: .95rem; }
+    .comment-head { flex-wrap: wrap; }
+    .c-time { white-space: normal; }
+    .info-list li { gap: 12px; flex-wrap: wrap; }
+    .toast-container { left: 12px; right: 12px; bottom: 84px; }
+    .toast-msg { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+    #newTicketModal .modal-header,
+    #newTicketModal .modal-body,
+    #newTicketModal .modal-footer { padding: 16px !important; }
+    #newTicketModal .modal-title { font-size: 1.1rem !important; }
+    #newTicketModal .modal-footer { gap: 8px; flex-wrap: wrap; }
+    #newTicketModal .modal-footer button { min-height: 44px; margin: 0; }
+    #newTicketModal .btn-close { flex-shrink: 0; width: 44px; height: 44px; padding: 0; margin: 0; }
+    #modalFileNames, #fileNames { overflow-wrap: anywhere; }
+}
+
+@media (max-width: 575.98px) {
+    #newTicketModal .modal-content,
+    #newTicketModal .modal-header { border-radius: 0 !important; }
+    #newTicketModal .modal-dialog { height: 100vh; height: 100dvh; }
+    #newTicketModal .modal-footer button { flex: 1 1 auto; }
+    body .rule-form { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-height: 550px) and (max-width: 991.98px) {
+    .public-form-page { align-items: flex-start; }
+    .bur-panel { max-height: calc(100dvh - 20px); }
+}
