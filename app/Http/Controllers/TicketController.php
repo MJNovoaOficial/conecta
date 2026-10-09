@@ -534,6 +534,10 @@ class TicketController extends Controller
     {
         $this->authorize('comment', $ticket);
 
+        if ($ticket->status === Ticket::STATUS_CLOSED) {
+            return back()->withErrors(['comment' => 'El ticket está cerrado. La conversación solo está disponible para consulta.']);
+        }
+
         // Rate limiting: máximo 20 comentarios por hora
         $throttleKey = 'add_comment:' . Auth::id() . ':' . $ticket->id;
         if (RateLimiter::tooManyAttempts($throttleKey, 20)) {

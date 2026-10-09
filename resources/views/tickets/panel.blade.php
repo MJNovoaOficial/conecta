@@ -229,10 +229,13 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
     @endif
 
     {{-- Formulario de respuesta --}}
+    @if($ticket->status === 'closed')
+    <div class="reply-form" role="status">El ticket está cerrado. La conversación solo está disponible para consulta.</div>
+    @endif
     @auth
-    @if(!in_array($ticket->status, ['closed','resolved']) || Auth::user()->isAdmin())
+    @if($ticket->status !== 'closed' && ($ticket->status !== 'resolved' || Auth::user()->isAdmin()))
     <div class="reply-form">
-      <form method="POST" action="/tickets/{{ $ticket->id }}/comment" enctype="multipart/form-data">
+      <form method="POST" action="/tickets/{{ $ticket->id }}/comment" enctype="multipart/form-data" data-comment-submit>
         @csrf
         <textarea name="comment" placeholder="Escribe tu respuesta..." required></textarea>
         <div class="reply-footer">
@@ -260,5 +263,6 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
   </a>
 </div>
 
+@include('partials.comment_submit_guard')
 </body>
 </html>

@@ -381,10 +381,15 @@
             @endif
 
             {{-- Responder --}}
+            @if($ticket->status === 'closed')
+            <div class="reply-wrap" role="status" style="margin-top:16px;">
+                El ticket está cerrado. La conversación solo está disponible para consulta.
+            </div>
+            @endif
             @auth
-            @if(!in_array($ticket->status, ['closed','resolved']) || Auth::user()->isAdmin())
+            @if($ticket->status !== 'closed' && ($ticket->status !== 'resolved' || Auth::user()->isAdmin()))
             <div class="reply-wrap" style="margin-top:16px;">
-                <form method="POST" action="/tickets/{{ $ticket->id }}/comment" enctype="multipart/form-data">
+                <form method="POST" action="/tickets/{{ $ticket->id }}/comment" enctype="multipart/form-data" data-comment-submit>
                     @csrf
                     <textarea name="comment" placeholder="Escribe tu respuesta..." required></textarea>
                     <div class="reply-footer">
@@ -426,7 +431,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('tickets.guest.comment', $ticket->guest_token) }}" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('tickets.guest.comment', $ticket->guest_token) }}" enctype="multipart/form-data" data-comment-submit>
                     @csrf
                     <textarea name="comment" placeholder="Escribe tu respuesta..." required></textarea>
                     @error('comment')
@@ -849,7 +854,7 @@
 
 {{-- Modal: Solicitar Información Adicional (RF-ST-15 / RNG-01) --}}
 @auth
-@if(Auth::user()->isSupport() || Auth::user()->isAdmin())
+@if($ticket->status !== 'closed' && (Auth::user()->isSupport() || Auth::user()->isAdmin()))
 <div class="modal fade" id="requestInfoModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content" style="border-radius:12px;border:none;">
@@ -864,7 +869,7 @@
                     Al solicitar información, el ticket cambiará a <strong>Pendiente Usuario</strong> y el solicitante
                     tendrá <strong>2 horas</strong> para responder antes del cierre automático.
                 </p>
-                <form method="POST" action="{{ route('tickets.addComment', $ticket) }}" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('tickets.addComment', $ticket) }}" enctype="multipart/form-data" data-comment-submit>
                     @csrf
                     {{-- Campo oculto para cambiar estado a pending_user --}}
                     <input type="hidden" name="request_info" value="1">
@@ -891,6 +896,7 @@
 @endauth
 
 @push('scripts')
+@include('partials.comment_submit_guard')
 <script>
 function loadTiposShow(subId) {
     const sel = document.getElementById('sc-tipo');
