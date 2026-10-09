@@ -10,7 +10,7 @@
                 <i class="fas fa-shield-alt" style="font-size: 50px; color: #e74c3c;"></i>
                 <h3 class="mt-3">Demasiados intentos</h3>
                 <p class="text-muted">
-                    Has excedido el número máximo de intentos permitidos.
+                    {{ $message ?? 'Has excedido el número máximo de intentos permitidos.' }}
                 </p>
                 <p>
                     Por favor, espera 

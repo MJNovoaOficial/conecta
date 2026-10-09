@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\LoginAttempt;
 use App\Models\User;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Cache\FileStore;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
@@ -23,13 +26,50 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        // Rate limiting: máximo 5 intentos por 15 minutos
-        $this->rateLimitLogin($request);
-
         $request->validate([
             'email' => 'required|email|max:255',
             'password' => 'required|string|min:8|max:255',
         ]);
+
+        $request->merge(['email' => strtolower(trim($request->email))]);
+        // Usar el correo registrado también agrupa variantes equivalentes
+        // para la colación de la base, sin modificar la cuenta existente.
+        $accountEmail = User::where('email', $request->email)->value('email') ?? $request->email;
+        $throttleKey = 'login:account:' . hash('sha256', $accountEmail);
+
+        try {
+            // Serializar solo esta cuenta, nunca toda la IP de una oficina.
+            return Cache::lock($throttleKey . ':lock', 120)->block(5,
+                fn () => $this->attemptLogin($request, $throttleKey)
+            );
+        } catch (LockTimeoutException) {
+            return $this->loginBusyResponse();
+        } catch (\ErrorException $exception) {
+            // Windows puede rechazar fopen mientras otro proceso elimina el
+            // archivo de un FileLock. No omitir el lock ni autenticar sin él.
+            if (! (Cache::getStore() instanceof FileStore)
+                || $exception->getSeverity() !== E_WARNING
+                || ! str_ends_with(str_replace('\\', '/', $exception->getFile()), '/Illuminate/Filesystem/LockableFile.php')
+                || ! str_starts_with($exception->getMessage(), 'fopen(')
+                || ! str_contains($exception->getMessage(), 'Permission denied')) {
+                throw $exception;
+            }
+            Log::warning('No se pudo abrir el lock de login por archivos.', ['email' => $accountEmail]);
+            return $this->loginBusyResponse();
+        }
+    }
+
+    protected function loginBusyResponse()
+    {
+        return response()->view('auth.throttle', [
+            'seconds' => 1,
+            'message' => 'Se está procesando otro acceso para este correo. Espera unos segundos y vuelve a intentarlo.',
+        ], 429)->header('Retry-After', '1');
+    }
+
+    protected function attemptLogin(Request $request, string $throttleKey)
+    {
+        $this->rateLimitLogin($throttleKey);
 
         $credentials = [
             ...$request->only('email', 'password'),
@@ -37,6 +77,7 @@ class AuthController extends Controller
         ];
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
+            Cache::forget($throttleKey);
             $request->session()->regenerate();
 
             // Log de login exitoso (RNF-08)
@@ -48,6 +89,8 @@ class AuthController extends Controller
 
             return redirect()->intended('/tickets');
         }
+
+        $this->recordFailedLogin($throttleKey);
 
         // Registro en DB de intento fallido (RNF-08)
         LoginAttempt::record($request->email, $request->ip(), $request->userAgent(), false);
@@ -107,18 +150,34 @@ class AuthController extends Controller
         return redirect('/')->with('success', 'Sesión cerrada exitosamente');
     }
 
-    protected function rateLimitLogin(Request $request)
+    protected function rateLimitLogin(string $throttleKey): void
     {
-        $throttleKey = 'login:' . $request->ip();
-        $maxAttempts = 5;
-        $decayMinutes = 15;
+        $state = Cache::get($throttleKey, []);
+        $seconds = ($state['blocked_until'] ?? 0) - now()->timestamp;
 
-        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, $maxAttempts)) {
-            $seconds = \Illuminate\Support\Facades\RateLimiter::availableIn($throttleKey);
-            abort(response()->view('auth.throttle', ['seconds' => $seconds], 429));
+        if ($seconds > 0) {
+            abort(response()->view('auth.throttle', ['seconds' => $seconds], 429)
+                ->header('Retry-After', (string) $seconds));
+        }
+    }
+
+    protected function recordFailedLogin(string $throttleKey): void
+    {
+        // Se ejecuta bajo el mismo lock que la comprobación y autenticación.
+        $now = now()->timestamp;
+        $state = Cache::get($throttleKey, []);
+        if (($state['window_ends_at'] ?? 0) <= $now) {
+            $state = ['failures' => 0, 'window_ends_at' => $now + 15 * 60];
         }
 
-        \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, $decayMinutes * 60);
+        $state['failures']++;
+        if ($state['failures'] >= 5) {
+            $state['blocked_until'] = $now + 5 * 60;
+            // Al terminar la espera comienza un nuevo contador de fallos.
+            Cache::put($throttleKey, $state, 5 * 60);
+        } else {
+            Cache::put($throttleKey, $state, $state['window_ends_at'] - $now);
+        }
     }
 
     protected function rateLimitRegister(Request $request)
