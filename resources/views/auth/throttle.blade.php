@@ -3,8 +3,8 @@
 @section('title', 'Demasiados intentos')
 
 @section('content')
-<div class="row">
-    <div class="col-md-6 mx-auto">
+<div class="public-form-page">
+    <div class="public-form-container public-form-login">
         <div class="card text-center">
             <div class="card-body" style="padding: 40px;">
                 <i class="fas fa-shield-alt" style="font-size: 50px; color: #e74c3c;"></i>

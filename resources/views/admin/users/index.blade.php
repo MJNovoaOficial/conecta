@@ -209,7 +209,7 @@
             <tbody>
                 @foreach($users as $user)
                 <tr>
-                    <td>
+                    <td data-label="Usuario">
                         <div>
                             <strong style="font-size:0.875rem; color:#1a2332;">{{ $user->name }}</strong>
                             @if($user->phone)
@@ -217,20 +217,20 @@
                             @endif
                         </div>
                     </td>
-                    <td style="color:#718096; font-size:0.82rem;">{{ $user->email }}</td>
-                    <td style="color:#4a5568;">{{ $user->department?->name ?? '—' }}</td>
-                    <td>
+                    <td data-label="Email" style="color:#718096; font-size:0.82rem;">{{ $user->email }}</td>
+                    <td data-label="Departamento" style="color:#4a5568;">{{ $user->department?->name ?? '—' }}</td>
+                    <td data-label="Rol">
                         <span class="role-badge">
                             {{ $user->role === 'admin' ? 'Administrador' : ($user->role === 'support' ? 'Soporte' : 'Usuario') }}
                         </span>
                     </td>
-                    <td>
+                    <td data-label="Estado">
                         <span class="status-dot">
                             <span class="dot {{ $user->is_active ? 'dot-active' : 'dot-inactive' }}"></span>
                             {{ $user->is_active ? 'Activo' : 'Inactivo' }}
                         </span>
                     </td>
-                    <td>
+                    <td data-label="Acción">
                         <button class="btn-edit-user" data-bs-toggle="modal"
                                 data-bs-target="#editUserModal{{ $user->id }}">
                             <i class="fas fa-pen"></i> Editar
@@ -238,6 +238,11 @@
                     </td>
                 </tr>
 
+                @endforeach
+            </tbody>
+        </table>
+
+                @foreach($users as $user)
                 {{-- Modal edición de usuario --}}
                 <div class="modal fade" id="editUserModal{{ $user->id }}" tabindex="-1">
                     <div class="modal-dialog">
@@ -310,8 +315,6 @@
                     </div>
                 </div>
                 @endforeach
-            </tbody>
-        </table>
 
         @if($users->hasPages())
         <div style="padding: 14px 18px; border-top: 1px solid #f0f2f5;">
@@ -323,4 +326,3 @@
 </div>{{-- /admin-content-wrap --}}
 </div>{{-- /admin-layout --}}
 @endsection
-

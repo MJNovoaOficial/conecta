@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
     <title>@yield('title', 'Conecta - Mesa de Ayuda')</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -630,6 +630,7 @@
     </style>
     <link rel="stylesheet" href="{{ asset('css/premium.css') }}">
     @yield('styles')
+    @stack('styles')
     <link rel="stylesheet" href="{{ asset('css/responsive.css') }}?v={{ filemtime(public_path('css/responsive.css')) }}">
 </head>
 <body>
@@ -671,6 +672,8 @@
             <div id="notifPanel" style="display:none;position:absolute;right:0;top:calc(100% + 6px);width:320px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.15);z-index:2000;overflow:hidden;">
                 <div style="display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;border-bottom:1px solid #f0f2f5;">
                     <span style="font-size:.85rem;font-weight:700;color:#1a2332;">Notificaciones</span>
+                    <button type="button" class="notif-panel-close" onclick="toggleNotifPanel()" aria-label="Cerrar notificaciones"
+                            style="background:none;border:0;color:#718096;cursor:pointer;">&times;</button>
                     <form method="POST" action="{{ route('notifications.readAll') }}" style="margin:0;">
                         @csrf
                         <button type="submit" style="background:none;border:none;cursor:pointer;font-size:.75rem;color:#3498db;padding:0;">Marcar todas leídas</button>

@@ -32,8 +32,8 @@
 </style>
 <div class="admin-layout">
 @include('layouts.admin_sidebar', ['active' => 'users'])
-<div class="admin-content-wrap">
-<div style="width:100%; max-width:480px;">
+<div class="admin-content-wrap admin-form-wrap">
+<div class="public-form-container public-form-login">
 
         {{-- Header --}}
         <div style="text-align: center; margin-bottom: 28px;">

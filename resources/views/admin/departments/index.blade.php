@@ -216,17 +216,17 @@
             <tbody>
                 @foreach($departments as $dept)
                 <tr>
-                    <td>
+                    <td data-label="Departamento">
                         <strong style="font-size:0.875rem; color:#1a2332;">{{ $dept->name }}</strong>
                     </td>
-                    <td class="desc-text">{{ $dept->description ?? '—' }}</td>
-                    <td style="text-align:center;">
+                    <td data-label="Descripción" class="desc-text">{{ $dept->description ?? '—' }}</td>
+                    <td data-label="Usuarios" style="text-align:center;">
                         <span class="count-chip chip-users">{{ $dept->users_count }}</span>
                     </td>
-                    <td style="text-align:center;">
+                    <td data-label="Tickets" style="text-align:center;">
                         <span class="count-chip chip-tickets">{{ $dept->tickets_count }}</span>
                     </td>
-                    <td>
+                    <td data-label="Acciones">
                         <button class="btn-edit-dept btn btn-primary btn-sm me-2" data-bs-toggle="modal"
                                 data-bs-target="#editModal{{ $dept->id }}">
                             <i class="fas fa-pen"></i> Editar
@@ -238,6 +238,11 @@
                     </td>
                 </tr>
 
+                @endforeach
+            </tbody>
+        </table>
+
+                @foreach($departments as $dept)
                 {{-- Modal de edición inline --}}
                 <div class="modal fade" id="editModal{{ $dept->id }}" tabindex="-1">
                     <div class="modal-dialog">
@@ -249,6 +254,7 @@
                             <form method="POST" action="{{ route('admin.departments.update', $dept) }}" id="editForm{{ $dept->id }}">
                                 @csrf
                                 @method('PUT')
+                                <input type="hidden" name="default_role" value="{{ $dept->default_role }}">
                                 <div class="modal-body">
                                     <div class="mb-3">
                                         <label class="form-label fw-semibold">Nombre</label>
@@ -294,8 +300,6 @@
                     </div>
                 </div>
                 @endforeach
-            </tbody>
-        </table>
 
         @if($departments->hasPages())
         <div style="padding: 14px 18px; border-top: 1px solid #f0f2f5;">

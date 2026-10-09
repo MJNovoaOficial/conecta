@@ -132,10 +132,18 @@
             color: #a0aec0;
             margin-top: 18px;
         }
+        .err-shell { width: 100%; max-width: 460px; }
+        @media (max-width: 991.98px), (pointer: coarse) and (max-width: 1366px) {
+            body { min-height: 100dvh; padding: 16px; }
+            .err-shell, .err-card { max-width: none; }
+            .err-mensaje { font-size: 1rem; }
+            .err-detalle { font-size: .875rem; overflow-wrap: anywhere; }
+            .btn-err { min-height: 48px; font-size: 1rem; }
+        }
     </style>
 </head>
 <body>
-    <div>
+    <div class="err-shell">
         <div class="err-card">
             <div class="err-top">
                 <div class="err-icon" style="background: @yield('color');">

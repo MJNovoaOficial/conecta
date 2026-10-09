@@ -21,7 +21,7 @@
   tiene cuenta de la que tomarlo.
 --}}
 <div class="modal fade" id="newTicketModal" tabindex="-1" aria-labelledby="newTicketModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-sm-down">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-lg-down">
     <div class="modal-content" style="border-radius:12px;border:none;box-shadow:0 10px 40px rgba(0,0,0,0.15);">
 
       {{-- HEADER --}}
@@ -59,7 +59,7 @@
 
           {{-- ───────────────────────── CAMPO 2: Clasificación (visible, no colapsada) ──── --}}
           <div class="mb-3" style="background:#f7f9fc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;">
-            <div style="font-size:0.8rem;color:#4a5568;margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+            <div class="ticket-classification-hint" style="font-size:0.8rem;color:#4a5568;margin-bottom:10px;display:flex;align-items:center;gap:8px;">
               <i class="fas fa-sliders-h" style="color:#3498db;"></i>
               <span><strong>Ayúdanos a priorizar tu ticket.</strong> El sistema asigna la urgencia según lo que elijas aquí.</span>
             </div>
@@ -102,7 +102,7 @@
               <i class="fas fa-paperclip me-1" style="color:#e67e22;"></i>
               Adjuntar archivo o video <small style="font-weight:400;color:#a0aec0;">(opcional — máx. 5 archivos)</small>
             </label>
-            <div style="border:2px dashed #e2e8f0;border-radius:8px;padding:14px;text-align:center;cursor:pointer;transition:border-color 0.2s;"
+            <div class="ticket-upload-area" style="border:2px dashed #e2e8f0;border-radius:8px;padding:14px;text-align:center;cursor:pointer;transition:border-color 0.2s;"
                  onclick="document.getElementById('modalAttach').click()"
                  onmouseenter="this.style.borderColor='#3498db'" onmouseleave="this.style.borderColor='#e2e8f0'">
               <i class="fas fa-cloud-upload-alt" style="font-size:22px;color:#a0aec0;"></i>

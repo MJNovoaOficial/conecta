@@ -7,6 +7,12 @@
 
     {{-- SIDEBAR --}}
     <aside class="sidebar">
+        <details class="ticket-navigation" open>
+            <summary class="ticket-navigation-toggle">
+                <span><i class="fas fa-filter me-2" aria-hidden="true"></i>Filtros y navegación</span>
+                <i class="fas fa-chevron-down" aria-hidden="true"></i>
+            </summary>
+            <div class="ticket-navigation-body">
 
         {{-- Filtros por estado --}}
         <div class="sidebar-section">
@@ -138,6 +144,8 @@
         </div>
         @endif
 
+            </div>
+        </details>
     </aside>
 
     {{-- MAIN CONTENT --}}
@@ -372,8 +380,6 @@
             </div>
 
             @if($tickets->count() > 0)
-            <div style="overflow-x:auto;">
-                <table class="ticket-table" id="ticketTable">
                     @php
                         // Ordenamiento de columnas: se conservan los filtros activos y
                         // se vuelve a la pagina 1 al cambiar el orden.
@@ -394,6 +400,17 @@
                         $estiloOrden = 'color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px;cursor:pointer;';
                     @endphp
 
+            <div class="ticket-sort-controls" aria-label="Ordenar tickets">
+                <span>Ordenar por:</span>
+                @foreach(['departamento' => 'Departamento', 'asunto' => 'Asunto', 'estado' => 'Estado', 'actualizado' => 'Actualizado'] as $clave => $etiqueta)
+                    <a href="{{ $enlaceOrden($clave) }}" data-sort="{{ $clave }}"
+                       class="{{ $ordenActual === $clave ? 'active' : '' }}" aria-current="{{ $ordenActual === $clave ? 'true' : 'false' }}">
+                        {{ $etiqueta }} <span aria-hidden="true">{{ $iconoOrden($clave) }}</span>
+                    </a>
+                @endforeach
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="ticket-table" id="ticketTable">
                     <thead>
                         <tr>
                             <th>
@@ -425,11 +442,14 @@
                         @foreach($tickets as $ticket)
                         <tr onclick="window.location='{{ route('tickets.show', $ticket) }}'" style="cursor:pointer;">
                             <td class="ticket-dept" data-label="Departamento">{{ $ticket->department->name ?? 'N/A' }}</td>
-                            <td class="celda-asunto">
+                            <td class="celda-asunto" data-label="Asunto">
                                 <a href="{{ route('tickets.show', $ticket) }}" class="ticket-subject-link" onclick="event.stopPropagation();">
                                     #{{ $ticket->ticket_number }}
                                 </a>
-                                <div class="ticket-subject-sub">{{ Str::limit($ticket->title, 55) }}</div>
+                                <div class="ticket-subject-sub">
+                                    <span class="ticket-subject-preview">{{ Str::limit($ticket->title, 55) }}</span>
+                                    <span class="ticket-subject-full">{{ $ticket->title }}</span>
+                                </div>
                             </td>
                             <td data-label="Estado">
                                 @php
@@ -459,14 +479,18 @@
                                 @endphp
                                 <span class="priority-badge {{ $priCls }}">{{ $ticket->getPriorityLabel() }}</span>
                             </td>
-                            <td>
+                            <td data-label="SLA">
                                 {{-- RN-17 / RF-ST-11: semaforo de cumplimiento del SLA de resolucion.
                                      Solo se muestra en tickets activos: uno cerrado ya no corre riesgo. --}}
                                 @php
                                     $finalizado = in_array($ticket->status, ['resolved', 'closed']);
                                     $slaEstado  = $finalizado ? null : $ticket->getSlaResolutionStatus();
                                 @endphp
-                                @component('components.sla-badge', ['status' => $slaEstado])@endcomponent
+                                @if(!$slaEstado || $slaEstado === 'none')
+                                    <span>—</span>
+                                @else
+                                    @component('components.sla-badge', ['status' => $slaEstado])@endcomponent
+                                @endif
                             </td>
                             <td class="ticket-assigned-cell" data-label="Asignado">
                                 {{ $ticket->assignedTo->name ?? '—' }}
@@ -600,6 +624,17 @@
 
 @section('scripts')
 <script>
+(function () {
+    const navigation = document.querySelector('.ticket-navigation');
+    if (!navigation) return;
+    // La consulta coincide con el modo compacto de responsive.css.
+    const compact = window.matchMedia('(max-width: 991.98px), (pointer: coarse) and (max-width: 1366px)');
+    function adaptNavigation() { navigation.open = !compact.matches; }
+    adaptNavigation();
+    if (compact.addEventListener) compact.addEventListener('change', adaptNavigation);
+    else compact.addListener(adaptNavigation);
+})();
+
 function filterTable(q) {
     const rows = document.querySelectorAll('#ticketTable tbody tr');
     q = q.toLowerCase();
