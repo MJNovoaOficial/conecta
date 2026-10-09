@@ -119,7 +119,7 @@ class TicketAssignmentRulesTest extends TestCase
         $this->assertSame($next->id, $ticket->fresh()->assigned_to);
         $this->assertSame($destination->id, $ticket->fresh()->department_id);
         $this->assertDatabaseCount('comentarios_ticket', 1);
-        $this->assertDatabaseCount('historial_ticket', 2);
+        $this->assertDatabaseCount('historial_ticket', 3);
     }
 
     public function test_tomar_un_libre_cambia_a_en_proceso_y_repetir_no_duplica_historial(): void

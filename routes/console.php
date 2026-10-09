@@ -18,6 +18,10 @@ Artisan::command('inspire', function () {
 // Cada cinco minutos alcanza de sobra para un plazo que se mide en horas.
 Schedule::job(new \App\Jobs\AutoCloseTicketJob)->everyFiveMinutes();
 
+// Solo soluciones registradas con el nuevo flujo: una hora de reloj y una
+// revisión por minuto. Requiere scheduler y worker de cola en el servidor.
+Schedule::job(new \App\Jobs\CloseResolvedTicketsJob)->everyMinute();
+
 // Aviso antes de que un ticket incumpla su plazo de resolución. Avisa una sola
 // vez por ticket: la marca queda en la columna sla_warned_at.
 Schedule::job(new \App\Jobs\SendSlaWarningsJob)->everyFiveMinutes();

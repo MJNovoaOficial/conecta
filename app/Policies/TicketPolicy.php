@@ -41,8 +41,8 @@ class TicketPolicy
     }
 
     /**
-     * Conserva el flujo actual: cualquier agente de soporte puede cambiar el
-     * estado desde el panel. El solicitante no puede hacerlo por URL directa.
+     * Acceso a la URL antigua, que ahora solo explica el flujo por acciones.
+     * El controlador no permite cambios manuales, tampoco para administradores.
      */
     public function changeStatus(User $user, Ticket $ticket): bool
     {

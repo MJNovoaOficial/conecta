@@ -13,6 +13,7 @@ use App\Models\Ticket;
 use App\Models\TicketComment;
 use App\Mail\GuestTicketCreatedMail;
 use App\Mail\GuestTicketAutoClosedMail;
+use App\Mail\GuestTicketStatusMail;
 use App\Models\TicketAttachment;
 use App\Models\Department;
 use App\Models\TicketHistory;
@@ -23,7 +24,9 @@ use App\Notifications\TicketUpdatedNotification;
 use App\Support\HorarioLaboral;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -491,11 +494,19 @@ class TicketController extends Controller
             'attachments.*.max'=> 'Cada archivo puede pesar hasta 5 MB.',
         ]);
 
+        $oldStatus = $ticket->status;
+        if ($oldStatus === Ticket::STATUS_PENDING_USER && !$this->updateTicketAssignment($ticket, [
+            'user_responded_at' => Carbon::now(),
+            'status' => Ticket::STATUS_IN_PROGRESS,
+        ])) {
+            return back()->withErrors(['comment' => 'El estado cambió mientras respondías. Actualiza el ticket antes de continuar.']);
+        }
+
         $comentario = TicketComment::create([
             'ticket_id'                => $ticket->id,
             'user_id'                  => null,   // un invitado no tiene cuenta
             'comment'                  => $request->comment,
-            'ticket_status_at_comment' => $ticket->status,
+            'ticket_status_at_comment' => $oldStatus,
             'is_internal'              => false,  // nunca interno: lo escribe quien reporta
         ]);
 
@@ -503,12 +514,7 @@ class TicketController extends Controller
 
         // Mismo trato que a un usuario registrado: responder detiene el plazo y
         // devuelve el ticket a la cola de soporte.
-        if ($ticket->status === Ticket::STATUS_PENDING_USER) {
-            $ticket->update([
-                'user_responded_at' => Carbon::now(),
-                'status'            => Ticket::STATUS_IN_PROGRESS,
-            ]);
-
+        if ($oldStatus === Ticket::STATUS_PENDING_USER) {
             TicketHistory::create([
                 'ticket_id'  => $ticket->id,
                 'user_id'    => null,
@@ -541,6 +547,9 @@ class TicketController extends Controller
 
         if ($ticket->status === Ticket::STATUS_CLOSED) {
             return back()->withErrors(['comment' => 'El ticket está cerrado. La conversación solo está disponible para consulta.']);
+        }
+        if ($ticket->status === Ticket::STATUS_RESOLVED) {
+            return back()->withErrors(['comment' => 'El ticket está resuelto. Si el problema sigue, usa la opción para reabrirlo.']);
         }
 
         // before() conserva la supervisión administrativa, pero tampoco un
@@ -586,11 +595,29 @@ class TicketController extends Controller
             return back()->withErrors(['comment' => 'No tiene permiso para crear comentarios internos.']);
         }
 
+        $oldStatus = $ticket->status;
+        $requestsInfo = $request->boolean('request_info');
+        $ownerResponds = $oldStatus === Ticket::STATUS_PENDING_USER && Auth::id() === $ticket->user_id;
+        $transition = [];
+        if ($requestsInfo) {
+            $transition = [
+                'status' => Ticket::STATUS_PENDING_USER,
+                'last_response_request_at' => Carbon::now(),
+                'response_deadline_at' => HorarioLaboral::sumarHoras(Carbon::now(), 2),
+                'user_responded_at' => null,
+            ];
+        } elseif ($ownerResponds) {
+            $transition = ['user_responded_at' => Carbon::now(), 'status' => Ticket::STATUS_IN_PROGRESS];
+        }
+        if ($transition && !$this->updateTicketAssignment($ticket, $transition)) {
+            return back()->withErrors(['comment' => 'El estado o el responsable cambió mientras respondías. Actualiza el ticket antes de continuar.']);
+        }
+
         $comment = TicketComment::create([
             'ticket_id'               => $ticket->id,
             'user_id'                 => Auth::id(),
             'comment'                 => $request->comment,
-            'ticket_status_at_comment'=> $ticket->status,
+            'ticket_status_at_comment'=> $oldStatus,
             'is_internal'             => $request->boolean('is_internal', false),
         ]);
 
@@ -599,20 +626,11 @@ class TicketController extends Controller
 
         // RF-ST-15 / RNG-01: Si soporte solicita información mediante el modal dedicado
         if ($request->boolean('request_info') && (Auth::user()->isSupport() || Auth::user()->isAdmin())) {
-            $ticket->update([
-                'status'                   => Ticket::STATUS_PENDING_USER,
-                'last_response_request_at' => Carbon::now(),
-                // RNG-01: 2 horas hábiles. Pedirle información a alguien un
-                // viernes a las 17:30 y darle plazo hasta las 19:30 es darle
-                // dos horas en las que no está trabajando.
-                'response_deadline_at'     => HorarioLaboral::sumarHoras(Carbon::now(), 2),
-                'user_responded_at'        => null,
-            ]);
             TicketHistory::create([
                 'ticket_id'  => $ticket->id,
                 'user_id'    => Auth::id(),
                 'action'     => 'requested_info',
-                'old_value'  => $ticket->getOriginal('status'),
+                'old_value'  => $oldStatus,
                 'new_value'  => Ticket::STATUS_PENDING_USER,
                 'field_name' => 'status',
             ]);
@@ -630,12 +648,7 @@ class TicketController extends Controller
         }
 
         // Si el ticket estaba en "pendiente_usuario" y el creador responde, registrar respuesta
-        if ($ticket->status === Ticket::STATUS_PENDING_USER && Auth::id() === $ticket->user_id) {
-            $ticket->update([
-                'user_responded_at' => Carbon::now(),
-                'status' => Ticket::STATUS_IN_PROGRESS,
-            ]);
-
+        if ($ownerResponds) {
             TicketHistory::create([
                 'ticket_id' => $ticket->id,
                 'user_id'   => Auth::id(),
@@ -676,53 +689,53 @@ class TicketController extends Controller
     public function updateStatus(Request $request, Ticket $ticket)
     {
         $this->authorize('changeStatus', $ticket);
+        // Conservamos la URL para pestañas antiguas, pero ya no admite estados
+        // arbitrarios, tampoco por un administrador o una petición directa.
+        return back()->with('error', 'El estado cambia mediante las acciones del ticket, no de forma manual. Un ticket cerrado no puede reabrirse.');
+    }
 
-        $request->validate([
-            'status' => 'required|in:open,in_progress,pending_user,forwarded,resolved,closed',
-        ]);
-
-        $oldStatus    = $ticket->status;
-        $oldStatusLabel = $ticket->getStatusLabel(); // Guardar ANTES del update
-        $newStatus    = $request->status;
-
-        $updateData = ['status' => $newStatus];
-
-        // Si se solicita información al usuario, establecer deadline
-        // (RNG-01: 2 horas hábiles, mismo criterio que en addComment)
-        if ($newStatus === Ticket::STATUS_PENDING_USER) {
-            $updateData['last_response_request_at'] = Carbon::now();
-            $updateData['response_deadline_at'] = HorarioLaboral::sumarHoras(Carbon::now(), 2);
-            $updateData['user_responded_at'] = null;
-
-            // Notificar in-app al creador del ticket
-            if ($ticket->user_id && $ticket->user_id !== Auth::id()) {
-                Notificacion::notify(
-                    $ticket->user_id,
-                    'comment',
-                    'Soporte necesita tu información — ' . $ticket->ticket_number,
-                    'Tienes 2 horas para responder antes del cierre automático.',
-                    $ticket->id
-                );
-            }
+    public function resolve(Request $request, Ticket $ticket)
+    {
+        $ticket->refresh();
+        $this->authorize('manage', $ticket);
+        if (in_array($ticket->status, [Ticket::STATUS_RESOLVED, Ticket::STATUS_CLOSED], true)) {
+            return back()->with('error', 'Este ticket ya está resuelto o cerrado. La solución no puede registrarse otra vez.');
         }
-
-        $ticket->update($updateData);
-
-        // Registrar en historial
-        TicketHistory::create([
-            'ticket_id' => $ticket->id,
-            'user_id' => Auth::id(),
-            'action' => 'status_change',
-            'old_value' => $oldStatus,
-            'new_value' => $newStatus,
-            'field_name' => 'status',
-        ]);
-
-        // Notificar cambio de estado (usando labels guardados correctamente)
-        $newStatusLabel = $ticket->getStatusLabel();
-        $this->notifyTicketUpdate($ticket, "El estado del ticket cambió de \"{$oldStatusLabel}\" a \"{$newStatusLabel}\".");
-
-        return back()->with('success', "Estado actualizado a: {$newStatusLabel}");
+        if (!$ticket->hasAssignedSupport()) {
+            return back()->with('error', 'Primero debe asignarse un agente de soporte al ticket.');
+        }
+        $data = $request->validate(['solution_text' => 'required|string|min:10|max:5000']);
+        $oldStatus = $ticket->status;
+        $updated = DB::transaction(function () use ($ticket, $data, $oldStatus) {
+            if (!$this->updateTicketAssignment($ticket, [
+                'status' => Ticket::STATUS_RESOLVED,
+                'solution_text' => $data['solution_text'],
+                'resolved_at' => now(),
+                'response_deadline_at' => null,
+            ])) return false;
+            TicketHistory::create([
+                'ticket_id' => $ticket->id, 'user_id' => Auth::id(),
+                'action' => 'solution_registered', 'old_value' => $oldStatus,
+                'new_value' => Ticket::STATUS_RESOLVED, 'field_name' => 'status',
+            ]);
+            AuditLog::record('ticket.resolved', 'Ticket', $ticket->id);
+            return true;
+        });
+        if (!$updated) {
+            return back()->with('error', 'El estado o el responsable cambió. Actualiza el ticket antes de registrar la solución.');
+        }
+        $message = 'Soporte registró una solución. El ticket se cerrará automáticamente después de una hora. Si el problema sigue, reábrelo desde su enlace antes del cierre.';
+        try {
+            if ($ticket->user_id) {
+                Notificacion::notify($ticket->user_id, 'resolved', 'Solución registrada: '.$ticket->ticket_number, $message, $ticket->id);
+                $this->notifyTicketUpdate($ticket, $message);
+            } elseif ($ticket->guest_email) {
+                Mail::to($ticket->guest_email)->send(new GuestTicketStatusMail($ticket, $message));
+            }
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo avisar de la solución del ticket '.$ticket->id.': '.$e->getMessage());
+        }
+        return back()->with('success', 'Solución registrada. El ticket está Resuelto y se cerrará automáticamente después de una hora si no se reabre.');
     }
 
     public function assignTo(Request $request, Ticket $ticket)
@@ -754,7 +767,12 @@ class TicketController extends Controller
         if ($oldAssigned === (int) $request->user_id) {
             return back()->with('success', 'El ticket ya está asignado a ese agente.');
         }
-        if (!$this->updateTicketAssignment($ticket, ['assigned_to' => $request->user_id])) {
+        $oldStatus = $ticket->status;
+        $updateData = ['assigned_to' => $request->user_id];
+        if (in_array($oldStatus, [Ticket::STATUS_OPEN, Ticket::STATUS_FORWARDED], true)) {
+            $updateData['status'] = Ticket::STATUS_IN_PROGRESS;
+        }
+        if (!$this->updateTicketAssignment($ticket, $updateData)) {
             return back()->with('error', 'La asignación o el estado cambió mientras trabajabas. Actualiza el ticket antes de continuar.');
         }
 
@@ -766,6 +784,13 @@ class TicketController extends Controller
             'new_value'  => $request->user_id,
             'field_name' => 'assigned_to',
         ]);
+
+        if ($oldStatus !== $ticket->status) {
+            TicketHistory::create([
+                'ticket_id' => $ticket->id, 'user_id' => Auth::id(), 'action' => 'status_change',
+                'old_value' => $oldStatus, 'new_value' => $ticket->status, 'field_name' => 'status',
+            ]);
+        }
 
         $assignedUser = User::find($request->user_id);
         if ($assignedUser) {
@@ -807,7 +832,8 @@ class TicketController extends Controller
         }
 
         $oldAssigned = $ticket->assigned_to;
-        $wasOpen = $ticket->status === Ticket::STATUS_OPEN;
+        $oldStatus = $ticket->status;
+        $wasOpen = in_array($oldStatus, [Ticket::STATUS_OPEN, Ticket::STATUS_FORWARDED], true);
         if ($oldAssigned === $user->id && !$wasOpen) {
             return back()->with('success', 'El ticket ya está asignado a ti.');
         }
@@ -823,7 +849,7 @@ class TicketController extends Controller
                 'ticket_id'  => $ticket->id,
                 'user_id'    => $user->id,
                 'action'     => 'status_change',
-                'old_value'  => Ticket::STATUS_OPEN,
+                'old_value'  => $oldStatus,
                 'new_value'  => Ticket::STATUS_IN_PROGRESS,
                 'field_name' => 'status',
             ]);
@@ -859,6 +885,9 @@ class TicketController extends Controller
         $ticket->refresh();
         if ($ticket->status === Ticket::STATUS_CLOSED) {
             return back()->with('error', 'El ticket está cerrado. No puede asignarse ni derivarse.');
+        }
+        if ($ticket->status === Ticket::STATUS_RESOLVED) {
+            return back()->with('error', 'El ticket está resuelto. Debe reabrirse antes de continuar su atención o derivarlo.');
         }
 
         $user = Auth::user();
@@ -936,6 +965,7 @@ class TicketController extends Controller
             ->where('assigned_to', $ticket->assigned_to)
             ->where('status', $ticket->status)
             ->where('department_id', $ticket->department_id)
+            ->where('resolved_at', $ticket->resolved_at)
             ->update($attributes);
         if (!$updated) return false;
         $ticket->refresh();
@@ -1025,6 +1055,7 @@ class TicketController extends Controller
      */
     public function reopen(Request $request, Ticket $ticket)
     {
+        $ticket->refresh();
         $this->authorize('reopen', $ticket);
 
         $user    = Auth::user();
@@ -1047,7 +1078,9 @@ class TicketController extends Controller
             'motivo.min'      => 'Describe con un poco más de detalle qué sigue fallando.',
         ]);
 
-        $this->reabrir($ticket, $request->motivo, $user->id);
+        if (!$this->reabrir($ticket, $request->motivo, $user->id)) {
+            return back()->with('error', 'El ticket cambió o ya fue cerrado. Actualiza la página antes de continuar.');
+        }
 
         return back()->with('success', 'Tu ticket fue reabierto. Soporte lo va a revisar de nuevo.');
     }
@@ -1076,7 +1109,9 @@ class TicketController extends Controller
             'motivo.min'      => 'Describe con un poco más de detalle qué sigue fallando.',
         ]);
 
-        $this->reabrir($ticket, $request->motivo, null);
+        if (!$this->reabrir($ticket, $request->motivo, null)) {
+            return back()->with('error', 'El ticket cambió o ya fue cerrado. Actualiza la página antes de continuar.');
+        }
 
         return back()->with('success', 'Tu ticket fue reabierto. Soporte lo va a revisar de nuevo.');
     }
@@ -1091,11 +1126,15 @@ class TicketController extends Controller
      * un ticket reabierto tres veces se ve como tal aunque cada ciclo cumpla
      * su plazo.
      */
-    private function reabrir(Ticket $ticket, string $motivo, ?int $usuarioId): void
+    private function reabrir(Ticket $ticket, string $motivo, ?int $usuarioId): bool
     {
         $sla = SlaConfig::forPriority($ticket->priority);
 
-        $ticket->update([
+        $updated = Ticket::query()->whereKey($ticket->id)
+            ->where('status', Ticket::STATUS_RESOLVED)
+            ->where('resolved_at', $ticket->resolved_at)
+            ->where('assigned_to', $ticket->assigned_to)
+            ->update([
             'status'                     => Ticket::STATUS_IN_PROGRESS,
             'resolved_at'                => null,
             'closed_at'                  => null,
@@ -1105,6 +1144,8 @@ class TicketController extends Controller
             // El aviso de vencimiento vuelve a armarse para el plazo nuevo.
             'sla_warned_for'             => null,
         ]);
+        if (!$updated) return false;
+        $ticket->refresh();
 
         // El motivo queda como comentario: es lo que soporte necesita leer para
         // retomar, y se pierde si solo vive en el historial.
@@ -1141,11 +1182,16 @@ class TicketController extends Controller
                 Log::warning('No se pudo avisar de la reapertura: ' . $e->getMessage());
             }
         }
+        return true;
     }
 
     public function close(Request $request, Ticket $ticket)
     {
+        $ticket->refresh();
         $this->authorize('close', $ticket);
+        if ($ticket->status !== Ticket::STATUS_RESOLVED) {
+            return back()->with('error', 'Solo puede confirmarse el cierre de un ticket Resuelto. Un ticket Cerrado es definitivo.');
+        }
 
         $user = Auth::user();
 
@@ -1168,20 +1214,20 @@ class TicketController extends Controller
             'solution_text' => 'required|string|min:10|max:5000',
         ]);
 
-        $wasResolved = in_array($ticket->status, [Ticket::STATUS_RESOLVED]);
-
-        $ticket->update([
+        if (!$this->updateTicketAssignment($ticket, [
             'status'        => Ticket::STATUS_CLOSED,
-            'solution_text' => $request->solution_text,
+            'solution_text' => $ticket->solution_text ?? $request->solution_text,
             'closed_at'     => now(),
-            'resolved_at'   => $wasResolved ? $ticket->resolved_at : now(),
-        ]);
+            'resolved_at'   => $ticket->resolved_at ?? now(),
+        ])) {
+            return back()->with('error', 'El estado o el responsable cambió. Actualiza el ticket antes de confirmar el cierre.');
+        }
 
         TicketHistory::create([
             'ticket_id'  => $ticket->id,
             'user_id'    => Auth::id(),
             'action'     => 'closed',
-            'old_value'  => $ticket->getOriginal('status'),
+            'old_value'  => Ticket::STATUS_RESOLVED,
             'new_value'  => Ticket::STATUS_CLOSED,
             'field_name' => 'status',
         ]);

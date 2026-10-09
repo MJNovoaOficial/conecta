@@ -132,6 +132,8 @@ Route::middleware('auth')->group(function () {
         ->middleware('can:staff,ticket')->name('tickets.forward');
     Route::post('/tickets/{ticket}/close', [TicketController::class, 'close'])
         ->middleware('can:close,ticket')->name('tickets.close');
+    Route::post('/tickets/{ticket}/resolve', [TicketController::class, 'resolve'])
+        ->middleware('can:manage,ticket')->name('tickets.resolve');
     // El solicitante reabre su ticket cuando la solución no resolvió el problema.
     Route::post('/tickets/{ticket}/reopen', [TicketController::class, 'reopen'])
         ->middleware('can:reopen,ticket')->name('tickets.reopen');

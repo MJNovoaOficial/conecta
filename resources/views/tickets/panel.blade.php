@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;background:#fff;}
@@ -120,19 +121,7 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
   {{-- Acciones de soporte/admin --}}
   @auth
   @if(Auth::user()->isSupport() || Auth::user()->isAdmin())
-    {{-- Cambiar estado --}}
-    <form method="POST" action="/tickets/{{ $ticket->id }}/status" class="status-form">
-      @csrf @method('PUT')
-      <label>Estado:</label>
-      <select name="status" onchange="this.form.submit()">
-        <option value="open"         {{ $ticket->status==='open'         ? 'selected':'' }}>🟢 Abierto</option>
-        <option value="in_progress"  {{ $ticket->status==='in_progress'  ? 'selected':'' }}>🟡 En Proceso</option>
-        <option value="pending_user" {{ $ticket->status==='pending_user' ? 'selected':'' }}>🟠 Pendiente Usuario</option>
-        <option value="forwarded"    {{ $ticket->status==='forwarded'    ? 'selected':'' }}>🔵 Derivado</option>
-        <option value="resolved"     {{ $ticket->status==='resolved'     ? 'selected':'' }}>✅ Resuelto</option>
-        <option value="closed"       {{ $ticket->status==='closed'       ? 'selected':'' }}>⚫ Cerrado</option>
-      </select>
-    </form>
+    <p style="margin-bottom:10px;">Estado actual: <strong>{{ $ticket->getStatusLabel() }}</strong>. Se actualiza mediante las acciones del ticket.</p>
 
     {{-- Asignación --}}
     @if($ticket->status === 'closed')
@@ -172,6 +161,9 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
     @endif
   @endif
   @endauth
+
+  @include('partials.ticket_solution_notice')
+  @include('partials.ticket_solution_form')
 
   {{-- Descripción --}}
   <div class="pnl-section">
@@ -241,7 +233,7 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
     <div class="reply-form" role="status">Este ticket está siendo atendido por otro agente. La conversación está disponible para consulta.</div>
     @endif
     @auth
-    @if($ticket->hasAssignedSupport() && Auth::user()->can('comment', $ticket) && $ticket->status !== 'closed' && ($ticket->status !== 'resolved' || Auth::user()->isAdmin()))
+    @if($ticket->hasAssignedSupport() && Auth::user()->can('comment', $ticket) && !in_array($ticket->status, ['closed', 'resolved']))
     <div class="reply-form">
       <form method="POST" action="/tickets/{{ $ticket->id }}/comment" enctype="multipart/form-data" data-comment-submit>
         @csrf

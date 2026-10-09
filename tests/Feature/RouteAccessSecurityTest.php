@@ -342,17 +342,18 @@ class RouteAccessSecurityTest extends TestCase
             ->assertOk();
     }
 
-    public function test_soporte_conserva_cambio_de_estado_pero_no_acciones_del_agente_asignado(): void
+    public function test_otro_soporte_no_cambia_estado_manual_ni_acciones_del_agente_asignado(): void
     {
         $department = $this->createDepartment('Soporte');
         $owner = $this->createUser('user', $department);
         $assignedSupport = $this->createUser('support', $department);
         $otherSupport = $this->createUser('support', $department);
         $ticket = $this->createTicket($owner, $department, $assignedSupport);
+        $ticket->update(['status' => Ticket::STATUS_IN_PROGRESS]);
 
         $this->actingAs($otherSupport)
             ->put(route('tickets.updateStatus', $ticket), ['status' => Ticket::STATUS_IN_PROGRESS])
-            ->assertRedirect();
+            ->assertRedirect()->assertSessionHas('error');
 
         $this->assertSame(Ticket::STATUS_IN_PROGRESS, $ticket->fresh()->status);
 
@@ -389,7 +390,7 @@ class RouteAccessSecurityTest extends TestCase
         $this->assertSame(Ticket::STATUS_IN_PROGRESS, $ticket->status);
 
         $this->actingAs($support)
-            ->put(route('tickets.updateStatus', $ticket), ['status' => Ticket::STATUS_RESOLVED])
+            ->post(route('tickets.resolve', $ticket), ['solution_text' => 'Se corrigió la configuración del equipo.'])
             ->assertRedirect();
 
         $this->assertSame(Ticket::STATUS_RESOLVED, $ticket->fresh()->status);

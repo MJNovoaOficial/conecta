@@ -276,6 +276,9 @@
     </div>
     @endif
 
+    @include('partials.ticket_solution_notice')
+    @include('partials.ticket_solution_form')
+
     {{-- Descripción --}}
     <div class="tk-card">
         <div class="tk-card-header"><i class="fas fa-file-alt"></i> Descripción del Problema</div>
@@ -395,7 +398,7 @@
             </div>
             @endif
             @auth
-            @if($ticket->hasAssignedSupport() && Auth::user()->can('comment', $ticket) && $ticket->status !== 'closed' && ($ticket->status !== 'resolved' || Auth::user()->isAdmin()))
+            @if($ticket->hasAssignedSupport() && Auth::user()->can('comment', $ticket) && !in_array($ticket->status, ['closed', 'resolved']))
             <div class="reply-wrap" style="margin-top:16px;">
                 <form method="POST" action="/tickets/{{ $ticket->id }}/comment" enctype="multipart/form-data" data-comment-submit>
                     @csrf
@@ -477,29 +480,13 @@
         <div class="side-card-header"><i class="fas fa-tools me-1"></i> Acciones</div>
         <div class="side-card-body">
 
-            {{-- Estado: solo admin o agente asignado puede cambiarlo --}}
-            @if(Auth::user()->isAdmin() || $ticket->assigned_to === Auth::id())
-            <form method="POST" action="/tickets/{{ $ticket->id }}/status" style="margin-bottom:12px;">
-                @csrf @method('PUT')
-                <label style="font-size:.74rem;color:#718096;font-weight:600;display:block;margin-bottom:5px;">Cambiar Estado</label>
-                <select class="side-status-select" name="status" onchange="this.form.submit()">
-                    <option value="open"         {{ $ticket->status==='open'         ?'selected':'' }}>🟢 Abierto</option>
-                    <option value="in_progress"  {{ $ticket->status==='in_progress'  ?'selected':'' }}>🟡 En Proceso</option>
-                    <option value="pending_user" {{ $ticket->status==='pending_user' ?'selected':'' }}>🟠 Pendiente Usuario</option>
-                    <option value="forwarded"    {{ $ticket->status==='forwarded'    ?'selected':'' }}>🔵 Derivado</option>
-                    <option value="resolved"     {{ $ticket->status==='resolved'     ?'selected':'' }}>✅ Resuelto</option>
-                    <option value="closed"       {{ $ticket->status==='closed'       ?'selected':'' }}>⚫ Cerrado</option>
-                </select>
-            </form>
-            @else
-            {{-- Solo lectura para agentes sin permiso --}}
+            {{-- El estado refleja las acciones; no se cambia con un selector. --}}
             <div style="margin-bottom:12px;">
                 <label style="font-size:.74rem;color:#718096;font-weight:600;display:block;margin-bottom:5px;">Estado actual</label>
                 <span class="tk-badge {{ $statusCls[$ticket->status] ?? 'tk-badge-closed' }}" style="font-size:.78rem;padding:5px 12px;">
                     {{ $sLabel[$ticket->status] ?? $ticket->status }}
                 </span>
             </div>
-            @endif
 
             {{-- Auto-asignarse --}}
             @if($ticket->status === 'closed')
@@ -526,9 +513,11 @@
             </button>
 
             {{-- Derivar --}}
+            @if($ticket->status !== 'resolved')
             <button class="side-btn side-btn-outline" data-bs-toggle="modal" data-bs-target="#forwardModal">
                 <i class="fas fa-share"></i> Derivar a departamento
             </button>
+            @endif
 
             {{-- Solicitar Información Adicional (RF-ST-15 / RNG-01) --}}
             @if(!in_array($ticket->status, ['closed','resolved','pending_user']))
@@ -604,30 +593,6 @@
         </div>
     </div>
 
-    {{-- Cierre formal con solución (RF-ST-10, RF-ST-14) --}}
-    <div class="side-card" style="border-left:3px solid #8b5cf6;">
-        <div class="side-card-header" style="color:#5b21b6;"><i class="fas fa-check-circle me-1"></i> Cerrar Ticket</div>
-        <div class="side-card-body">
-            @if($ticket->solution_text)
-            <div style="font-size:.8rem;color:#4a5568;background:#f5f3ff;padding:.6rem .8rem;border-radius:.4rem;margin-bottom:.6rem;">
-                <strong>Solución registrada:</strong><br>{{ $ticket->solution_text }}
-            </div>
-            @endif
-            <form method="POST" action="{{ route('tickets.close', $ticket) }}">
-                @csrf
-                <label style="font-size:.74rem;color:#718096;font-weight:600;display:block;margin-bottom:5px;">
-                    Solución Aplicada *
-                </label>
-                <textarea name="solution_text" rows="3"
-                          class="side-status-select" style="height:auto;resize:vertical;font-size:.82rem;padding:.5rem;"
-                          placeholder="Describe la solución antes de cerrar…" required>{{ $ticket->solution_text }}</textarea>
-                <button type="submit" class="side-btn" style="background:#8b5cf6;color:#fff;margin-top:8px;"
-                        onclick="return confirm('¿Confirmas el cierre formal del ticket?')">
-                    <i class="fas fa-lock"></i> Cerrar con solución
-                </button>
-            </form>
-        </div>
-    </div>
     @endif
     @endauth
 
@@ -772,6 +737,8 @@
                         @elseif($entry->action === 'reopened') 🔄 Reabierto: la solución no resolvió el problema
                         @elseif($entry->action === 'guest_responded') 💬 El solicitante respondió
                         @elseif($entry->action === 'closed') Ticket cerrado
+                        @elseif($entry->action === 'solution_registered') Solución registrada: Resuelto
+                        @elseif($entry->action === 'auto_closed_resolved') Cerrado automáticamente una hora después de la solución
                         @else {{ str_replace('_', ' ', ucfirst($entry->action)) }}
                         @endif
                         @if($entry->user) <span style="color:#a0aec0;">· {{ $entry->user->name }}</span>@endif
@@ -864,7 +831,7 @@
 
 {{-- Modal: Solicitar Información Adicional (RF-ST-15 / RNG-01) --}}
 @auth
-@if($ticket->hasAssignedSupport() && $ticket->status !== 'closed' && (Auth::user()->isAdmin() || (Auth::user()->isSupport() && $ticket->assigned_to === Auth::id())))
+@if($ticket->hasAssignedSupport() && !in_array($ticket->status, ['closed', 'resolved']) && (Auth::user()->isAdmin() || (Auth::user()->isSupport() && $ticket->assigned_to === Auth::id())))
 <div class="modal fade" id="requestInfoModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content" style="border-radius:12px;border:none;">

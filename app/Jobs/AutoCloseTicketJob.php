@@ -48,10 +48,18 @@ class AutoCloseTicketJob implements ShouldQueue
         foreach ($tickets as $ticket) {
             $estadoAnterior = $ticket->status;
 
-            $ticket->update([
+            // No pisar una respuesta, resolución o cierre ocurrido después
+            // de seleccionar la lista; solo esta solicitud vencida sigue vigente.
+            $updated = Ticket::query()->whereKey($ticket->id)
+                ->where('status', Ticket::STATUS_PENDING_USER)
+                ->where('response_deadline_at', $ticket->response_deadline_at)
+                ->whereNull('user_responded_at')
+                ->update([
                 'status'    => Ticket::STATUS_CLOSED,
                 'closed_at' => $ahora,
             ]);
+            if (!$updated) continue;
+            $ticket->refresh();
 
             TicketHistory::create([
                 'ticket_id'  => $ticket->id,
