@@ -77,6 +77,12 @@ class Ticket extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    public function hasAssignedSupport(): bool
+    {
+        return $this->assigned_to !== null && $this->assignedTo !== null
+            && ($this->assignedTo->isSupport() || $this->assignedTo->isAdmin());
+    }
+
     public function subcategoria()
     {
         return $this->belongsTo(Subcategoria::class, 'subcategoria_id');
@@ -355,4 +361,3 @@ class Ticket extends Model
     }
 
 }
-

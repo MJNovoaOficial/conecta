@@ -235,9 +235,13 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
     {{-- Formulario de respuesta --}}
     @if($ticket->status === 'closed')
     <div class="reply-form" role="status">El ticket está cerrado. La conversación solo está disponible para consulta.</div>
+    @elseif(!$ticket->hasAssignedSupport())
+    <div class="reply-form" role="status">La conversación se habilitará cuando un agente de soporte tome este ticket.</div>
+    @elseif(Auth::check() && !Auth::user()->can('comment', $ticket))
+    <div class="reply-form" role="status">Este ticket está siendo atendido por otro agente. La conversación está disponible para consulta.</div>
     @endif
     @auth
-    @if($ticket->status !== 'closed' && ($ticket->status !== 'resolved' || Auth::user()->isAdmin()))
+    @if($ticket->hasAssignedSupport() && Auth::user()->can('comment', $ticket) && $ticket->status !== 'closed' && ($ticket->status !== 'resolved' || Auth::user()->isAdmin()))
     <div class="reply-form">
       <form method="POST" action="/tickets/{{ $ticket->id }}/comment" enctype="multipart/form-data" data-comment-submit>
         @csrf

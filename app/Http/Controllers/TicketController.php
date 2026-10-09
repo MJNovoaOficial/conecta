@@ -468,6 +468,10 @@ class TicketController extends Controller
             ]);
         }
 
+        if (!$ticket->hasAssignedSupport()) {
+            return back()->withErrors(['comment' => 'La conversación se habilitará cuando un agente de soporte tome este ticket.']);
+        }
+
         // Limitado por IP: el endpoint es público y el token viaja por correo.
         $llave = 'guest_comment:' . $request->ip();
         if (RateLimiter::tooManyAttempts($llave, 20)) {
@@ -532,10 +536,17 @@ class TicketController extends Controller
 
     public function addComment(Request $request, Ticket $ticket)
     {
+        $ticket->refresh();
         $this->authorize('comment', $ticket);
 
         if ($ticket->status === Ticket::STATUS_CLOSED) {
             return back()->withErrors(['comment' => 'El ticket está cerrado. La conversación solo está disponible para consulta.']);
+        }
+
+        // before() conserva la supervisión administrativa, pero tampoco un
+        // administrador abre el chat de un ticket todavía sin responsable.
+        if (!$ticket->hasAssignedSupport()) {
+            return back()->withErrors(['comment' => 'La conversación se habilitará cuando un agente de soporte tome este ticket.']);
         }
 
         // Rate limiting: máximo 20 comentarios por hora

@@ -158,6 +158,7 @@ class TicketInvitadoTest extends TestCase
         // enviar, y el cierre automático lo cerraba por falta de respuesta.
         $this->post(route('tickets.guest.store'), $this->datosDeTicket());
         $ticket = Ticket::first();
+        $ticket->update(['assigned_to' => User::factory()->soporte()->create()->id]);
 
         $this->post(route('tickets.guest.comment', ['token' => $ticket->guest_token]), [
             'comment' => 'Probe reiniciando el equipo y sigue igual.',

@@ -21,12 +21,14 @@ class TicketPolicy
     }
 
     /**
-     * El solicitante y soporte pueden conversar en un ticket que pueden ver.
+     * La conversación se habilita tras asignar a un agente. El solicitante
+     * puede responder, pero otro soporte que solo consulta no puede intervenir.
      * Las acciones que cambian el flujo se autorizan por separado.
      */
     public function comment(User $user, Ticket $ticket): bool
     {
-        return $this->view($user, $ticket);
+        return $ticket->hasAssignedSupport()
+            && ($user->id === $ticket->user_id || $this->manage($user, $ticket));
     }
 
     /**

@@ -323,7 +323,7 @@
             @if($ticket->comments->count() === 0)
                 <p style="text-align:center;color:#a0aec0;padding:20px 0;font-size:.84rem;">
                     <i class="fas fa-comment-slash" style="font-size:1.5rem;display:block;margin-bottom:8px;"></i>
-                    No hay mensajes aún. ¡Sé el primero en responder!
+                    No hay mensajes aún.
                 </p>
             @else
                 @foreach($ticket->comments as $comment)
@@ -385,9 +385,17 @@
             <div class="reply-wrap" role="status" style="margin-top:16px;">
                 El ticket está cerrado. La conversación solo está disponible para consulta.
             </div>
+            @elseif(!$ticket->hasAssignedSupport())
+            <div class="reply-wrap" role="status" style="margin-top:16px;">
+                La conversación se habilitará cuando un agente de soporte tome este ticket.
+            </div>
+            @elseif(Auth::check() && !Auth::user()->can('comment', $ticket))
+            <div class="reply-wrap" role="status" style="margin-top:16px;">
+                Este ticket está siendo atendido por otro agente. La conversación está disponible para consulta.
+            </div>
             @endif
             @auth
-            @if($ticket->status !== 'closed' && ($ticket->status !== 'resolved' || Auth::user()->isAdmin()))
+            @if($ticket->hasAssignedSupport() && Auth::user()->can('comment', $ticket) && $ticket->status !== 'closed' && ($ticket->status !== 'resolved' || Auth::user()->isAdmin()))
             <div class="reply-wrap" style="margin-top:16px;">
                 <form method="POST" action="/tickets/{{ $ticket->id }}/comment" enctype="multipart/form-data" data-comment-submit>
                     @csrf
@@ -422,7 +430,7 @@
                  informacion a un invitado era un callejon sin salida: no tenia
                  como contestar y el ticket se cerraba solo. --}}
             @guest
-            @if($ticket->isGuestTicket() && !in_array($ticket->status, ['closed','resolved']))
+            @if($ticket->isGuestTicket() && $ticket->hasAssignedSupport() && !in_array($ticket->status, ['closed','resolved']))
             <div class="reply-wrap" style="margin-top:16px;">
                 @if($ticket->status === 'pending_user')
                     <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:11px 14px;margin-bottom:12px;font-size:.84rem;color:#92400e;">
@@ -856,7 +864,7 @@
 
 {{-- Modal: Solicitar Información Adicional (RF-ST-15 / RNG-01) --}}
 @auth
-@if($ticket->status !== 'closed' && (Auth::user()->isSupport() || Auth::user()->isAdmin()))
+@if($ticket->hasAssignedSupport() && $ticket->status !== 'closed' && (Auth::user()->isAdmin() || (Auth::user()->isSupport() && $ticket->assigned_to === Auth::id())))
 <div class="modal fade" id="requestInfoModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content" style="border-radius:12px;border:none;">

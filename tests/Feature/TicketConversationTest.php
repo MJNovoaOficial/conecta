@@ -29,9 +29,11 @@ class TicketConversationTest extends TestCase
     {
         Notification::fake();
         $owner = User::factory()->create();
+        $assigned = User::factory()->soporte()->create();
         $ticket = $this->ticket($owner, Ticket::STATUS_CLOSED);
+        $ticket->update(['assigned_to' => $assigned->id]);
         TicketComment::create(['ticket_id' => $ticket->id, 'user_id' => $owner->id, 'comment' => 'Mensaje previo que debe conservarse.']);
-        foreach ([$owner, User::factory()->soporte()->create(), User::factory()->administrador()->create()] as $actor) {
+        foreach ([$owner, $assigned, User::factory()->administrador()->create()] as $actor) {
             $this->actingAs($actor)->from(route('tickets.show',$ticket))
                 ->post(route('tickets.addComment',$ticket), ['comment' => 'Excelente'])
                 ->assertSessionHasErrors('comment')->assertRedirect(route('tickets.show',$ticket));
@@ -75,6 +77,7 @@ class TicketConversationTest extends TestCase
         $owner = User::factory()->create();
         foreach ([$owner,User::factory()->soporte()->create(),User::factory()->administrador()->create()] as $actor) {
             $ticket = $this->ticket($owner,Ticket::STATUS_OPEN);
+            $ticket->update(['assigned_to' => $actor->isSupport() || $actor->isAdmin() ? $actor->id : User::factory()->soporte()->create()->id]);
             $this->actingAs($actor)->post(route('tickets.addComment',$ticket),['comment'=>'Información adicional de prueba.'])->assertSessionHasNoErrors();
             $this->assertSame(1,$ticket->comments()->count());
         }
