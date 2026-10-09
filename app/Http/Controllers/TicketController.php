@@ -717,6 +717,10 @@ class TicketController extends Controller
     public function assignTo(Request $request, Ticket $ticket)
     {
         $this->authorize('staff', $ticket);
+        $ticket->refresh();
+        if ($ticket->status === Ticket::STATUS_CLOSED) {
+            return back()->with('error', 'El ticket está cerrado. No puede asignarse ni derivarse.');
+        }
 
         $user = Auth::user();
 
@@ -736,7 +740,12 @@ class TicketController extends Controller
         ]);
 
         $oldAssigned = $ticket->assigned_to;
-        $ticket->update(['assigned_to' => $request->user_id]);
+        if ($oldAssigned === (int) $request->user_id) {
+            return back()->with('success', 'El ticket ya está asignado a ese agente.');
+        }
+        if (!$this->updateTicketAssignment($ticket, ['assigned_to' => $request->user_id])) {
+            return back()->with('error', 'La asignación o el estado cambió mientras trabajabas. Actualiza el ticket antes de continuar.');
+        }
 
         TicketHistory::create([
             'ticket_id'  => $ticket->id,
@@ -771,6 +780,10 @@ class TicketController extends Controller
     public function selfAssign(Ticket $ticket)
     {
         $this->authorize('selfAssign', $ticket);
+        $ticket->refresh();
+        if ($ticket->status === Ticket::STATUS_CLOSED) {
+            return back()->with('error', 'El ticket está cerrado. No puede asignarse ni derivarse.');
+        }
 
         $user = Auth::user();
 
@@ -783,12 +796,18 @@ class TicketController extends Controller
         }
 
         $oldAssigned = $ticket->assigned_to;
-        $ticket->update(['assigned_to' => $user->id]);
+        $wasOpen = $ticket->status === Ticket::STATUS_OPEN;
+        if ($oldAssigned === $user->id && !$wasOpen) {
+            return back()->with('success', 'El ticket ya está asignado a ti.');
+        }
+        $updateData = ['assigned_to' => $user->id];
+        if ($wasOpen) $updateData['status'] = Ticket::STATUS_IN_PROGRESS;
+        if (!$this->updateTicketAssignment($ticket, $updateData)) {
+            return back()->with('error', 'La asignación o el estado cambió mientras trabajabas. Actualiza el ticket antes de continuar.');
+        }
 
         // Si está abierto, pasar a en proceso
-        if ($ticket->status === Ticket::STATUS_OPEN) {
-            $ticket->update(['status' => Ticket::STATUS_IN_PROGRESS]);
-
+        if ($wasOpen) {
             TicketHistory::create([
                 'ticket_id'  => $ticket->id,
                 'user_id'    => $user->id,
@@ -826,6 +845,10 @@ class TicketController extends Controller
     public function forward(Request $request, Ticket $ticket)
     {
         $this->authorize('staff', $ticket);
+        $ticket->refresh();
+        if ($ticket->status === Ticket::STATUS_CLOSED) {
+            return back()->with('error', 'El ticket está cerrado. No puede asignarse ni derivarse.');
+        }
 
         $user = Auth::user();
 
@@ -844,11 +867,13 @@ class TicketController extends Controller
         $oldDeptName = $ticket->department->name ?? 'N/A';
         $newDeptName = Department::find($newDept)->name ?? 'N/A';
 
-        $ticket->update([
+        if (!$this->updateTicketAssignment($ticket, [
             'department_id' => $newDept,
             'status'        => Ticket::STATUS_FORWARDED,
             'assigned_to'   => null,
-        ]);
+        ])) {
+            return back()->with('error', 'La asignación o el estado cambió mientras trabajabas. Actualiza el ticket antes de continuar.');
+        }
 
         TicketHistory::create([
             'ticket_id'  => $ticket->id,
@@ -888,6 +913,22 @@ class TicketController extends Controller
         $this->notifyTicketUpdate($ticket, 'Tu ticket ha sido derivado al departamento ' . $newDeptName . '.');
 
         return back()->with('success', 'Ticket derivado a ' . $newDeptName . '.');
+    }
+
+    /**
+     * Un solo UPDATE condicionado: no pisar a quien tomó el ticket, un cierre
+     * o una derivación que ganó mientras esta petición estaba en proceso.
+     */
+    private function updateTicketAssignment(Ticket $ticket, array $attributes): bool
+    {
+        $updated = Ticket::query()->whereKey($ticket->id)
+            ->where('assigned_to', $ticket->assigned_to)
+            ->where('status', $ticket->status)
+            ->where('department_id', $ticket->department_id)
+            ->update($attributes);
+        if (!$updated) return false;
+        $ticket->refresh();
+        return true;
     }
 
     /**

@@ -135,7 +135,9 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
     </form>
 
     {{-- Asignación --}}
-    @if($ticket->assigned_to === Auth::id())
+    @if($ticket->status === 'closed')
+      <div class="lock-badge" style="margin-bottom:10px;">🔒 Ticket cerrado: no permite asignación ni derivación.</div>
+    @elseif($ticket->assigned_to === Auth::id())
       <div class="lock-badge" style="background:#d1fae5;border-color:#6ee7b7;color:#065f46;margin-bottom:10px;">✅ Asignado a ti</div>
     @elseif($ticket->assigned_to && !Auth::user()->isAdmin())
       <div class="lock-badge" style="margin-bottom:10px;">🔒 Tomado por <strong style="margin-left:4px;">{{ $ticket->assignedTo->name }}</strong></div>
@@ -149,6 +151,7 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
     @endif
 
     {{-- Asignar a otro --}}
+    @if($ticket->status !== 'closed' && (Auth::user()->isAdmin() || $ticket->assigned_to === Auth::id()))
     <div class="assign-section">
       <form method="POST" action="/tickets/{{ $ticket->id }}/assign">
         @csrf
@@ -166,6 +169,7 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
         </div>
       </form>
     </div>
+    @endif
   @endif
   @endauth
 

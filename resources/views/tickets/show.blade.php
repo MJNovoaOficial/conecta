@@ -494,7 +494,9 @@
             @endif
 
             {{-- Auto-asignarse --}}
-            @if($ticket->assigned_to === Auth::id())
+            @if($ticket->status === 'closed')
+                <div class="lock-note"><i class="fas fa-lock"></i> Ticket cerrado: no permite asignación ni derivación.</div>
+            @elseif($ticket->assigned_to === Auth::id())
                 <div class="mine-note"><i class="fas fa-check"></i> Asignado a ti</div>
             @elseif($ticket->assigned_to && !Auth::user()->isAdmin())
                 <div class="lock-note"><i class="fas fa-lock"></i> Tomado por <strong style="margin-left:3px;">{{ $ticket->assignedTo->name }}</strong></div>
@@ -509,7 +511,7 @@
             @endif
 
             {{-- Asignar a otro / Derivar: solo admin o el agente asignado --}}
-            @if(Auth::user()->isAdmin() || $ticket->assigned_to === Auth::id())
+            @if($ticket->status !== 'closed' && (Auth::user()->isAdmin() || $ticket->assigned_to === Auth::id()))
             {{-- Asignar a otro --}}
             <button class="side-btn side-btn-outline" data-bs-toggle="modal" data-bs-target="#assignModal">
                 <i class="fas fa-user-check"></i> Asignar a otro agente
@@ -780,7 +782,7 @@
 
 {{-- Modal Asignar --}}
 @auth
-@if(Auth::user()->isSupport() || Auth::user()->isAdmin())
+@if($ticket->status !== 'closed' && (Auth::user()->isAdmin() || (Auth::user()->isSupport() && $ticket->assigned_to === Auth::id())))
 <div class="modal fade" id="assignModal" tabindex="-1">
     <div class="modal-dialog">
         <form method="POST" action="/tickets/{{ $ticket->id }}/assign">
@@ -814,7 +816,7 @@
 
 {{-- Modal Derivar --}}
 @auth
-@if(Auth::user()->isSupport() || Auth::user()->isAdmin())
+@if($ticket->status !== 'closed' && (Auth::user()->isAdmin() || (Auth::user()->isSupport() && $ticket->assigned_to === Auth::id())))
 <div class="modal fade" id="forwardModal" tabindex="-1">
     <div class="modal-dialog">
         <form method="POST" action="/tickets/{{ $ticket->id }}/forward">
