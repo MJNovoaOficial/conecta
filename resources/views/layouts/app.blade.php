@@ -773,6 +773,13 @@ document.addEventListener('DOMContentLoaded', function () {
 (function() {
     var panelOpen = false;
 
+    // Campos de avisos: texto, nunca etiquetas o manejadores de eventos del remitente.
+    function escapeNotificationText(value) {
+        return String(value == null ? '' : value).replace(/[&<>"']/g, function(character) {
+            return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[character];
+        });
+    }
+
     function updateBadge() {
         fetch('{{ route("notifications.count") }}', {headers: {'X-Requested-With': 'XMLHttpRequest'}})
             .then(r => r.json())
@@ -801,15 +808,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 var icons = {new_ticket:'🎫', assigned:'👤', comment:'💬', forwarded:'↗️', closed:'🔒', default:'🔔'};
                 var csrfToken = document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '';
                 list.innerHTML = data.items.map(n => `
-                    <div data-notif-url="${n.url}" style="display:block;padding:.65rem 1rem;border-bottom:1px solid #f0f2f5;text-decoration:none;background:${n.read?'#fff':'#f0f7ff'};transition:background .15s;cursor:pointer;"
+                    <div data-notif-url="${escapeNotificationText(n.url)}" style="display:block;padding:.65rem 1rem;border-bottom:1px solid #f0f2f5;text-decoration:none;background:${n.read?'#fff':'#f0f7ff'};transition:background .15s;cursor:pointer;"
                          onmouseover="this.style.background='#f7faff'" onmouseout="this.style.background='${n.read?'#fff':'#f0f7ff'}'"
                          onclick="window._notifClick(this)">
                         <div style="display:flex;align-items:flex-start;gap:.5rem;">
                             <span style="font-size:1rem;margin-top:1px;">${icons[n.type] || icons.default}</span>
                             <div style="flex:1;min-width:0;">
-                                <div style="font-size:.82rem;font-weight:${n.read?500:700};color:#1a2332;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.title}</div>
-                                <div style="font-size:.76rem;color:#718096;margin-top:1px;">${n.body || ''}</div>
-                                <div style="font-size:.72rem;color:#a0aec0;margin-top:2px;">${n.time}</div>
+                                <div style="font-size:.82rem;font-weight:${n.read?500:700};color:#1a2332;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeNotificationText(n.title)}</div>
+                                <div style="font-size:.76rem;color:#718096;margin-top:1px;">${escapeNotificationText(n.body)}</div>
+                                <div style="font-size:.72rem;color:#a0aec0;margin-top:2px;">${escapeNotificationText(n.time)}</div>
                             </div>
                             ${!n.read ? '<span style="width:7px;height:7px;background:#3498db;border-radius:50%;flex-shrink:0;margin-top:5px;"></span>' : ''}
                         </div>
