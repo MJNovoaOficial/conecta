@@ -100,8 +100,9 @@
           <div class="mb-3">
             <label class="form-label fw-semibold" style="font-size:0.88rem;color:#2d3748;">
               <i class="fas fa-paperclip me-1" style="color:#e67e22;"></i>
-              Adjuntar archivo o video <small style="font-weight:400;color:#a0aec0;">(opcional — máx. 5 archivos)</small>
+              Adjuntar archivo o video <small style="font-weight:400;color:#a0aec0;">(opcional)</small>
             </label>
+            @include('partials.ticket_attachment_limits')
             <div class="ticket-upload-area" style="border:2px dashed #e2e8f0;border-radius:8px;padding:14px;text-align:center;cursor:pointer;transition:border-color 0.2s;"
                  onclick="document.getElementById('modalAttach').click()"
                  onmouseenter="this.style.borderColor='#3498db'" onmouseleave="this.style.borderColor='#e2e8f0'">

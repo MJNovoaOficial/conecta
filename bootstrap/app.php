@@ -11,6 +11,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->prependToGroup('web', \App\Http\Middleware\ApplySessionSetting::class);
         // Agregar Security Headers a todas las respuestas web
         $middleware->web(append: [
             \App\Http\Middleware\SecurityHeaders::class,

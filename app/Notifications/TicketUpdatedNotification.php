@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Ticket;
+use App\Support\TicketNotificationPreferences;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -16,16 +17,18 @@ class TicketUpdatedNotification extends Notification
 {
     protected $ticket;
     protected $message;
+    protected string $event;
 
-    public function __construct(Ticket $ticket, string $message = 'El ticket ha sido actualizado')
+    public function __construct(Ticket $ticket, string $message = 'El ticket ha sido actualizado', string $event = 'status_change')
     {
         $this->ticket  = $ticket;
         $this->message = $message;
+        $this->event = $event;
     }
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return TicketNotificationPreferences::mailChannels($this->event, $notifiable);
     }
 
     public function toMail(object $notifiable): MailMessage

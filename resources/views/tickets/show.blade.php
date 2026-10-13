@@ -402,6 +402,7 @@
             <div class="reply-wrap" style="margin-top:16px;">
                 <form method="POST" action="/tickets/{{ $ticket->id }}/comment" enctype="multipart/form-data" data-comment-submit>
                     @csrf
+                    @include('partials.ticket_attachment_limits', ['forComments' => true])
                     <textarea name="comment" placeholder="Escribe tu respuesta..." required></textarea>
                     <div class="reply-footer">
                         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
@@ -444,6 +445,7 @@
 
                 <form method="POST" action="{{ route('tickets.guest.comment', $ticket->guest_token) }}" enctype="multipart/form-data" data-comment-submit>
                     @csrf
+                    @include('partials.ticket_attachment_limits', ['forComments' => true])
                     <textarea name="comment" placeholder="Escribe tu respuesta..." required></textarea>
                     @error('comment')
                         <div style="color:#e74c3c;font-size:.78rem;margin-top:5px;">{{ $message }}</div>

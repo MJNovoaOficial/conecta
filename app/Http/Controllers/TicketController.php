@@ -22,6 +22,8 @@ use App\Notifications\NewTicketNotification;
 use App\Notifications\TicketCreatedNotification;
 use App\Notifications\TicketUpdatedNotification;
 use App\Support\HorarioLaboral;
+use App\Support\TicketNotificationPreferences;
+use App\Support\TicketAttachmentLimits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -229,6 +231,7 @@ class TicketController extends Controller
 
     public function store(Request $request)
     {
+        $attachmentLimits=TicketAttachmentLimits::forRequest();
         // Rate limiting: máximo 10 tickets por hora
         $throttleKey = 'create_ticket:' . Auth::id();
         if (RateLimiter::tooManyAttempts($throttleKey, 10)) {
@@ -242,8 +245,8 @@ class TicketController extends Controller
             'subcategoria_id'   => 'nullable|required_with:tipo_incidente_id|exists:subcategorias,id',
             'tipo_incidente_id' => ['nullable', Rule::exists('tipos_incidente', 'id')->where('subcategoria_id', $request->input('subcategoria_id'))],
             'device_type'       => 'nullable|string|max:100',
-            'attachments'       => 'nullable|array|max:5',
-            'attachments.*'     => 'file|max:51200', // 50 MB para videos
+            'attachments'       => 'nullable|array|max:'.$attachmentLimits['files'],
+            'attachments.*'     => 'file|max:'.$attachmentLimits['kilobytes'],
         ], [
             'subcategoria_id.required_with' => 'Selecciona una subcategoría para ese tipo de incidente.',
             'tipo_incidente_id.exists' => 'El tipo de incidente no corresponde a la subcategoría seleccionada.',
@@ -320,6 +323,7 @@ class TicketController extends Controller
      */
     public function guestStore(Request $request)
     {
+        $attachmentLimits=TicketAttachmentLimits::forRequest();
         // Rate limiting por IP
         $throttleKey = 'guest_ticket:' . $request->ip();
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
@@ -337,8 +341,8 @@ class TicketController extends Controller
             'tipo_incidente_id' => ['nullable', Rule::exists('tipos_incidente', 'id')->where('subcategoria_id', $request->input('subcategoria_id'))],
             'device_type'       => 'nullable|string|max:100',
             'department_id'     => 'nullable|integer|exists:departamentos,id',
-            'attachments'       => 'nullable|array|max:5',
-            'attachments.*'     => 'file|max:51200', // 50 MB para videos
+            'attachments'       => 'nullable|array|max:'.$attachmentLimits['files'],
+            'attachments.*'     => 'file|max:'.$attachmentLimits['kilobytes'],
         ], [
             'subcategoria_id.required_with' => 'Selecciona una subcategoría para ese tipo de incidente.',
             'tipo_incidente_id.exists' => 'El tipo de incidente no corresponde a la subcategoría seleccionada.',
@@ -461,6 +465,7 @@ class TicketController extends Controller
      */
     public function guestComment(Request $request, string $token)
     {
+        $attachmentLimits=TicketAttachmentLimits::forRequest(true);
         $ticket = Ticket::where('guest_token', $token)->firstOrFail();
 
         // Un ticket cerrado no se reabre por un comentario: el invitado tendría
@@ -484,14 +489,14 @@ class TicketController extends Controller
 
         $request->validate([
             'comment'       => 'required|string|min:3|max:5000',
-            'attachments'   => 'nullable|array|max:3',
-            'attachments.*' => 'file|max:5120',
+            'attachments'   => 'nullable|array|max:'.$attachmentLimits['files'],
+            'attachments.*' => 'file|max:'.$attachmentLimits['kilobytes'],
         ], [
             'comment.required' => 'Escribe tu respuesta.',
             'comment.min'      => 'La respuesta debe tener al menos 3 caracteres.',
             'comment.max'      => 'La respuesta no puede superar los 5000 caracteres.',
-            'attachments.max'  => 'Puedes adjuntar máximo 3 archivos.',
-            'attachments.*.max'=> 'Cada archivo puede pesar hasta 5 MB.',
+            'attachments.max'  => 'Puedes adjuntar máximo '.$attachmentLimits['files'].' archivos.',
+            'attachments.*.max'=> 'Cada archivo puede pesar hasta '.($attachmentLimits['kilobytes']/1024).' MB.',
         ]);
 
         $oldStatus = $ticket->status;
@@ -530,7 +535,7 @@ class TicketController extends Controller
             try {
                 $ticket->assignedTo->notify(new TicketUpdatedNotification(
                     $ticket,
-                    'El solicitante respondió el ticket ' . $ticket->ticket_number . '.'
+                    'El solicitante respondió el ticket ' . $ticket->ticket_number . '.', 'comment'
                 ));
             } catch (\Throwable $e) {
                 Log::warning('No se pudo avisar de la respuesta del invitado: ' . $e->getMessage());
@@ -542,6 +547,7 @@ class TicketController extends Controller
 
     public function addComment(Request $request, Ticket $ticket)
     {
+        $attachmentLimits=TicketAttachmentLimits::forRequest(true);
         $ticket->refresh();
         $this->authorize('comment', $ticket);
 
@@ -568,17 +574,17 @@ class TicketController extends Controller
         $request->validate([
             'comment' => 'required|string|min:3|max:5000',
             'is_internal' => 'boolean',
-            'attachments' => 'nullable|array|max:3',
-            'attachments.*' => 'file|max:5120',
+            'attachments' => 'nullable|array|max:'.$attachmentLimits['files'],
+            'attachments.*' => 'file|max:'.$attachmentLimits['kilobytes'],
         ], [
             'comment.required' => 'El mensaje es obligatorio.',
             'comment.string' => 'El mensaje debe ser texto válido.',
             'comment.min' => 'El mensaje debe tener al menos 3 caracteres.',
             'comment.max' => 'El mensaje no puede superar los 5000 caracteres.',
             'attachments.array' => 'El formato de los adjuntos no es válido.',
-            'attachments.max' => 'Puedes adjuntar máximo 3 archivos.',
+            'attachments.max' => 'Puedes adjuntar máximo '.$attachmentLimits['files'].' archivos.',
             'attachments.*.file' => 'Uno de los adjuntos no es un archivo válido.',
-            'attachments.*.max' => 'Cada archivo adjunto puede pesar hasta 5 MB.',
+            'attachments.*.max' => 'Cada archivo adjunto puede pesar hasta '.($attachmentLimits['kilobytes']/1024).' MB.',
         ], [
             'comment' => 'mensaje',
             'attachments' => 'adjuntos',
@@ -681,7 +687,7 @@ class TicketController extends Controller
         }
 
         // Notificar a los involucrados por email
-        $this->notifyTicketUpdate($ticket, 'Se agregó un nuevo comentario al ticket.');
+        $this->notifyTicketUpdate($ticket, 'Se agregó un nuevo comentario al ticket.', 'comment');
 
         return back()->with('success', 'Comentario agregado.');
     }
@@ -728,8 +734,8 @@ class TicketController extends Controller
         try {
             if ($ticket->user_id) {
                 Notificacion::notify($ticket->user_id, 'resolved', 'Solución registrada: '.$ticket->ticket_number, $message, $ticket->id);
-                $this->notifyTicketUpdate($ticket, $message);
-            } elseif ($ticket->guest_email) {
+                $this->notifyTicketUpdate($ticket, $message, 'resolved');
+            } elseif ($ticket->guest_email && TicketNotificationPreferences::eventEnabled('resolved')) {
                 Mail::to($ticket->guest_email)->send(new GuestTicketStatusMail($ticket, $message));
             }
         } catch (\Throwable $e) {
@@ -802,10 +808,10 @@ class TicketController extends Controller
                 'Se te asignó el ticket: ' . $ticket->title,
                 $ticket->id
             );
-            try { $assignedUser->notify(new TicketUpdatedNotification($ticket, 'Se te ha asignado el ticket ' . $ticket->ticket_number)); } catch(\Throwable $e) {}
+            try { $assignedUser->notify(new TicketUpdatedNotification($ticket, 'Se te ha asignado el ticket ' . $ticket->ticket_number, 'assigned')); } catch(\Throwable $e) {}
         }
 
-        $this->notifyTicketUpdate($ticket, 'Tu ticket ha sido asignado a ' . ($assignedUser->name ?? 'un agente de soporte') . '.');
+        $this->notifyTicketUpdate($ticket, 'Tu ticket ha sido asignado a ' . ($assignedUser->name ?? 'un agente de soporte') . '.', 'assigned');
 
         return back()->with('success', 'Ticket asignado a ' . ($assignedUser->name ?? 'soporte') . '.');
     }
@@ -874,7 +880,7 @@ class TicketController extends Controller
                 $ticket->id
             );
         }
-        $this->notifyTicketUpdate($ticket, 'Tu ticket ha sido tomado por ' . $user->name . '.');
+        $this->notifyTicketUpdate($ticket, 'Tu ticket ha sido tomado por ' . $user->name . '.', 'assigned');
 
         return back()->with('success', 'Te has asignado este ticket.');
     }
@@ -947,10 +953,10 @@ class TicketController extends Controller
                 'Ticket ' . $ticket->ticket_number . ' derivado a ' . $newDeptName,
                 $ticket->id
             );
-            try { $support->notify(new TicketUpdatedNotification($ticket, 'Se ha derivado un ticket a tu departamento: ' . $ticket->ticket_number)); } catch(\Throwable $e) {}
+            try { $support->notify(new TicketUpdatedNotification($ticket, 'Se ha derivado un ticket a tu departamento: ' . $ticket->ticket_number, 'forwarded')); } catch(\Throwable $e) {}
         }
 
-        $this->notifyTicketUpdate($ticket, 'Tu ticket ha sido derivado al departamento ' . $newDeptName . '.');
+        $this->notifyTicketUpdate($ticket, 'Tu ticket ha sido derivado al departamento ' . $newDeptName . '.', 'forwarded');
 
         return back()->with('success', 'Ticket derivado a ' . $newDeptName . '.');
     }
@@ -1176,7 +1182,7 @@ class TicketController extends Controller
                 $ticket->assignedTo->notify(new TicketUpdatedNotification(
                     $ticket,
                     'El solicitante reabrió el ticket ' . $ticket->ticket_number
-                    . ': la solución entregada no resolvió su problema.'
+                    . ': la solución entregada no resolvió su problema.', 'reopened'
                 ));
             } catch (\Throwable $e) {
                 Log::warning('No se pudo avisar de la reapertura: ' . $e->getMessage());
@@ -1279,19 +1285,19 @@ class TicketController extends Controller
     /**
      * Notificar actualización del ticket a los involucrados
      */
-    private function notifyTicketUpdate(Ticket $ticket, string $message)
+    private function notifyTicketUpdate(Ticket $ticket, string $message, string $event = 'status_change')
     {
         $notified = collect();
 
         // Notificar al creador (si es usuario registrado y no es quien hace la acción)
         if ($ticket->user_id && $ticket->user_id !== Auth::id()) {
-            $ticket->user->notify(new TicketUpdatedNotification($ticket, $message));
+            $ticket->user->notify(new TicketUpdatedNotification($ticket, $message, $event));
             $notified->push($ticket->user_id);
         }
 
         // Notificar al asignado (si no es quien hace la acción y no fue ya notificado)
         if ($ticket->assigned_to && $ticket->assigned_to !== Auth::id() && !$notified->contains($ticket->assigned_to)) {
-            $ticket->assignedTo->notify(new TicketUpdatedNotification($ticket, $message));
+            $ticket->assignedTo->notify(new TicketUpdatedNotification($ticket, $message, $event));
         }
     }
 

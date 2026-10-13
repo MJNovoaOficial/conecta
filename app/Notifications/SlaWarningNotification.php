@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Ticket;
+use App\Support\TicketNotificationPreferences;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -28,7 +29,12 @@ class SlaWarningNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return TicketNotificationPreferences::mailChannels('sla_warning', $notifiable);
+    }
+
+    public function shouldSend(object $notifiable, string $channel): bool
+    {
+        return $channel !== 'mail' || TicketNotificationPreferences::mailChannels('sla_warning', $notifiable) !== [];
     }
 
     public function toMail(object $notifiable): MailMessage

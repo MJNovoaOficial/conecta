@@ -24,7 +24,7 @@
 .setting-group-header { padding: 13px 18px; background: #f7f9fc; border-bottom: 1px solid #e8ecf0; font-size: .8rem; font-weight: 700; color: #4a5568; display: flex; align-items: center; gap: 8px; }
 .setting-row { padding: 14px 18px; border-bottom: 1px solid #f0f2f5; display: flex; align-items: center; gap: 16px; }
 .setting-row:last-child { border-bottom: none; }
-.setting-info { flex: 1; }
+.setting-info { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .setting-label { font-size: .85rem; font-weight: 600; color: #2d3748; }
 .setting-desc  { font-size: .76rem; color: #a0aec0; margin-top: 2px; }
 .setting-control { min-width: 200px; }
@@ -55,6 +55,25 @@
 .btn-save { padding: 9px 24px; background: #3498db; color: #fff; border: none; border-radius: 7px; font-weight: 600; font-size: .87rem; cursor: pointer; transition: background .15s; }
 .btn-save:hover { background: #2980b9; }
 .btn-cancel { padding: 9px 20px; background: #e2e8f0; color: #4a5568; border: none; border-radius: 7px; font-weight: 600; font-size: .87rem; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+@media (max-width: 600px) {
+    .setting-row { flex-direction: column; align-items: stretch; gap: 10px; }
+    .setting-info { min-width: 0; }
+    .setting-control { min-width: 0; width: 100%; }
+    .setting-control input[type="text"], .setting-control input[type="number"],
+    .setting-control input[type="email"] { font-size: 1rem; }
+    .tab-bar { flex-wrap: wrap; }
+    .save-bar { flex-wrap: wrap; }
+    .save-bar .btn-save { flex: 1 1 180px; }
+}
+@media (max-width: 991.98px), (pointer: coarse) and (max-width: 1366px) {
+    .tab-btn, .btn-save, .btn-cancel { min-height: 44px; }
+    .btn-cancel { justify-content: center; align-items: center; }
+    .setting-label { font-size: .95rem; }
+    .setting-desc { font-size: .85rem; }
+    .toggle-lbl { font-size: .9rem; }
+    .toggle { width: 44px; height: 44px; }
+    .toggle-slider { top: 10px; bottom: 10px; left: 1px; right: 1px; }
+}
 </style>
 @endsection
 
@@ -71,8 +90,28 @@
 
     <div class="config-header">
         <h1><i class="fas fa-cog me-2" style="color:#3498db;"></i>Configuración del Sistema</h1>
-        <p>Administra los parámetros generales, notificaciones, SLA y seguridad de la plataforma.</p>
+        <p>Configura la sesión, los avisos y los límites globales de adjuntos. Generales es informativo; SLA mantiene su propia ventana.</p>
     </div>
+
+    <div role="note" style="padding:14px 18px;margin-bottom:18px;background:#fff7ed;border:1px solid #fde68a;border-radius:8px;color:#92400e;font-size:.85rem;">
+        <strong>Opciones operativas:</strong> sesión por inactividad, avisos y límites globales de adjuntos.
+        Los límites anteriores de archivos se conservan hasta activar expresamente la opción global. Los plazos de cierre y el acceso de invitados sin login se mantienen.
+        Los tiempos por prioridad se gestionan exclusivamente en <a href="{{ route('admin.sla.index') }}">Configurar SLA</a>.
+        Cada usuario puede elegir sus correos de tickets en <a href="{{ route('profile.index') }}">Mi Perfil</a>.
+    </div>
+
+    @if(collect($settings)->flatMap(fn ($group) => $group)->contains(fn ($setting) => !$setting->exists && in_array($setting->key, $editableKeys)))
+    <div role="status" style="padding:12px 18px;margin-bottom:18px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;color:#1e40af;font-size:.85rem;">
+        Las opciones editables aún no guardadas muestran sus valores iniciales. Al guardar se crearán solo las enviadas, sin restablecer opciones existentes ni modificar datos de tickets.
+    </div>
+    @endif
+
+    @if($errors->any())
+    <div role="alert" style="padding:12px 18px;margin-bottom:16px;border:1px solid #fecaca;border-radius:8px;color:#991b1b;">
+        Revisa los valores indicados:
+        <ul style="margin:6px 0 0;">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+    </div>
+    @endif
 
     <form method="POST" action="{{ route('admin.settings.update') }}" id="settingsForm">
         @csrf
@@ -80,8 +119,8 @@
         {{-- Tabs --}}
         <div class="tab-bar">
             <button type="button" class="tab-btn active" onclick="showTab('general', this)"><i class="fas fa-sliders-h me-1"></i> General</button>
+            <button type="button" class="tab-btn" onclick="showTab('attachments', this)"><i class="fas fa-paperclip me-1"></i> Adjuntos</button>
             <button type="button" class="tab-btn" onclick="showTab('notifications', this)"><i class="fas fa-bell me-1"></i> Notificaciones</button>
-            <button type="button" class="tab-btn" onclick="showTab('sla', this)"><i class="fas fa-clock me-1"></i> SLA</button>
             <button type="button" class="tab-btn" onclick="showTab('security', this)"><i class="fas fa-shield-alt me-1"></i> Seguridad</button>
         </div>
 
@@ -89,25 +128,43 @@
         <div class="tab-panel active" id="tab-general">
             <div class="setting-group">
                 <div class="setting-group-header"><i class="fas fa-info-circle"></i> Parámetros Generales</div>
-                @foreach($settings['general'] as $s)
+                @forelse($settings['general'] as $s)
                 <div class="setting-row">
                     <div class="setting-info">
                         <div class="setting-label">{{ $s->label }}</div>
                         @if($s->description)<div class="setting-desc">{{ $s->description }}</div>@endif
                     </div>
                     <div class="setting-control">
-                        @if($s->type === 'boolean')
-                        <div class="toggle-wrap">
-                            <label class="toggle">
-                                <input type="checkbox" name="settings[{{ $s->key }}]" value="1" {{ $s->value ? 'checked' : '' }}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="toggle-lbl">{{ $s->value ? 'Activo' : 'Inactivo' }}</span>
-                        </div>
-                        @elseif($s->type === 'integer')
-                        <input type="number" name="settings[{{ $s->key }}]" value="{{ $s->value }}" min="1">
+                        <div style="font-size:.95rem;overflow-wrap:anywhere;">{{ $readOnlyValues[$s->key] ?? $s->value }}</div>
+                    </div>
+                </div>
+                @empty
+                <p style="padding:14px 18px;margin:0;">No hay parámetros generales cargados. Está pendiente su inicialización puntual, sin restablecer datos existentes.</p>
+                @endforelse
+            </div>
+        </div>
+
+        <div class="tab-panel" id="tab-attachments">
+            <div class="setting-group">
+                <div class="setting-group-header">Límites globales de adjuntos</div>
+                <div style="padding:14px 18px;font-size:.9rem;overflow-wrap:anywhere;">
+                    <strong>Límites actuales en uso:</strong><br>
+                    Crear ticket: {{ $creationLimits['files'] }} archivos, hasta {{ $creationLimits['kilobytes']/1024 }} MB por archivo.<br>
+                    Responder: {{ $replyLimits['files'] }} archivos, hasta {{ $replyLimits['kilobytes']/1024 }} MB por archivo.<br>
+                    Al activar los límites globales, los valores guardados siguientes reemplazan ambos límites. No se modifican archivos ya adjuntados.
+                </div>
+                @foreach($settings['attachments'] as $s)
+                <div class="setting-row">
+                    <div class="setting-info"><div class="setting-label">{{ $s->label }}</div><div class="setting-desc">{{ $s->description }}</div></div>
+                    <div class="setting-control">
+                        @if($s->key === 'attachments_global_enabled')
+                        <div class="toggle-wrap"><label class="toggle">
+                            <input type="hidden" name="settings[{{ $s->key }}]" value="0">
+                            <input type="checkbox" name="settings[{{ $s->key }}]" value="1" {{ filter_var($s->value,FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                            <span class="toggle-slider"></span>
+                        </label><span class="toggle-lbl">{{ filter_var($s->value,FILTER_VALIDATE_BOOLEAN) ? 'Global activo' : 'Conservar límites anteriores' }}</span></div>
                         @else
-                        <input type="text" name="settings[{{ $s->key }}]" value="{{ $s->value }}">
+                        <input type="number" name="settings[{{ $s->key }}]" value="{{ $s->value }}" min="1" max="{{ $s->key === 'max_attachment_size_mb' ? 50 : 5 }}" step="1">
                         @endif
                     </div>
                 </div>
@@ -119,59 +176,30 @@
         <div class="tab-panel" id="tab-notifications">
             <div class="setting-group">
                 <div class="setting-group-header"><i class="fas fa-bell"></i> Configuración de Notificaciones (RF-AD-13)</div>
-                @foreach($settings['notifications'] as $s)
+                @forelse($settings['notifications'] as $s)
                 <div class="setting-row">
                     <div class="setting-info">
                         <div class="setting-label">{{ $s->label }}</div>
                         @if($s->description)<div class="setting-desc">{{ $s->description }}</div>@endif
                     </div>
                     <div class="setting-control">
-                        @if($s->type === 'boolean')
+                        @if(in_array($s->key, $editableKeys) && $s->type === 'boolean')
                         <div class="toggle-wrap">
                             <label class="toggle">
-                                <input type="checkbox" name="settings[{{ $s->key }}]" value="1" {{ $s->value ? 'checked' : '' }}>
+                                <input type="hidden" name="settings[{{ $s->key }}]" value="0">
+                                <input type="checkbox" name="settings[{{ $s->key }}]" value="1" {{ filter_var($s->value, FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
                                 <span class="toggle-slider"></span>
                             </label>
-                            <span class="toggle-lbl">{{ $s->value ? 'Habilitado' : 'Deshabilitado' }}</span>
+                            <span class="toggle-lbl">{{ filter_var($s->value, FILTER_VALIDATE_BOOLEAN) ? 'Habilitado' : 'Deshabilitado' }}</span>
                         </div>
                         @else
-                        <input type="{{ $s->type === 'email' ? 'email' : 'text' }}" name="settings[{{ $s->key }}]" value="{{ $s->value }}">
+                        <div style="font-size:.95rem;overflow-wrap:anywhere;">{{ $readOnlyValues[$s->key] ?? $s->value }}</div>
                         @endif
                     </div>
                 </div>
-                @endforeach
-            </div>
-        </div>
-
-        {{-- ── SLA ── --}}
-        <div class="tab-panel" id="tab-sla">
-            <div class="setting-group">
-                <div class="setting-group-header"><i class="fas fa-clock"></i> Parámetros de SLA y Tiempos</div>
-                @foreach($settings['sla'] as $s)
-                <div class="setting-row">
-                    <div class="setting-info">
-                        <div class="setting-label">{{ $s->label }}</div>
-                        @if($s->description)<div class="setting-desc">{{ $s->description }}</div>@endif
-                    </div>
-                    <div class="setting-control">
-                        @if($s->type === 'boolean')
-                        <div class="toggle-wrap">
-                            <label class="toggle">
-                                <input type="checkbox" name="settings[{{ $s->key }}]" value="1" {{ $s->value ? 'checked' : '' }}>
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <span class="toggle-lbl">{{ $s->value ? 'Activo' : 'Inactivo' }}</span>
-                        </div>
-                        @else
-                        <input type="number" name="settings[{{ $s->key }}]" value="{{ $s->value }}" min="1">
-                        @endif
-                    </div>
-                </div>
-                @endforeach
-            </div>
-            <div style="padding:12px 18px;background:#fff7ed;border:1px solid #fde68a;border-radius:8px;font-size:.82rem;color:#92400e;">
-                <i class="fas fa-info-circle me-1"></i>
-                Los tiempos de atención y resolución por prioridad se gestionan en <a href="{{ route('admin.sla.index') }}" style="color:#92400e;font-weight:600;">Configuración de SLA</a>.
+                @empty
+                <p style="padding:14px 18px;margin:0;">No hay parámetros de notificaciones cargados. Está pendiente su inicialización puntual.</p>
+                @endforelse
             </div>
         </div>
 
@@ -179,17 +207,23 @@
         <div class="tab-panel" id="tab-security">
             <div class="setting-group">
                 <div class="setting-group-header"><i class="fas fa-shield-alt"></i> Parámetros de Seguridad (RNF-06 al RNF-09)</div>
-                @foreach($settings['security'] as $s)
+                @forelse($settings['security'] as $s)
                 <div class="setting-row">
                     <div class="setting-info">
                         <div class="setting-label">{{ $s->label }}</div>
                         @if($s->description)<div class="setting-desc">{{ $s->description }}</div>@endif
                     </div>
                     <div class="setting-control">
-                        <input type="number" name="settings[{{ $s->key }}]" value="{{ $s->value }}" min="1">
+                        @if($s->key === 'session_timeout_minutes')
+                        <input type="number" name="settings[{{ $s->key }}]" value="{{ $s->value }}" min="1" max="1440" step="1">
+                        @else
+                        <div style="font-size:.95rem;overflow-wrap:anywhere;">{{ $readOnlyValues[$s->key] ?? $s->value }}</div>
+                        @endif
                     </div>
                 </div>
-                @endforeach
+                @empty
+                <p style="padding:14px 18px;margin:0;">No hay parámetros de seguridad cargados. Las reglas actuales del login y la sesión se mantienen.</p>
+                @endforelse
             </div>
 
             {{-- Intentos de login recientes --}}

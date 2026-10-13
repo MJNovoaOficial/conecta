@@ -8,6 +8,7 @@ use App\Models\Notificacion;
 use App\Models\Ticket;
 use App\Models\TicketHistory;
 use App\Notifications\TicketUpdatedNotification;
+use App\Support\TicketNotificationPreferences;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -56,8 +57,8 @@ class CloseResolvedTicketsJob implements ShouldQueue
             try {
                 if ($ticket->user_id) {
                     Notificacion::notify($ticket->user_id, 'closed', 'Ticket cerrado: '.$ticket->ticket_number, $message, $ticket->id);
-                    $ticket->user->notify(new TicketUpdatedNotification($ticket, $message));
-                } elseif ($ticket->guest_email) {
+                    $ticket->user->notify(new TicketUpdatedNotification($ticket, $message, 'closed'));
+                } elseif ($ticket->guest_email && TicketNotificationPreferences::eventEnabled('closed')) {
                     Mail::to($ticket->guest_email)->send(new GuestTicketStatusMail($ticket, $message));
                 }
             } catch (\Throwable $e) {

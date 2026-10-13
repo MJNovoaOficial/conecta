@@ -161,8 +161,9 @@ textarea.form-control-custom { resize: vertical; min-height: 90px; }
                     {{-- Campo 4: Adjuntos --}}
                     <div style="margin-bottom: 16px;">
                         <label class="form-label-custom">
-                            Adjuntar archivo o video <small style="font-weight:400;color:#a0aec0;">(opcional — máx. 5 archivos)</small>
+                            Adjuntar archivo o video <small style="font-weight:400;color:#a0aec0;">(opcional)</small>
                         </label>
+                        @include('partials.ticket_attachment_limits')
                         <div style="border: 1.5px dashed #e2e8f0; border-radius: 7px; padding: 14px; text-align: center; cursor: pointer; transition: border-color 0.2s;"
                              onclick="document.getElementById('attachments').click()"
                              onmouseenter="this.style.borderColor='#3498db'"

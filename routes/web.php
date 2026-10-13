@@ -96,6 +96,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile',           [ProfileController::class, 'index'])->name('profile.index');
     Route::post('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
     Route::post('/profile/info',     [ProfileController::class, 'updateProfile'])->name('profile.info');
+    Route::post('/profile/notifications', [ProfileController::class, 'updateNotifications'])->name('profile.notifications');
     Route::post('/profile/avatar',   [ProfileController::class, 'uploadAvatar'])->name('profile.avatar');
 
     // Archivos privados — servidos con control de acceso (Reunión 4 seguridad)

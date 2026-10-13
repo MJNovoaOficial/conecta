@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\TicketNotificationPreferences;
 use Illuminate\Database\Eloquent\Model;
 
 class Notificacion extends Model
@@ -34,8 +35,9 @@ class Notificacion extends Model
     /**
      * Crea una notificación para un usuario.
      */
-    public static function notify(int $userId, string $type, string $title, string $body = '', ?int $ticketId = null): self
+    public static function notify(int $userId, string $type, string $title, string $body = '', ?int $ticketId = null): ?self
     {
+        if (!TicketNotificationPreferences::eventEnabled($type)) return null;
         return static::create([
             'user_id'   => $userId,
             'type'      => $type,

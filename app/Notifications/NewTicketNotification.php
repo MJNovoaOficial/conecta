@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Ticket;
+use App\Support\TicketNotificationPreferences;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -22,7 +23,7 @@ class NewTicketNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['mail'];
+        return TicketNotificationPreferences::mailChannels('new_ticket', $notifiable);
     }
 
     public function toMail(object $notifiable): MailMessage

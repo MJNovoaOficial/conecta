@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
+use App\Models\SystemSetting;
+use App\Support\TicketNotificationPreferences;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -15,6 +18,23 @@ class ProfileController extends Controller
     public function index()
     {
         return view('profile.index', ['user' => Auth::user()]);
+    }
+
+    public function updateNotifications(Request $request)
+    {
+        $data = $request->validate(['ticket_email_enabled' => 'required|boolean']);
+        $user = Auth::user();
+        $enabled = (bool) $data['ticket_email_enabled'];
+        if ($user->receivesTicketEmails() !== $enabled) {
+            $key = TicketNotificationPreferences::emailKey($user->id);
+            SystemSetting::updateOrCreate(['key' => $key], [
+                'value' => $enabled ? '1' : '0', 'type' => 'boolean', 'group' => 'user_preferences',
+                'label' => 'Correos de tickets del usuario', 'description' => null,
+            ]);
+            SystemSetting::forgetCached($key);
+            AuditLog::record('profile.notifications_updated', 'User', $user->id, ['ticket_email_enabled' => $enabled]);
+        }
+        return back()->with('success_notifications', 'Preferencia de correos de tickets guardada. La campana y los correos de recuperación de contraseña se mantienen.');
     }
 
     /**

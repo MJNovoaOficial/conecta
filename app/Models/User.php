@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\TicketNotificationPreferences;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -115,5 +116,12 @@ class User extends Authenticatable
             $this->email,
             $this->alternate_email,
         ]));
+    }
+
+    public function receivesTicketEmails(): bool
+    {
+        return !$this->id || filter_var(SystemSetting::get(
+            TicketNotificationPreferences::emailKey($this->id), true
+        ), FILTER_VALIDATE_BOOLEAN);
     }
 }

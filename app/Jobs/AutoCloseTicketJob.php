@@ -8,6 +8,7 @@ use App\Models\Notificacion;
 use App\Models\Ticket;
 use App\Models\TicketHistory;
 use App\Notifications\TicketUpdatedNotification;
+use App\Support\TicketNotificationPreferences;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -103,11 +104,11 @@ class AutoCloseTicketJob implements ShouldQueue
                     $ticket->id
                 );
 
-                $ticket->user->notify(new TicketUpdatedNotification($ticket, $mensaje));
+                $ticket->user->notify(new TicketUpdatedNotification($ticket, $mensaje, 'closed'));
                 return;
             }
 
-            if ($ticket->guest_email) {
+            if ($ticket->guest_email && TicketNotificationPreferences::eventEnabled('closed')) {
                 Mail::to($ticket->guest_email)->send(new GuestTicketAutoClosedMail($ticket));
             }
         } catch (\Throwable $e) {

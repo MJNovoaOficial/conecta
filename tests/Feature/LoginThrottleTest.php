@@ -55,7 +55,7 @@ class LoginThrottleTest extends TestCase
         $maria = User::factory()->create();
         $nicolas = User::factory()->create();
         $this->failFive($maria);
-        $this->login($maria->email, 'password')->assertStatus(429)->assertHeader('Retry-After', '300');
+        $this->login($maria->email, 'password')->assertStatus(429)->assertHeader('Retry-After', '90')->assertSee('01:30');
         $this->assertGuest();
         $this->login($maria->email, 'password', '198.18.0.2')->assertStatus(429);
         $this->login($nicolas->email, 'password')->assertRedirect('/tickets');
@@ -77,17 +77,17 @@ class LoginThrottleTest extends TestCase
         $this->login($first->email, 'password')->assertRedirect('/tickets');
     }
 
-    public function test_la_espera_dura_cinco_minutos_desde_el_quinto_fallo_y_no_se_prolonga_al_reintentar(): void
+    public function test_la_espera_dura_noventa_segundos_desde_el_quinto_fallo_y_no_se_prolonga_al_reintentar(): void
     {
         $user = User::factory()->create();
         $this->travelTo(now()->startOfSecond());
         $this->login($user->email);
         $this->travel(14)->minutes();
         for ($i = 0; $i < 4; $i++) $this->login($user->email)->assertSessionHasErrors('email');
-        $this->login($user->email, 'password')->assertStatus(429)->assertHeader('Retry-After', '300');
-        $this->travel(2)->minutes();
-        $this->login($user->email, 'password')->assertStatus(429)->assertHeader('Retry-After', '180');
-        $this->travel(3)->minutes();
+        $this->login($user->email, 'password')->assertStatus(429)->assertHeader('Retry-After', '90');
+        $this->travel(89)->seconds();
+        $this->login($user->email, 'password')->assertStatus(429)->assertHeader('Retry-After', '1');
+        $this->travel(1)->seconds();
         $this->login($user->email)->assertSessionHasErrors('email');
         $this->assertSame(1, Cache::get($this->key($user->email))['failures']);
         $this->login($user->email, 'password')->assertRedirect('/tickets');
@@ -155,6 +155,7 @@ class LoginThrottleTest extends TestCase
         $lock = Mockery::mock(Lock::class);
         $lock->shouldReceive('block')->once()->with(5, Mockery::type('Closure'))->andThrow(new LockTimeoutException);
         Cache::partialMock()->shouldReceive('lock')->once()->with($this->key($user->email).':lock', 120)->andReturn($lock);
+        Cache::shouldReceive('remember')->andReturnUsing(fn ($key,$ttl,$callback) => $store->remember($key,$ttl,$callback));
         $this->login($user->email, 'password')->assertStatus(429)->assertHeader('Retry-After', '1')
             ->assertSee('Se está procesando otro acceso');
         $this->assertGuest();
@@ -182,6 +183,7 @@ class LoginThrottleTest extends TestCase
             base_path('vendor/laravel/framework/src/Illuminate/Filesystem/LockableFile.php')
         ));
         Cache::partialMock()->shouldReceive('lock')->once()->andReturn($lock);
+        Cache::shouldReceive('remember')->andReturnUsing(fn ($key,$ttl,$callback) => $store->remember($key,$ttl,$callback));
         Cache::shouldReceive('getStore')->once()->andReturn(Mockery::mock(FileStore::class));
         $this->login($user->email, 'password')->assertStatus(429)->assertHeader('Retry-After', '1');
         $this->assertGuest();
@@ -193,9 +195,11 @@ class LoginThrottleTest extends TestCase
     {
         $this->withoutExceptionHandling();
         $user = User::factory()->create();
+        $store = Cache::store();
         $lock = Mockery::mock(Lock::class);
         $lock->shouldReceive('block')->once()->andThrow(new \ErrorException('Error ajeno al lock', 0, E_WARNING, __FILE__));
         Cache::partialMock()->shouldReceive('lock')->once()->andReturn($lock);
+        Cache::shouldReceive('remember')->andReturnUsing(fn ($key,$ttl,$callback) => $store->remember($key,$ttl,$callback));
         Cache::shouldReceive('getStore')->once()->andReturn(Mockery::mock(FileStore::class));
         $this->expectException(\ErrorException::class);
         $this->expectExceptionMessage('Error ajeno al lock');

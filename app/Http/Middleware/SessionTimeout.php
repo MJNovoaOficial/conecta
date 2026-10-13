@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\SystemSetting;
+use Carbon\Carbon;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -35,10 +37,13 @@ class SessionTimeout
             );
         }
 
-        $timeout = (int) env('SESSION_TIMEOUT_MINUTES', self::DEFAULT_TIMEOUT);
+        $timeout = SystemSetting::get('session_timeout_minutes', (int) env('SESSION_TIMEOUT_MINUTES', self::DEFAULT_TIMEOUT));
+        if (is_bool($timeout) || filter_var($timeout, FILTER_VALIDATE_INT) === false || $timeout < 1 || $timeout > 1440) {
+            $timeout = (int) env('SESSION_TIMEOUT_MINUTES', self::DEFAULT_TIMEOUT);
+        }
         $lastActivity = $request->session()->get('last_activity_at');
 
-        if ($lastActivity && (now()->diffInMinutes($lastActivity) >= $timeout)) {
+        if ($lastActivity && Carbon::parse($lastActivity)->addMinutes((int) $timeout)->lte(now())) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
@@ -49,7 +54,11 @@ class SessionTimeout
         }
 
         // Actualizar timestamp de última actividad
-        $request->session()->put('last_activity_at', now());
+        // Las consultas automáticas de la campana no son actividad humana.
+        // Se verifica la expiración también en ellas, pero no renuevan la sesión.
+        if (!$request->routeIs('notifications.count', 'notifications.recent')) {
+            $request->session()->put('last_activity_at', now());
+        }
 
         return $next($request);
     }

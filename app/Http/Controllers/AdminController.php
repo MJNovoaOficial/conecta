@@ -6,6 +6,9 @@ use App\Models\AuditLog;
 use App\Models\Categoria;
 use App\Models\LoginAttempt;
 use App\Models\SystemSetting;
+use App\Support\TicketNotificationPreferences;
+use App\Support\TicketAttachmentLimits;
+use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Models\Department;
 use App\Models\Ticket;
@@ -327,12 +330,21 @@ class AdminController extends Controller
 
     public function settings()
     {
-        // Obtener configuraciones agrupadas
-        $groups = ['general', 'notifications', 'sla', 'security'];
-        $settings = [];
-        foreach ($groups as $g) {
-            $settings[$g] = SystemSetting::byGroup($g);
-        }
+        // Mostrar el catálogo sin insertar datos al abrir la página.
+        $settings = SystemSetting::forSettingsPage();
+        unset($settings['sla']);
+        $editableKeys = array_merge(['session_timeout_minutes','attachments_global_enabled','max_attachment_size_mb','max_attachments_per_ticket'], array_values(array_unique(TicketNotificationPreferences::EVENT_KEYS)));
+        $creationLimits=TicketAttachmentLimits::forRequest();
+        $replyLimits=TicketAttachmentLimits::forRequest(true);
+        $readOnlyValues = [
+            'app_name' => config('app.name'),
+            'app_timezone' => config('app.timezone').' — '.now()->format('d/m/Y H:i:s'),
+            'tickets_per_page' => '15 tickets',
+            'allow_guest_tickets' => 'Habilitado: creación y seguimiento sin login mediante enlace privado',
+            'support_email' => config('mail.from.address'),
+            'max_login_attempts' => AuthController::LOGIN_MAX_ATTEMPTS.' intentos fallidos por cuenta',
+            'login_lockout_minutes' => AuthController::LOGIN_LOCKOUT_SECONDS.' segundos (1 minuto y medio)',
+        ];
 
         // Últimos 10 intentos fallidos de login
         $recentFailedLogins = LoginAttempt::where('successful', false)
@@ -340,58 +352,92 @@ class AdminController extends Controller
             ->take(10)
             ->get();
 
-        return view('admin.settings.index', compact('settings', 'recentFailedLogins'));
+        return view('admin.settings.index', compact('settings', 'recentFailedLogins', 'editableKeys', 'readOnlyValues','creationLimits','replyLimits'));
     }
 
     public function updateSettings(Request $request)
     {
-        $data = $request->input('settings', []);
-
-        // Obtener todos los settings de DB para manejar los booleanos no enviados
-        $allSettings = SystemSetting::all()->keyBy('key');
+        // Solo los grupos mostrados por esta pantalla. Estados y otros grupos
+        // tienen su propio flujo y no deben cambiar por guardar este formulario.
+        $allSettings = collect(SystemSetting::forSettingsPage())
+            ->flatMap(fn ($group) => $group)->keyBy('key')
+            ->only(array_merge(['session_timeout_minutes','attachments_global_enabled','max_attachment_size_mb','max_attachments_per_ticket'], array_values(array_unique(TicketNotificationPreferences::EVENT_KEYS))));
+        $rules = ['settings' => 'sometimes|array'];
+        foreach ($allSettings as $key => $setting) {
+            $requiredForGlobal=Rule::requiredIf(fn()=>filter_var($request->input('settings.attachments_global_enabled'),FILTER_VALIDATE_BOOLEAN));
+            $rules['settings.'.$key] = match($key) {
+                'session_timeout_minutes'=>'sometimes|integer|min:1|max:1440',
+                'max_attachment_size_mb'=>[$requiredForGlobal,'integer','min:1','max:50'],
+                'max_attachments_per_ticket'=>[$requiredForGlobal,'integer','min:1','max:5'],
+                default=>'sometimes|boolean',
+            };
+        }
+        $data = $request->validate($rules)['settings'] ?? [];
 
         $changedKeys = [];
         $changes = [];
 
+        DB::transaction(function () use ($allSettings,$data,&$changedKeys,&$changes) {
         foreach ($allSettings as $key => $setting) {
-            if ($setting->type === 'boolean') {
-                // Checkbox no enviado = false
-                $newValue = isset($data[$key]) ? '1' : '0';
-            } elseif (isset($data[$key])) {
-                $newValue = (string) $data[$key];
+            // Los checkbox envían un cero explícito cuando se desmarcan.
+            // Ausente significa que no se solicitó modificar ese parámetro.
+            if (!isset($data[$key])) continue;
+            $expectedType = in_array($key,['session_timeout_minutes','max_attachment_size_mb','max_attachments_per_ticket']) ? 'integer' : 'boolean';
+            $expectedGroup = $key === 'session_timeout_minutes' ? 'security'
+                : (in_array($key,['attachments_global_enabled','max_attachment_size_mb','max_attachments_per_ticket']) ? 'attachments' : 'notifications');
+            $metadataChanged = $setting->exists && ($setting->getRawOriginal('type') !== $expectedType
+                || $setting->getRawOriginal('group') !== $expectedGroup);
+            if ($expectedType === 'boolean') {
+                $newValue = filter_var($data[$key], FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
             } else {
-                continue;
+                $newValue = (string) $data[$key];
             }
 
             $currentValue = (string) $setting->value;
 
-            if ($setting->type === 'integer') {
+            if ($expectedType === 'integer') {
                 $newValue = (string) ((int) $newValue);
                 $currentValue = (string) ((int) $currentValue);
-            } elseif ($setting->type === 'boolean') {
+            } elseif ($expectedType === 'boolean') {
                 $newValue = filter_var($newValue, FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
                 $currentValue = filter_var($currentValue, FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
             }
 
-            if ($currentValue === $newValue) {
+            if ($setting->exists && $currentValue === $newValue && !$metadataChanged) {
                 continue;
             }
 
-            SystemSetting::set($key, $newValue);
+            if (!$setting->exists) {
+                $created = SystemSetting::firstOrCreate(['key' => $key],
+                    array_merge($setting->getAttributes(), ['value' => $newValue]));
+                // Otra petición pudo inicializarla primero: no pisar su valor.
+                if (!$created->wasRecentlyCreated) continue;
+                SystemSetting::forgetCached($key);
+            } else {
+                // Solo las opciones aprobadas, tras una petición explícita.
+                SystemSetting::where('key',$key)->update(['value'=>$newValue,'type'=>$expectedType,'group'=>$expectedGroup]);
+                SystemSetting::forgetCached($key);
+            }
             $changedKeys[] = $key;
-            $changes[$key] = ['old' => $currentValue, 'new' => $newValue];
+            $changes[$key] = ['old' => $setting->exists ? $currentValue : null, 'new' => $newValue];
+            if ($metadataChanged) $changes[$key]['metadata'] = [
+                'old_type'=>$setting->getRawOriginal('type'),'new_type'=>$expectedType,
+                'old_group'=>$setting->getRawOriginal('group'),'new_group'=>$expectedGroup,
+            ];
         }
+
+        if ($changedKeys) AuditLog::record('settings.updated', 'SystemSetting', null, [
+            'keys'=>$changedKeys,'changes'=>$changes,
+        ]);
+        });
+        // Invalidar también después del commit para los stores ajenos a la DB.
+        foreach ($changedKeys as $key) SystemSetting::forgetCached($key);
 
         if (empty($changedKeys)) {
             return redirect()->route('admin.settings.index')->with('success', 'No hubo cambios para guardar.');
         }
 
-        AuditLog::record('settings.updated', 'SystemSetting', null, [
-            'keys'    => $changedKeys,
-            'changes' => $changes,
-        ]);
-
-        return redirect()->route('admin.settings.index')->with('success', 'Configuración guardada correctamente.');
+        return redirect()->route('admin.settings.index')->with('success', 'Configuración guardada. Los cambios se aplican a las próximas solicitudes; no modifican archivos ni datos históricos.');
     }
 
     /**

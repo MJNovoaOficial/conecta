@@ -133,6 +133,22 @@
             </form>
         </div>
 
+        <div class="content-card" style="padding:24px;margin-bottom:20px;">
+            <h3 style="font-size:1rem;margin-bottom:10px;">Notificaciones de mis tickets</h3>
+            <p style="font-size:.9rem;">Puedes elegir si recibes correos de tickets en tus direcciones principal y alternativa. La campana seguirá disponible; esta opción no afecta la recuperación de contraseña.</p>
+            @if(session('success_notifications'))<p role="status" style="color:#166534;">{{ session('success_notifications') }}</p>@endif
+            <form method="POST" action="{{ route('profile.notifications') }}">
+                @csrf
+                <input type="hidden" name="ticket_email_enabled" value="0">
+                <label style="display:flex;align-items:center;gap:12px;min-height:44px;font-size:1rem;">
+                    <input type="checkbox" name="ticket_email_enabled" value="1" {{ $user->receivesTicketEmails() ? 'checked' : '' }} style="width:22px;height:22px;flex-shrink:0;">
+                    Recibir notificaciones de tickets por correo
+                </label>
+                @error('ticket_email_enabled')<p style="color:#b91c1c;">{{ $message }}</p>@enderror
+                <button type="submit" class="btn-submit-ticket" style="width:auto;max-width:100%;min-height:44px;padding:10px 18px;margin-top:12px;white-space:normal;">Guardar preferencia de correo</button>
+            </form>
+        </div>
+
         {{-- ── Cambio de contraseña ── --}}
         <div class="content-card" style="padding:24px;">
             <h3 style="margin:0 0 6px;font-size:1rem;font-weight:700;color:#1a2332;display:flex;align-items:center;gap:8px;">

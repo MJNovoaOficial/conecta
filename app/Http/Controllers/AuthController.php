@@ -15,6 +15,8 @@ use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
+    public const LOGIN_MAX_ATTEMPTS = 5;
+    public const LOGIN_LOCKOUT_SECONDS = 90;
     public function showLoginForm()
     {
         if (Auth::check()) {
@@ -171,10 +173,10 @@ class AuthController extends Controller
         }
 
         $state['failures']++;
-        if ($state['failures'] >= 5) {
-            $state['blocked_until'] = $now + 5 * 60;
+        if ($state['failures'] >= self::LOGIN_MAX_ATTEMPTS) {
+            $state['blocked_until'] = $now + self::LOGIN_LOCKOUT_SECONDS;
             // Al terminar la espera comienza un nuevo contador de fallos.
-            Cache::put($throttleKey, $state, 5 * 60);
+            Cache::put($throttleKey, $state, self::LOGIN_LOCKOUT_SECONDS);
         } else {
             Cache::put($throttleKey, $state, $state['window_ends_at'] - $now);
         }
