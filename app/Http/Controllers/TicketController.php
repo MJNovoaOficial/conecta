@@ -24,6 +24,7 @@ use App\Notifications\TicketUpdatedNotification;
 use App\Support\HorarioLaboral;
 use App\Support\TicketNotificationPreferences;
 use App\Support\TicketAttachmentLimits;
+use App\Support\TicketCreationGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -231,6 +232,11 @@ class TicketController extends Controller
 
     public function store(Request $request)
     {
+        return TicketCreationGuard::run($request, fn () => $this->storeOnce($request));
+    }
+
+    private function storeOnce(Request $request)
+    {
         $attachmentLimits=TicketAttachmentLimits::forRequest();
         // Rate limiting: máximo 10 tickets por hora
         $throttleKey = 'create_ticket:' . Auth::id();
@@ -271,7 +277,7 @@ class TicketController extends Controller
         // Calcular SLA deadline según prioridad auto-asignada
         $sla = SlaConfig::forPriority($priority);
 
-        $ticket = Ticket::create([
+        $ticket = TicketCreationGuard::create($request, [
             'ticket_number'              => $ticketNumber,
             'user_id'                    => Auth::id(),
             'department_id'              => $departmentId,
@@ -323,6 +329,11 @@ class TicketController extends Controller
      */
     public function guestStore(Request $request)
     {
+        return TicketCreationGuard::run($request, fn () => $this->guestStoreOnce($request));
+    }
+
+    private function guestStoreOnce(Request $request)
+    {
         $attachmentLimits=TicketAttachmentLimits::forRequest();
         // Rate limiting por IP
         $throttleKey = 'guest_ticket:' . $request->ip();
@@ -367,7 +378,7 @@ class TicketController extends Controller
 
         $sla = SlaConfig::forPriority($priority);
 
-        $ticket = Ticket::create([
+        $ticket = TicketCreationGuard::create($request, [
             'ticket_number'              => $ticketNumber,
             'user_id'                    => null,
             'department_id'              => $departmentId,
@@ -1322,7 +1333,10 @@ class TicketController extends Controller
 
             $filename = $this->sanitizeFilename($file->getClientOriginalName());
             $subfolder = $commentId ? 'tickets/' . $ticket->id . '/comments' : 'tickets/' . $ticket->id;
-            $path = $file->storeAs($subfolder, $filename, 'local'); // disco privado
+            // El nombre visible se conserva; la ruta es única para que dos
+            // capturas con igual nombre no se sobrescriban en el disco privado.
+            $storedName = (string) Str::uuid().'.'.strtolower($file->getClientOriginalExtension());
+            $path = $file->storeAs($subfolder, $storedName, 'local');
 
             TicketAttachment::create([
                 'ticket_id' => $ticket->id,

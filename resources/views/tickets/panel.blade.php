@@ -163,7 +163,6 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
   @endauth
 
   @include('partials.ticket_solution_notice')
-  @include('partials.ticket_solution_form')
 
   {{-- Descripción --}}
   <div class="pnl-section">
@@ -254,6 +253,8 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
     @endauth
 
   </div>
+  @include('partials.ticket_solution_form')
+
 </div>
 
 {{-- Ver ticket completo --}}

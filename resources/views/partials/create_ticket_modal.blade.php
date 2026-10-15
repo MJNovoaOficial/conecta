@@ -34,8 +34,10 @@
 
       {{-- BODY --}}
       <div class="modal-body" style="padding:24px;">
-        <form method="POST" action="{{ route('tickets.store') }}" enctype="multipart/form-data" id="modalTicketForm">
+        <form method="POST" action="{{ route('tickets.store') }}" enctype="multipart/form-data" id="modalTicketForm" data-ticket-create>
           @csrf
+          @php($submissionToken = old('submission_token'))
+          <input type="hidden" name="submission_token" value="{{ is_string($submissionToken) && Illuminate\Support\Str::isUuid($submissionToken) ? $submissionToken : (string) Illuminate\Support\Str::uuid() }}">
 
           {{-- ───────────────────────────── CAMPO 1: Asunto ──────────────────────────────── --}}
           <div class="mb-3">
@@ -122,8 +124,7 @@
       <div class="modal-footer" style="border-top:1px solid #f0f2f5;padding:14px 22px;">
         <button type="button" class="btn btn-sm" data-bs-dismiss="modal"
                 style="color:#718096;background:none;border:1px solid #e2e8f0;border-radius:7px;padding:7px 18px;">Cancelar</button>
-        <button type="button" id="btnEnviarTicket"
-                onclick="enviarTicketSimplificado()"
+        <button type="submit" form="modalTicketForm" id="btnEnviarTicket"
                 style="background:linear-gradient(135deg,#27ae60,#2ecc71);color:#fff;border:none;border-radius:7px;padding:8px 22px;font-weight:600;font-size:0.875rem;cursor:pointer;">
           <i class="fas fa-paper-plane me-1"></i> Enviar Solicitud
         </button>
@@ -136,7 +137,8 @@
 <script>
 function enviarTicketSimplificado() {
     const titleField = document.getElementById('modalTitleField');
-    if (!titleField || !titleField.value.trim()) {
+    if (!titleField) return;
+    if (!titleField.value.trim()) {
         titleField.style.borderColor = '#ef4444';
         titleField.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.15)';
         titleField.focus();
@@ -145,7 +147,7 @@ function enviarTicketSimplificado() {
     }
     titleField.style.borderColor = '';
     titleField.style.boxShadow = '';
-    document.getElementById('modalTicketForm').submit();
+    document.getElementById('modalTicketForm').requestSubmit();
 }
 
 // Al cerrar el modal, además del form.reset() nativo, se limpia el estado de
@@ -171,3 +173,4 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 @include('partials.kb_sugerencias_script')
+@include('partials.ticket_create_guard')

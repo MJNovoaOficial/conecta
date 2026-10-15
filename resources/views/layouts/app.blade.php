@@ -877,7 +877,7 @@ window.submitModalTicket = function() {
     var ed = document.getElementById('modalEditor');
     if (ed && !ed.innerText.trim()) document.getElementById('modalDescField').value = '';
     var form = document.getElementById('modalTicketForm');
-    if (form) form.submit();
+    if (form) form.requestSubmit();
 };
 window.loadModalSubcats = function(catId) {
     var subSel  = document.getElementById('modalSubcatSelect');

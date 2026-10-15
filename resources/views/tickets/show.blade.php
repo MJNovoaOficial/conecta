@@ -277,7 +277,6 @@
     @endif
 
     @include('partials.ticket_solution_notice')
-    @include('partials.ticket_solution_form')
 
     {{-- Descripción --}}
     <div class="tk-card">
@@ -469,6 +468,8 @@
             @endguest
         </div>
     </div>
+
+    @include('partials.ticket_solution_form')
 
   </div>{{-- /ticket-main --}}
 

@@ -53,8 +53,10 @@ textarea.form-control-custom { resize: vertical; min-height: 90px; }
             </div>
 
             <div style="padding: 24px 22px;">
-                <form method="POST" action="{{ route('tickets.guest.store') }}" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('tickets.guest.store') }}" enctype="multipart/form-data" data-ticket-create>
                     @csrf
+                    @php($submissionToken = old('submission_token'))
+                    <input type="hidden" name="submission_token" value="{{ is_string($submissionToken) && Illuminate\Support\Str::isUuid($submissionToken) ? $submissionToken : (string) Illuminate\Support\Str::uuid() }}">
 
                     {{-- ── Tus datos ───────────────────────────────────── --}}
                     <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #a0aec0; margin-bottom: 12px;">
@@ -212,6 +214,7 @@ textarea.form-control-custom { resize: vertical; min-height: 90px; }
 @endsection
 
 @section('scripts')
+@include('partials.ticket_create_guard')
 <script>
 function showFiles(input) {
     const names = Array.from(input.files).map(f => f.name).join(', ');
