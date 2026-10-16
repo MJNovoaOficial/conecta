@@ -75,12 +75,12 @@
                             <input type="password" name="password" id="passField"
                                    class="form-control-custom @error('password') is-invalid @enderror"
                                    style="padding-left: 32px; padding-right: 38px;"
-                                   placeholder="Mínimo 12 caracteres" required>
+                                   placeholder="Mínimo 8 caracteres" minlength="8" required>
                             <button type="button" onclick="togglePass('passField','passIcon', this)" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:#5a6a7d;cursor:pointer;padding:6px;font-size:0.95rem;line-height:1;border-radius:4px;" aria-label="Mostrar contraseña" aria-pressed="false" title="Mostrar contraseña">
                                 <i class="fas fa-eye" id="passIcon"></i>
                             </button>
                         </div>
-                        <div style="font-size:0.74rem; color:#a0aec0; margin-top:4px;"><i class="fas fa-info-circle me-1"></i>Debe tener mayúsculas, minúsculas, números y símbolos.</div>
+                        <div style="font-size:0.74rem; color:#a0aec0; margin-top:4px;"><i class="fas fa-info-circle me-1"></i>Usa al menos 8 caracteres, con mayúsculas, minúsculas, números y símbolos.</div>
                         @error('password')<div style="color:#e74c3c;font-size:0.78rem;margin-top:4px;"><i class="fas fa-exclamation-circle me-1"></i>{{ $message }}</div>@enderror
                     </div>
 

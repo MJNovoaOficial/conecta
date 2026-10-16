@@ -119,8 +119,16 @@ class AuthController extends Controller
         $request->validate([
             'name' => 'required|string|max:255|regex:/^[\p{L}\s]+$/u',
             'email' => 'required|string|email|max:255|unique:usuarios|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
-            'password' => ['required', 'string', 'confirmed', Password::min(12)->mixedCase()->numbers()->symbols()],
+            'password' => ['required', 'string', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
             'department_id' => 'required|integer|exists:departamentos,id',
+        ], [
+            'password.required' => 'Ingresa una contraseña.',
+            'password.string' => 'La contraseña debe ser un texto válido.',
+            'password.min' => 'La contraseña debe tener al menos :min caracteres.',
+            'password.confirmed' => 'La confirmación de la contraseña no coincide.',
+            'password.password.mixed' => 'La contraseña debe incluir mayúsculas y minúsculas.',
+            'password.password.numbers' => 'La contraseña debe incluir al menos un número.',
+            'password.password.symbols' => 'La contraseña debe incluir al menos un símbolo.',
         ]);
 
         $user = User::create([
