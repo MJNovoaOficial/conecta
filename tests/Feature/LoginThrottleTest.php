@@ -18,6 +18,13 @@ class LoginThrottleTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // Conservar la regresión de la protección para cuando se reactive.
+        config(['auth.login_throttle_enabled' => true]);
+    }
+
     private function key(string $email): string
     {
         return 'login:account:'.hash('sha256', strtolower(trim($email)));

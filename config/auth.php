@@ -4,6 +4,10 @@ use App\Models\User;
 
 return [
 
+    // Temporalmente apagado para el lanzamiento. true restaura el límite
+    // original de 5 fallos por cuenta y 90 segundos de espera.
+    'login_throttle_enabled' => env('AUTH_LOGIN_THROTTLE_ENABLED', false),
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Defaults

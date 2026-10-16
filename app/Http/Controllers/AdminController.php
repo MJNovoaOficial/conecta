@@ -342,9 +342,20 @@ class AdminController extends Controller
             'tickets_per_page' => '15 tickets',
             'allow_guest_tickets' => 'Habilitado: creación y seguimiento sin login mediante enlace privado',
             'support_email' => config('mail.from.address'),
-            'max_login_attempts' => AuthController::LOGIN_MAX_ATTEMPTS.' intentos fallidos por cuenta',
-            'login_lockout_minutes' => AuthController::LOGIN_LOCKOUT_SECONDS.' segundos (1 minuto y medio)',
+            'max_login_attempts' => AuthController::loginThrottleEnabled()
+                ? AuthController::LOGIN_MAX_ATTEMPTS.' intentos fallidos por cuenta' : 'Desactivados temporalmente',
+            'login_lockout_minutes' => AuthController::loginThrottleEnabled()
+                ? AuthController::LOGIN_LOCKOUT_SECONDS.' segundos (1 minuto y medio)' : 'Sin tiempo de espera por intentos fallidos',
         ];
+
+        // No mostrar instrucciones antiguas de bloqueo si el control está apagado.
+        if (!AuthController::loginThrottleEnabled()) {
+            foreach ($settings['security'] ?? [] as $setting) {
+                if (in_array($setting->key, ['max_login_attempts', 'login_lockout_minutes'], true)) {
+                    $setting->description = 'Control temporalmente desactivado. Se reactiva desde la configuración del servidor.';
+                }
+            }
+        }
 
         // Últimos 10 intentos fallidos de login
         $recentFailedLogins = LoginAttempt::where('successful', false)

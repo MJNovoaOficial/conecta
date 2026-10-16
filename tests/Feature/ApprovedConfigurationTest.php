@@ -37,6 +37,7 @@ class ApprovedConfigurationTest extends TestCase
 
     public function test_opciones_generales_y_login_son_informativas_sla_se_conserva_en_sidebar(): void
     {
+        config(['auth.login_throttle_enabled' => true]);
         $response=$this->actingAs(User::factory()->administrador()->create())->get(route('admin.settings.index'))->assertOk();
         foreach (['app_name','app_timezone','tickets_per_page','allow_guest_tickets','max_login_attempts','login_lockout_minutes','auto_close_enabled','user_response_timeout_hours'] as $key) {
             $response->assertDontSee('name="settings['.$key.']"',false);

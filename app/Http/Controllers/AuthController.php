@@ -17,6 +17,12 @@ class AuthController extends Controller
 {
     public const LOGIN_MAX_ATTEMPTS = 5;
     public const LOGIN_LOCKOUT_SECONDS = 90;
+
+    public static function loginThrottleEnabled(): bool
+    {
+        return filter_var(config('auth.login_throttle_enabled', false), FILTER_VALIDATE_BOOLEAN);
+    }
+
     public function showLoginForm()
     {
         if (Auth::check()) {
@@ -34,6 +40,11 @@ class AuthController extends Controller
         ]);
 
         $request->merge(['email' => strtolower(trim($request->email))]);
+        // Desactivación temporal para el lanzamiento. No consultar contadores
+        // ni adquirir el lock de intentos cuando esta protección está apagada.
+        if (!self::loginThrottleEnabled()) {
+            return $this->attemptLogin($request);
+        }
         // Usar el correo registrado también agrupa variantes equivalentes
         // para la colación de la base, sin modificar la cuenta existente.
         $accountEmail = User::where('email', $request->email)->value('email') ?? $request->email;
@@ -69,9 +80,9 @@ class AuthController extends Controller
         ], 429)->header('Retry-After', '1');
     }
 
-    protected function attemptLogin(Request $request, string $throttleKey)
+    protected function attemptLogin(Request $request, ?string $throttleKey = null)
     {
-        $this->rateLimitLogin($throttleKey);
+        if ($throttleKey !== null) $this->rateLimitLogin($throttleKey);
 
         $credentials = [
             ...$request->only('email', 'password'),
@@ -79,7 +90,7 @@ class AuthController extends Controller
         ];
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
-            Cache::forget($throttleKey);
+            if ($throttleKey !== null) Cache::forget($throttleKey);
             $request->session()->regenerate();
 
             // Log de login exitoso (RNF-08)
@@ -92,7 +103,7 @@ class AuthController extends Controller
             return redirect()->intended('/tickets');
         }
 
-        $this->recordFailedLogin($throttleKey);
+        if ($throttleKey !== null) $this->recordFailedLogin($throttleKey);
 
         // Registro en DB de intento fallido (RNF-08)
         LoginAttempt::record($request->email, $request->ip(), $request->userAgent(), false);

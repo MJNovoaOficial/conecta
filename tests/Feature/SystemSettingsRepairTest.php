@@ -241,6 +241,7 @@ class SystemSettingsRepairTest extends TestCase
 
     public function test_valores_guardados_no_alteran_login_o_el_acceso_de_invitados_en_esta_etapa(): void
     {
+        config(['auth.login_throttle_enabled' => true]);
         $owner = User::factory()->create();
         $this->actingAs(User::factory()->administrador()->create())->post(route('admin.settings.update'), ['settings'=>['allow_guest_tickets'=>'0','max_login_attempts'=>'1','login_lockout_minutes'=>'30']])->assertSessionHasNoErrors();
         Auth::logout();
