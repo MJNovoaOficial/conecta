@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\AuthController;
 use App\Models\Notificacion;
 use App\Models\SystemSetting;
 use App\Models\Ticket;
@@ -37,12 +36,11 @@ class ApprovedConfigurationTest extends TestCase
 
     public function test_opciones_generales_y_login_son_informativas_sla_se_conserva_en_sidebar(): void
     {
-        config(['auth.login_throttle_enabled' => true]);
         $response=$this->actingAs(User::factory()->administrador()->create())->get(route('admin.settings.index'))->assertOk();
         foreach (['app_name','app_timezone','tickets_per_page','allow_guest_tickets','max_login_attempts','login_lockout_minutes','auto_close_enabled','user_response_timeout_hours'] as $key) {
             $response->assertDontSee('name="settings['.$key.']"',false);
         }
-        $response->assertSee('90 segundos')->assertSee(config('app.timezone'))->assertSee('15 tickets')
+        $response->assertDontSee('90 segundos')->assertSee(config('app.timezone'))->assertSee('15 tickets')
             ->assertSee('href="'.route('admin.sla.index').'"',false)->assertDontSee('id="tab-sla"',false);
         $this->assertDatabaseCount('system_settings',0);
     }
@@ -58,8 +56,8 @@ class ApprovedConfigurationTest extends TestCase
             'login_lockout_minutes'=>'30','auto_close_enabled'=>'0',
         ]])->assertSessionHasNoErrors();
         $this->assertSame($before,SystemSetting::orderBy('key')->get()->map(fn($s)=>$s->getAttributes())->all());
-        $this->assertSame(5,AuthController::LOGIN_MAX_ATTEMPTS);
-        $this->assertSame(90,AuthController::LOGIN_LOCKOUT_SECONDS);
+        $this->assertDatabaseMissing('system_settings',['key'=>'max_login_attempts']);
+        $this->assertDatabaseMissing('system_settings',['key'=>'login_lockout_minutes']);
     }
 
     public function test_default_ausente_no_se_comparte_entre_consumidores_ni_acepta_cache_vieja(): void

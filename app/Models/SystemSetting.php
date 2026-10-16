@@ -64,7 +64,10 @@ class SystemSetting extends Model
      */
     public static function forSettingsPage(): array
     {
-        $stored = static::all()->keyBy('key');
+        // Opciones retiradas del login: ocultar filas históricas sin borrarlas.
+        $stored = static::all()
+            ->reject(fn ($setting) => in_array($setting->key, ['max_login_attempts', 'login_lockout_minutes'], true))
+            ->keyBy('key');
         $defaults = collect(SystemSettingsCatalog::defaults())->keyBy('key');
         $rows = $stored->map(function ($setting) use ($defaults) {
             $copy = clone $setting;

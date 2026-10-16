@@ -45,9 +45,9 @@ class SystemSettingsRepairTest extends TestCase
         $response = $this->actingAs(User::factory()->administrador()->create())
             ->get(route('admin.settings.index'))->assertOk()->assertSee('Opciones operativas')
             ->assertSee('valores iniciales')->assertSee('Nombre del sistema')
-            ->assertSee('Avisos de comentarios')->assertSee('Intentos máximos de login');
+            ->assertSee('Avisos de comentarios')->assertSee('Cierre de sesión por inactividad');
         $settings = $response->viewData('settings');
-        foreach (['general'=>4, 'attachments'=>3, 'notifications'=>6, 'security'=>3] as $group=>$count) {
+        foreach (['general'=>4, 'attachments'=>3, 'notifications'=>6, 'security'=>1] as $group=>$count) {
             $this->assertCount($count, $settings[$group]);
             foreach ($settings[$group] as $setting) $this->assertFalse($setting->exists);
         }
@@ -84,7 +84,7 @@ class SystemSettingsRepairTest extends TestCase
         $beforeExisting = $existing->fresh()->getAttributes();
         $beforeOther = $other->fresh()->getAttributes();
         $this->seed(SystemSettingsSeeder::class);
-        $this->assertDatabaseCount('system_settings', 19);
+        $this->assertDatabaseCount('system_settings', 17);
         $this->assertSame($beforeExisting, $existing->fresh()->getAttributes());
         $this->assertSame($beforeOther, $other->fresh()->getAttributes());
         $before = $this->snapshot();
@@ -241,7 +241,6 @@ class SystemSettingsRepairTest extends TestCase
 
     public function test_valores_guardados_no_alteran_login_o_el_acceso_de_invitados_en_esta_etapa(): void
     {
-        config(['auth.login_throttle_enabled' => true]);
         $owner = User::factory()->create();
         $this->actingAs(User::factory()->administrador()->create())->post(route('admin.settings.update'), ['settings'=>['allow_guest_tickets'=>'0','max_login_attempts'=>'1','login_lockout_minutes'=>'30']])->assertSessionHasNoErrors();
         Auth::logout();
@@ -250,14 +249,14 @@ class SystemSettingsRepairTest extends TestCase
         $this->post(route('tickets.guest.store'), ['guest_name'=>'Invitado','guest_email'=>'guest@example.test','title'=>'Crear sin cuenta','description'=>'No bloquear el flujo existente.'])->assertRedirect();
         $this->assertDatabaseHas('tickets', ['guest_email'=>'guest@example.test','status'=>'open']);
         $key = 'login:account:'.hash('sha256',strtolower(trim($owner->email)));
-        for ($i=1; $i<=5; $i++) {
+        for ($i=1; $i<=8; $i++) {
             Auth::logout();
             $this->post('/login',['email'=>$owner->email,'password'=>'incorrect-password'])->assertSessionHasErrors('email');
-            $state = Cache::get($key);
-            $this->assertSame($i,$state['failures']);
-            if ($i<5) $this->assertArrayNotHasKey('blocked_until',$state);
-            else $this->assertEqualsWithDelta(now()->timestamp+90,$state['blocked_until'],2);
+            $this->assertNull(Cache::get($key));
         }
+        Auth::logout();
+        $this->post('/login',['email'=>$owner->email,'password'=>'password'])->assertRedirect('/tickets');
+        $this->assertAuthenticatedAs($owner);
     }
 
     public function test_textos_personalizados_se_escapan_al_mostrarlos(): void

@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\AuthController;
 use App\Models\LoginAttempt;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -11,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
-class LoginThrottleDisabledTest extends TestCase
+class LoginAccessTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -27,9 +26,8 @@ class LoginThrottleDisabledTest extends TestCase
             ->from('/')->post('/login', ['email' => $email, 'password' => $password]);
     }
 
-    public function test_desactivado_por_defecto_permite_corregir_la_clave_sin_esperar(): void
+    public function test_permite_corregir_la_clave_sin_limite_ni_espera(): void
     {
-        $this->assertFalse(AuthController::loginThrottleEnabled());
         $user = User::factory()->create();
         for ($i = 0; $i < 12; $i++) {
             $this->login($user->email)->assertRedirect('/')->assertSessionHasErrors([
@@ -100,25 +98,23 @@ class LoginThrottleDisabledTest extends TestCase
         $this->assertSame(10, LoginAttempt::where('successful', true)->count());
     }
 
-    public function test_puede_reactivarse_sin_cambiar_el_codigo_del_controlador(): void
+    public function test_configuracion_antigua_no_puede_reactivar_el_bloqueo_eliminado(): void
     {
         config(['auth.login_throttle_enabled' => true]);
         $user = User::factory()->create();
-        for ($i = 0; $i < 5; $i++) $this->login($user->email)->assertSessionHasErrors('email');
-        $this->login($user->email, 'password')->assertStatus(429)->assertHeader('Retry-After', '90');
-        config(['auth.login_throttle_enabled' => false]);
+        for ($i = 0; $i < 8; $i++) $this->login($user->email)->assertSessionHasErrors('email');
         $this->login($user->email, 'password')->assertRedirect('/tickets');
         $this->assertAuthenticatedAs($user);
     }
 
-    public function test_configuracion_informa_que_el_bloqueo_esta_desactivado(): void
+    public function test_configuracion_oculta_opciones_retiradas_sin_borrar_datos_historicos(): void
     {
         $stored = SystemSetting::create(['key' => 'login_lockout_minutes', 'value' => '15',
             'type' => 'integer', 'group' => 'security', 'label' => 'Bloqueo por intentos fallidos',
             'description' => 'Regla vigente: 90 segundos después de 5 fallos por cuenta.']);
         $this->actingAs(User::factory()->administrador()->create())->get(route('admin.settings.index'))
-            ->assertOk()->assertSee('Desactivados temporalmente')
-            ->assertSee('Sin tiempo de espera por intentos fallidos')
+            ->assertOk()->assertDontSee('Bloqueo por intentos fallidos')
+            ->assertDontSee('Intentos máximos de login')->assertDontSee('Se reactiva')
             ->assertDontSee('90 segundos')->assertDontSee('name="settings[max_login_attempts]"', false);
         $this->assertSame('Regla vigente: 90 segundos después de 5 fallos por cuenta.', $stored->fresh()->description);
     }
