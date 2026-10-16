@@ -113,9 +113,6 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-        // Rate limiting: máximo 3 registros por 1 hora desde la misma IP
-        $this->rateLimitRegister($request);
-
         $request->validate([
             'name' => 'required|string|max:255|regex:/^[\p{L}\s]+$/u',
             'email' => 'required|string|email|max:255|unique:usuarios|regex:/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/',
@@ -190,17 +187,4 @@ class AuthController extends Controller
         }
     }
 
-    protected function rateLimitRegister(Request $request)
-    {
-        $throttleKey = 'register:' . $request->ip();
-        $maxAttempts = 3;
-        $decayHours = 1;
-
-        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, $maxAttempts)) {
-            $seconds = \Illuminate\Support\Facades\RateLimiter::availableIn($throttleKey);
-            abort(response()->view('auth.throttle', ['seconds' => $seconds], 429));
-        }
-
-        \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, $decayHours * 3600);
-    }
 }
