@@ -492,24 +492,24 @@
             </div>
 
             {{-- Auto-asignarse --}}
-            @if($ticket->status === 'closed')
-                <div class="lock-note"><i class="fas fa-lock"></i> Ticket cerrado: no permite asignación ni derivación.</div>
+            @if(in_array($ticket->status, ['closed', 'resolved']))
+                <div class="lock-note"><i class="fas fa-lock"></i> Ticket {{ $ticket->status === 'closed' ? 'cerrado' : 'resuelto' }}: no permite asignación ni derivación.</div>
             @elseif($ticket->assigned_to === Auth::id())
                 <div class="mine-note"><i class="fas fa-check"></i> Asignado a ti</div>
-            @elseif($ticket->assigned_to && !Auth::user()->isAdmin())
-                <div class="lock-note"><i class="fas fa-lock"></i> Tomado por <strong style="margin-left:3px;">{{ $ticket->assignedTo->name }}</strong></div>
+            @elseif($ticket->assigned_to)
+                <div class="lock-note"><i class="fas fa-lock"></i> Tomado por <strong style="margin-left:3px;">{{ $ticket->assignedTo->name ?? 'otro agente' }}</strong></div>
             @else
                 <form method="POST" action="/tickets/{{ $ticket->id }}/self-assign" style="margin-bottom:10px;">
                     @csrf
                     <button type="submit" class="side-btn side-btn-green">
                         <i class="fas fa-hand-point-up"></i>
-                        {{ $ticket->assigned_to ? 'Reasignarme':'Asignarme este ticket' }}
+                        Asignarme este ticket
                     </button>
                 </form>
             @endif
 
-            {{-- Asignar a otro / Derivar: solo admin o el agente asignado --}}
-            @if($ticket->status !== 'closed' && (Auth::user()->isAdmin() || $ticket->assigned_to === Auth::id()))
+            {{-- Solo el responsable actual entrega el ticket a otro agente. --}}
+            @if(!in_array($ticket->status, ['closed', 'resolved']) && $ticket->assigned_to === Auth::id())
             {{-- Asignar a otro --}}
             <button class="side-btn side-btn-outline" data-bs-toggle="modal" data-bs-target="#assignModal">
                 <i class="fas fa-user-check"></i> Asignar a otro agente
@@ -523,12 +523,13 @@
             @endif
 
             {{-- Solicitar Información Adicional (RF-ST-15 / RNG-01) --}}
-            @if(!in_array($ticket->status, ['closed','resolved','pending_user']))
+            @if($ticket->status !== 'pending_user' || !$ticket->response_deadline_at)
             <button class="side-btn side-btn-outline" data-bs-toggle="modal" data-bs-target="#requestInfoModal"
                     style="border-color:#f59e0b;color:#f59e0b;margin-top:4px;">
                 <i class="fas fa-question-circle"></i> Solicitar información
             </button>
-            @elseif($ticket->status === 'pending_user')
+            @endif
+            @if($ticket->status === 'pending_user')
             <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:8px 10px;font-size:.76rem;color:#92400e;margin-top:6px;">
                 <i class="fas fa-clock"></i> Esperando respuesta del usuario
                 @if($ticket->response_deadline_at)
@@ -760,7 +761,7 @@
 
 {{-- Modal Asignar --}}
 @auth
-@if($ticket->status !== 'closed' && (Auth::user()->isAdmin() || (Auth::user()->isSupport() && $ticket->assigned_to === Auth::id())))
+@if(!in_array($ticket->status, ['closed', 'resolved']) && (Auth::user()->isAdmin() || Auth::user()->isSupport()) && $ticket->assigned_to === Auth::id())
 <div class="modal fade" id="assignModal" tabindex="-1">
     <div class="modal-dialog">
         <form method="POST" action="/tickets/{{ $ticket->id }}/assign">
@@ -794,7 +795,7 @@
 
 {{-- Modal Derivar --}}
 @auth
-@if($ticket->status !== 'closed' && (Auth::user()->isAdmin() || (Auth::user()->isSupport() && $ticket->assigned_to === Auth::id())))
+@if(!in_array($ticket->status, ['closed', 'resolved']) && (Auth::user()->isAdmin() || Auth::user()->isSupport()) && $ticket->assigned_to === Auth::id())
 <div class="modal fade" id="forwardModal" tabindex="-1">
     <div class="modal-dialog">
         <form method="POST" action="/tickets/{{ $ticket->id }}/forward">
@@ -807,6 +808,7 @@
                 <div class="modal-body" style="padding:20px;">
                     <div class="mb-3">
                         <label style="font-size:.82rem;font-weight:600;color:#4a5568;display:block;margin-bottom:6px;">Departamento destino</label>
+                        <p style="font-size:.82rem;color:#718096;">Traslada el ticket y lo deja sin agente asignado hasta que un agente de soporte lo tome. No habilita respuestas de usuarios comunes de ese departamento.</p>
                         <select class="form-select" name="department_id" required style="border-radius:7px;border-color:#e2e8f0;">
                             <option value="">-- Selecciona --</option>
                             @foreach($departments as $dept)
@@ -834,7 +836,7 @@
 
 {{-- Modal: Solicitar Información Adicional (RF-ST-15 / RNG-01) --}}
 @auth
-@if($ticket->hasAssignedSupport() && !in_array($ticket->status, ['closed', 'resolved']) && (Auth::user()->isAdmin() || (Auth::user()->isSupport() && $ticket->assigned_to === Auth::id())))
+@if($ticket->hasAssignedSupport() && !in_array($ticket->status, ['closed', 'resolved']) && (Auth::user()->isAdmin() || Auth::user()->isSupport()) && $ticket->assigned_to === Auth::id())
 <div class="modal fade" id="requestInfoModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content" style="border-radius:12px;border:none;">

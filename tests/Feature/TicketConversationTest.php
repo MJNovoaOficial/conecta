@@ -34,9 +34,10 @@ class TicketConversationTest extends TestCase
         $ticket->update(['assigned_to' => $assigned->id]);
         TicketComment::create(['ticket_id' => $ticket->id, 'user_id' => $owner->id, 'comment' => 'Mensaje previo que debe conservarse.']);
         foreach ([$owner, $assigned, User::factory()->administrador()->create()] as $actor) {
-            $this->actingAs($actor)->from(route('tickets.show',$ticket))
-                ->post(route('tickets.addComment',$ticket), ['comment' => 'Excelente'])
-                ->assertSessionHasErrors('comment')->assertRedirect(route('tickets.show',$ticket));
+            $response = $this->actingAs($actor)->from(route('tickets.show',$ticket))
+                ->post(route('tickets.addComment',$ticket), ['comment' => 'Excelente']);
+            if ($actor->isAdmin()) $response->assertForbidden();
+            else $response->assertSessionHasErrors('comment')->assertRedirect(route('tickets.show',$ticket));
             $this->assertSame(1,$ticket->comments()->count());
             $this->assertSame(Ticket::STATUS_CLOSED,$ticket->fresh()->status);
         }
@@ -65,7 +66,7 @@ class TicketConversationTest extends TestCase
         $ticket = $this->ticket(User::factory()->create(),Ticket::STATUS_CLOSED);
         $this->actingAs(User::factory()->administrador()->create())
             ->post(route('tickets.addComment',$ticket),['comment'=>'Necesitamos información adicional.','request_info'=>1])
-            ->assertSessionHasErrors('comment');
+            ->assertForbidden();
         $this->assertSame(Ticket::STATUS_CLOSED,$ticket->fresh()->status);
         $this->assertSame(0,$ticket->comments()->count());
         $this->assertDatabaseCount('historial_ticket',0);

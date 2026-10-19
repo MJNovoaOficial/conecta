@@ -271,7 +271,9 @@ class TicketResolutionFlowTest extends TestCase
         $ticket = $this->ticket();
         $this->resolve($ticket);
         foreach ([$ticket->user, $ticket->assignedTo, User::factory()->administrador()->create()] as $actor) {
-            $this->actingAs($actor)->post(route('tickets.addComment', $ticket), ['comment' => 'No debe cambiar el estado.', 'request_info' => 1])->assertSessionHasErrors('comment');
+            $response = $this->actingAs($actor)->post(route('tickets.addComment', $ticket), ['comment' => 'No debe cambiar el estado.', 'request_info' => 1]);
+            if ($actor->isAdmin()) $response->assertForbidden();
+            else $response->assertSessionHasErrors('comment');
             $html = $this->get(route('tickets.show', $ticket))->assertOk()->getContent();
             $this->assertSame(0, $this->forms($html, '/comment'));
         }

@@ -511,20 +511,20 @@ class TicketController extends Controller
         ]);
 
         $oldStatus = $ticket->status;
-        if ($oldStatus === Ticket::STATUS_PENDING_USER && !$this->updateTicketAssignment($ticket, [
+        $transition = $oldStatus === Ticket::STATUS_PENDING_USER ? [
             'user_responded_at' => Carbon::now(),
             'status' => Ticket::STATUS_IN_PROGRESS,
-        ])) {
+            'response_deadline_at' => null,
+        ] : [];
+        $comentario = $this->storeConversationComment($ticket, [
+            'user_id' => null,
+            'comment' => $request->comment,
+            'ticket_status_at_comment' => $oldStatus,
+            'is_internal' => false,
+        ], $transition);
+        if (!$comentario) {
             return back()->withErrors(['comment' => 'El estado cambió mientras respondías. Actualiza el ticket antes de continuar.']);
         }
-
-        $comentario = TicketComment::create([
-            'ticket_id'                => $ticket->id,
-            'user_id'                  => null,   // un invitado no tiene cuenta
-            'comment'                  => $request->comment,
-            'ticket_status_at_comment' => $oldStatus,
-            'is_internal'              => false,  // nunca interno: lo escribe quien reporta
-        ]);
 
         $this->processAttachments($request, $ticket, $comentario->id);
 
@@ -569,8 +569,7 @@ class TicketController extends Controller
             return back()->withErrors(['comment' => 'El ticket está resuelto. Si el problema sigue, usa la opción para reabrirlo.']);
         }
 
-        // before() conserva la supervisión administrativa, pero tampoco un
-        // administrador abre el chat de un ticket todavía sin responsable.
+        // El chat requiere un responsable válido, también para administradores.
         if (!$ticket->hasAssignedSupport()) {
             return back()->withErrors(['comment' => 'La conversación se habilitará cuando un agente de soporte tome este ticket.']);
         }
@@ -605,6 +604,10 @@ class TicketController extends Controller
         // debe poder activarse agregando request_info a una petición manual.
         if ($request->boolean('request_info')) {
             $this->authorize('manage', $ticket);
+            abort_unless($ticket->assigned_to === Auth::id(), 403);
+            if ($request->boolean('is_internal')) {
+                return back()->withErrors(['comment' => 'La solicitud de información debe ser un mensaje público para el solicitante.']);
+            }
         }
 
         // Verificar permisos para comentarios internos
@@ -614,7 +617,9 @@ class TicketController extends Controller
 
         $oldStatus = $ticket->status;
         $requestsInfo = $request->boolean('request_info');
-        $ownerResponds = $oldStatus === Ticket::STATUS_PENDING_USER && Auth::id() === $ticket->user_id;
+        $isInternal = $request->boolean('is_internal');
+        $ownerResponds = !$isInternal && $oldStatus === Ticket::STATUS_PENDING_USER && Auth::id() === $ticket->user_id;
+        $agentResponds = !$isInternal && Auth::id() === $ticket->assigned_to && Auth::id() !== $ticket->user_id;
         $transition = [];
         if ($requestsInfo) {
             $transition = [
@@ -624,19 +629,27 @@ class TicketController extends Controller
                 'user_responded_at' => null,
             ];
         } elseif ($ownerResponds) {
-            $transition = ['user_responded_at' => Carbon::now(), 'status' => Ticket::STATUS_IN_PROGRESS];
+            $transition = ['user_responded_at' => Carbon::now(), 'status' => Ticket::STATUS_IN_PROGRESS, 'response_deadline_at' => null];
+        } elseif ($agentResponds && $oldStatus !== Ticket::STATUS_PENDING_USER) {
+            // Una respuesta pública entrega el turno al solicitante. No activa
+            // el cierre por falta de respuesta: ese plazo sigue siendo explícito
+            // en Solicitar información. Tampoco se reinicia uno ya vigente.
+            $transition = [
+                'status' => Ticket::STATUS_PENDING_USER,
+                'last_response_request_at' => Carbon::now(),
+                'response_deadline_at' => null,
+                'user_responded_at' => null,
+            ];
         }
-        if ($transition && !$this->updateTicketAssignment($ticket, $transition)) {
-            return back()->withErrors(['comment' => 'El estado o el responsable cambió mientras respondías. Actualiza el ticket antes de continuar.']);
-        }
-
-        $comment = TicketComment::create([
-            'ticket_id'               => $ticket->id,
+        $comment = $this->storeConversationComment($ticket, [
             'user_id'                 => Auth::id(),
             'comment'                 => $request->comment,
             'ticket_status_at_comment'=> $oldStatus,
-            'is_internal'             => $request->boolean('is_internal', false),
-        ]);
+            'is_internal'             => $isInternal,
+        ], $transition);
+        if (!$comment) {
+            return back()->withErrors(['comment' => 'El estado o el responsable cambió mientras respondías. Actualiza el ticket antes de continuar.']);
+        }
 
         // Procesar adjuntos del comentario
         $this->processAttachments($request, $ticket, $comment->id);
@@ -662,6 +675,13 @@ class TicketController extends Controller
                 );
             }
             return back()->with('success', 'Solicitud de información enviada. El ticket queda Pendiente del Usuario (2h).');
+        }
+
+        if ($agentResponds && $oldStatus !== $ticket->status) {
+            TicketHistory::create([
+                'ticket_id' => $ticket->id, 'user_id' => Auth::id(), 'action' => 'status_change',
+                'old_value' => $oldStatus, 'new_value' => Ticket::STATUS_PENDING_USER, 'field_name' => 'status',
+            ]);
         }
 
         // Si el ticket estaba en "pendiente_usuario" y el creador responde, registrar respuesta
@@ -762,12 +782,16 @@ class TicketController extends Controller
         if ($ticket->status === Ticket::STATUS_CLOSED) {
             return back()->with('error', 'El ticket está cerrado. No puede asignarse ni derivarse.');
         }
+        if ($ticket->status === Ticket::STATUS_RESOLVED) {
+            return back()->with('error', 'El ticket está resuelto. Debe reabrirse antes de cambiar su asignación.');
+        }
 
         $user = Auth::user();
 
-        // Solo el admin o el agente asignado pueden reasignar
-        if (!$user->isAdmin() && $ticket->assigned_to !== $user->id) {
-            return back()->with('error', 'Solo el administrador o el agente asignado pueden reasignar este ticket.');
+        // La entrega a otro agente la realiza el responsable actual, incluso
+        // cuando quien consulta tiene rol de administrador.
+        if ($ticket->assigned_to !== $user->id) {
+            return back()->with('error', 'Solo el agente asignado puede entregar este ticket a otro agente.');
         }
         $request->validate([
             'user_id' => [
@@ -837,15 +861,16 @@ class TicketController extends Controller
         if ($ticket->status === Ticket::STATUS_CLOSED) {
             return back()->with('error', 'El ticket está cerrado. No puede asignarse ni derivarse.');
         }
+        if ($ticket->status === Ticket::STATUS_RESOLVED) {
+            return back()->with('error', 'El ticket está resuelto. Debe reabrirse antes de cambiar su asignación.');
+        }
 
         $user = Auth::user();
 
-        // Si ya está asignado a OTRO agente, solo el admin puede reasignarlo
+        // Nadie puede apropiarse del ticket de otro agente, tampoco un admin.
         if ($ticket->assigned_to && $ticket->assigned_to !== $user->id) {
-            if (!$user->isAdmin()) {
-                $assignedName = optional($ticket->assignedTo)->name ?? 'otro agente';
-                return back()->with('error', "Este ticket ya fue tomado por {$assignedName}. Solo un administrador puede reasignarlo.");
-            }
+            $assignedName = optional($ticket->assignedTo)->name ?? 'otro agente';
+            return back()->with('error', "Este ticket ya fue tomado por {$assignedName}. Ese agente debe entregarlo a otro responsable.");
         }
 
         $oldAssigned = $ticket->assigned_to;
@@ -909,9 +934,9 @@ class TicketController extends Controller
 
         $user = Auth::user();
 
-        // Solo el admin o el agente asignado pueden derivar
-        if (!$user->isAdmin() && $ticket->assigned_to !== $user->id) {
-            return back()->with('error', 'Solo el administrador o el agente asignado pueden derivar este ticket.');
+        // La derivación también corresponde al responsable actual.
+        if ($ticket->assigned_to !== $user->id) {
+            return back()->with('error', 'Solo el agente asignado puede derivar este ticket.');
         }
 
         $request->validate([
@@ -970,6 +995,23 @@ class TicketController extends Controller
         $this->notifyTicketUpdate($ticket, 'Tu ticket ha sido derivado al departamento ' . $newDeptName . '.', 'forwarded');
 
         return back()->with('success', 'Ticket derivado a ' . $newDeptName . '.');
+    }
+
+    /**
+     * Guardar el mensaje y su cambio de turno juntos. El bloqueo dura solo
+     * esta transacción, nunca durante archivos o correos. Una pestaña antigua
+     * no puede intervenir después de una reasignación, respuesta o cierre.
+     */
+    private function storeConversationComment(Ticket $ticket, array $attributes, array $transition): ?TicketComment
+    {
+        return DB::transaction(function () use ($ticket, $attributes, $transition) {
+            $current = Ticket::query()->whereKey($ticket->id)->lockForUpdate()->firstOrFail();
+            foreach (['assigned_to', 'status', 'department_id', 'resolved_at', 'last_response_request_at', 'response_deadline_at', 'user_responded_at'] as $field) {
+                if ($current->getRawOriginal($field) !== $ticket->getRawOriginal($field)) return null;
+            }
+            if ($transition && !$this->updateTicketAssignment($ticket, $transition)) return null;
+            return TicketComment::create(['ticket_id' => $ticket->id] + $attributes);
+        });
     }
 
     /**

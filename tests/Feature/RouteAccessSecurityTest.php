@@ -209,13 +209,13 @@ class RouteAccessSecurityTest extends TestCase
         $owner = $this->createUser('user', $department);
         $admin = $this->createUser('admin', $department);
         $regularUser = $this->createUser('user', $department);
-        $ticket = $this->createTicket($owner, $department);
+        $ticket = $this->createTicket($owner, $department, $admin);
 
         $this->actingAs($admin)
             ->post(route('tickets.assignTo', $ticket), ['user_id' => $regularUser->id])
             ->assertSessionHasErrors('user_id');
 
-        $this->assertNull($ticket->fresh()->assigned_to);
+        $this->assertSame($admin->id, $ticket->fresh()->assigned_to);
     }
 
     public function test_usuario_no_modifica_ticket_ajeno_cambiando_el_id(): void

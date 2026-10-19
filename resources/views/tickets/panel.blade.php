@@ -124,23 +124,23 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
     <p style="margin-bottom:10px;">Estado actual: <strong>{{ $ticket->getStatusLabel() }}</strong>. Se actualiza mediante las acciones del ticket.</p>
 
     {{-- Asignación --}}
-    @if($ticket->status === 'closed')
-      <div class="lock-badge" style="margin-bottom:10px;">🔒 Ticket cerrado: no permite asignación ni derivación.</div>
+    @if(in_array($ticket->status, ['closed', 'resolved']))
+      <div class="lock-badge" style="margin-bottom:10px;">🔒 Ticket {{ $ticket->status === 'closed' ? 'cerrado' : 'resuelto' }}: no permite asignación ni derivación.</div>
     @elseif($ticket->assigned_to === Auth::id())
       <div class="lock-badge" style="background:#d1fae5;border-color:#6ee7b7;color:#065f46;margin-bottom:10px;">✅ Asignado a ti</div>
-    @elseif($ticket->assigned_to && !Auth::user()->isAdmin())
-      <div class="lock-badge" style="margin-bottom:10px;">🔒 Tomado por <strong style="margin-left:4px;">{{ $ticket->assignedTo->name }}</strong></div>
+    @elseif($ticket->assigned_to)
+      <div class="lock-badge" style="margin-bottom:10px;">🔒 Tomado por <strong style="margin-left:4px;">{{ $ticket->assignedTo->name ?? 'otro agente' }}</strong></div>
     @else
       <form method="POST" action="/tickets/{{ $ticket->id }}/self-assign" style="margin-bottom:10px;">
         @csrf
         <button type="submit" class="btn-act btn-act-green">
-          ✋ {{ $ticket->assigned_to ? 'Reasignarme' : 'Asignarme este ticket' }}
+          ✋ Asignarme este ticket
         </button>
       </form>
     @endif
 
     {{-- Asignar a otro --}}
-    @if($ticket->status !== 'closed' && (Auth::user()->isAdmin() || $ticket->assigned_to === Auth::id()))
+    @if(!in_array($ticket->status, ['closed', 'resolved']) && $ticket->assigned_to === Auth::id())
     <div class="assign-section">
       <form method="POST" action="/tickets/{{ $ticket->id }}/assign">
         @csrf

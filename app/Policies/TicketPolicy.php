@@ -8,10 +8,12 @@ use App\Models\User;
 class TicketPolicy
 {
     /**
-     * El administrador puede realizar cualquier operación sobre un ticket.
+     * La supervisión administrativa no permite intervenir en la conversación
+     * de otro agente: para responder también debe tener asignado el ticket.
      */
     public function before(User $user, string $ability): ?bool
     {
+        if ($ability === 'comment') return null;
         return $user->isAdmin() ? true : null;
     }
 
@@ -28,7 +30,8 @@ class TicketPolicy
     public function comment(User $user, Ticket $ticket): bool
     {
         return $ticket->hasAssignedSupport()
-            && ($user->id === $ticket->user_id || $this->manage($user, $ticket));
+            && ($user->id === $ticket->user_id
+                || (($user->isSupport() || $user->isAdmin()) && $ticket->assigned_to === $user->id));
     }
 
     /**

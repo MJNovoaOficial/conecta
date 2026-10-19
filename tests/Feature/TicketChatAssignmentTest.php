@@ -49,8 +49,7 @@ class TicketChatAssignmentTest extends TestCase
         foreach ([$owner, $support, $admin] as $actor) {
             foreach ([[], ['request_info' => 1], ['is_internal' => 1]] as $option) {
                 $response = $this->actingAs($actor)->post(route('tickets.addComment', $ticket), ['comment' => 'No debe guardarse.'] + $option);
-                if ($actor->isAdmin()) $response->assertSessionHasErrors('comment');
-                else $response->assertForbidden();
+                $response->assertForbidden();
                 $this->assertSame($before, $ticket->fresh()->getAttributes());
                 $this->assertSame(1, $ticket->comments()->count());
                 $this->assertDatabaseCount('historial_ticket', 0);
@@ -74,7 +73,7 @@ class TicketChatAssignmentTest extends TestCase
         }
     }
 
-    public function test_tomar_el_ticket_habilita_solicitante_asignado_y_supervision_admin_pero_no_otro_soporte(): void
+    public function test_tomar_el_ticket_habilita_solicitante_y_asignado_pero_no_otro_soporte_ni_admin(): void
     {
         $owner = User::factory()->create();
         $assigned = User::factory()->soporte()->create();
@@ -82,14 +81,16 @@ class TicketChatAssignmentTest extends TestCase
         $admin = User::factory()->administrador()->create();
         $ticket = $this->ticket($owner);
         $this->actingAs($assigned)->post(route('tickets.selfAssign', $ticket))->assertSessionHas('success');
-        foreach ([$owner, $assigned, $admin] as $actor) {
+        foreach ([$owner, $assigned] as $actor) {
             $this->actingAs($actor)->post(route('tickets.addComment', $ticket), ['comment' => 'Respuesta autorizada.'])->assertSessionHasNoErrors();
         }
-        $this->assertSame(3, $ticket->comments()->count());
-        foreach ([[], ['is_internal' => 1], ['request_info' => 1]] as $option) {
-            $this->actingAs($other)->post(route('tickets.addComment', $ticket), ['comment' => 'No autorizado.'] + $option)->assertForbidden();
+        $this->assertSame(2, $ticket->comments()->count());
+        foreach ([$other, $admin] as $actor) {
+            foreach ([[], ['is_internal' => 1], ['request_info' => 1]] as $option) {
+                $this->actingAs($actor)->post(route('tickets.addComment', $ticket), ['comment' => 'No autorizado.'] + $option)->assertForbidden();
+            }
         }
-        $this->assertSame(3, $ticket->comments()->count());
+        $this->assertSame(2, $ticket->comments()->count());
         foreach (['tickets.show', 'tickets.panel'] as $route) {
             $response = $this->actingAs($other)->get(route($route, $ticket))->assertOk()->assertSee('otro agente');
             $this->assertSame(0, $this->commentForms($response->getContent()));
@@ -136,7 +137,7 @@ class TicketChatAssignmentTest extends TestCase
         $ticket = $this->ticket($owner, User::factory()->create());
         $this->assertFalse($ticket->hasAssignedSupport());
         $this->actingAs($owner)->post(route('tickets.addComment', $ticket), ['comment' => 'No hay agente válido.'])->assertForbidden();
-        $this->actingAs(User::factory()->administrador()->create())->post(route('tickets.addComment', $ticket), ['comment' => 'Tampoco por admin.'])->assertSessionHasErrors('comment');
+        $this->actingAs(User::factory()->administrador()->create())->post(route('tickets.addComment', $ticket), ['comment' => 'Tampoco por admin.'])->assertForbidden();
         $this->assertSame(0, $ticket->comments()->count());
     }
 }

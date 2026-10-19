@@ -137,16 +137,19 @@ class TicketAssignmentRulesTest extends TestCase
         $this->assertSame($first->id, $ticket->fresh()->assigned_to);
     }
 
-    public function test_admin_conserva_la_reasignacion_de_un_ticket_no_cerrado(): void
+    public function test_admin_no_puede_quitarle_el_ticket_a_otro_agente_pero_si_entregar_el_suyo(): void
     {
         $assigned = User::factory()->soporte()->create();
         $next = User::factory()->soporte()->create();
         $admin = User::factory()->administrador()->create();
         $ticket = $this->ticket($assigned, Ticket::STATUS_IN_PROGRESS);
+        $this->actingAs($admin)->post(route('tickets.assignTo', $ticket), ['user_id' => $next->id])->assertSessionHas('error');
+        $this->actingAs($admin)->post(route('tickets.selfAssign', $ticket))->assertSessionHas('error');
+        $this->assertSame($assigned->id, $ticket->fresh()->assigned_to);
+        $this->actingAs($assigned)->post(route('tickets.assignTo', $ticket), ['user_id' => $admin->id])->assertSessionHas('success');
+        $this->assertSame($admin->id, $ticket->fresh()->assigned_to);
         $this->actingAs($admin)->post(route('tickets.assignTo', $ticket), ['user_id' => $next->id])->assertSessionHas('success');
         $this->assertSame($next->id, $ticket->fresh()->assigned_to);
-        $this->actingAs($admin)->post(route('tickets.selfAssign', $ticket))->assertSessionHas('success');
-        $this->assertSame($admin->id, $ticket->fresh()->assigned_to);
     }
 
     public function test_el_agente_de_un_ticket_asignado_pero_abierto_conserva_el_inicio_de_atencion(): void
