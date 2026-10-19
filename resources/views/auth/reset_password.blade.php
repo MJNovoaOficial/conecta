@@ -30,7 +30,7 @@
                             <input type="password" name="password" id="newPass"
                                    class="form-control-custom @error("password") is-invalid @enderror"
                                    style="padding-left:32px;padding-right:38px;" placeholder="Mínimo 8 caracteres" required minlength="8">
-                            <button type="button" onclick="toggleField("newPass","eyeNew")"
+                            <button type="button" onclick="toggleField('newPass','eyeNew')"
                                     style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:#5a6a7d;cursor:pointer;padding:6px;font-size:0.95rem;">
                                 <i class="fas fa-eye" id="eyeNew"></i>
                             </button>
@@ -46,7 +46,7 @@
                             <input type="password" name="password_confirmation" id="confPass"
                                    class="form-control-custom" style="padding-left:32px;padding-right:38px;"
                                    placeholder="Repite la contraseña" required minlength="8">
-                            <button type="button" onclick="toggleField("confPass","eyeConf")"
+                            <button type="button" onclick="toggleField('confPass','eyeConf')"
                                     style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:#5a6a7d;cursor:pointer;padding:6px;font-size:0.95rem;">
                                 <i class="fas fa-eye" id="eyeConf"></i>
                             </button>
