@@ -107,7 +107,7 @@
                     <form method="POST" action="{{ route("notifications.read", $notif) }}" style="display:inline;">
                         @csrf
                         <button type="submit" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:linear-gradient(135deg,#4f8cff,#2563eb);color:#fff;border:none;border-radius:7px;font-size:0.78rem;font-weight:600;cursor:pointer;transition:opacity 0.2s;box-shadow:0 2px 8px rgba(79,140,255,0.3);"
-                                onmouseenter="this.style.opacity=".85"" onmouseleave="this.style.opacity="1"">
+                                onmouseenter="this.style.opacity='.85'" onmouseleave="this.style.opacity='1'">
                             <i class="fas fa-external-link-alt" style="font-size:0.72rem;"></i> Ver ticket
                         </button>
                     </form>

@@ -359,7 +359,8 @@
                             </button>
                         </div>
                         <div class="cat-actions">
-                            <button type="button" class="cat-action-btn" onclick="openEditCat({{ $cat->id }}, '{{ addslashes($cat->name) }}', '{{ addslashes($cat->description ?? '') }}', {{ $cat->is_active ? 'true' : 'false' }})">
+                            <button type="button" class="cat-action-btn" data-category-name="{{ $cat->name }}" data-category-description="{{ $cat->description ?? '' }}"
+                                    onclick="openEditCat({{ $cat->id }}, this.dataset.categoryName, this.dataset.categoryDescription, {{ $cat->is_active ? 'true' : 'false' }})">
                                 <i class="bi bi-pencil"></i> Editar
                             </button>
                             @if($cat->tickets_count == 0)
@@ -501,6 +502,7 @@
                     <textarea name="description" id="edit-cat-desc" class="form-control" rows="2"></textarea>
                 </div>
                 <div class="form-group" style="display:flex;align-items:center;gap:.5rem;">
+                    <input type="hidden" name="is_active" value="0">
                     <input type="checkbox" name="is_active" id="edit-cat-active" value="1" style="width:16px;height:16px;">
                     <label for="edit-cat-active" class="form-label" style="margin:0;">Activa</label>
                 </div>
