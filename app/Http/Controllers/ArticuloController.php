@@ -7,10 +7,16 @@ use App\Models\ArticuloImagen;
 use App\Models\AuditLog;
 use App\Models\Categoria;
 use App\Models\Subcategoria;
+use App\Support\FilterValidation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Administración de la base de conocimiento (RN-18).
@@ -23,6 +29,13 @@ class ArticuloController extends Controller
 {
     public function index(Request $request)
     {
+        FilterValidation::validate($request, [
+            'q' => ['nullable', 'string'],
+            'categoria_id' => ['nullable', 'integer', 'min:1'],
+            'estado' => ['nullable', 'string'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ], 'admin.articulos.index');
+
         $articulos = Articulo::with(['categoria', 'autor'])
             ->when($request->filled('q'), fn ($q) => $q->buscar($request->q))
             ->when($request->filled('categoria_id'), fn ($q) => $q->where('categoria_id', $request->categoria_id))
@@ -43,12 +56,19 @@ class ArticuloController extends Controller
         $datos['created_by'] = Auth::id();
         $datos['is_active']  = true;
 
-        $articulo = Articulo::create($datos);
-        $this->guardarImagenes($request, $articulo);
-
-        AuditLog::record('articulo.created', 'Articulo', $articulo->id, [
-            'title' => $articulo->title,
-        ]);
+        $nuevasRutas = [];
+        try {
+            DB::transaction(function () use ($request, $datos, &$nuevasRutas) {
+                $articulo = Articulo::create($datos);
+                $this->guardarImagenes($request, $articulo, $nuevasRutas);
+                AuditLog::record('articulo.created', 'Articulo', $articulo->id, [
+                    'title' => $articulo->title,
+                ]);
+            });
+        } catch (\Throwable $e) {
+            $this->limpiarImagenesSinReferencias($nuevasRutas);
+            throw $e;
+        }
 
         return back()->with('success', 'Artículo creado correctamente.');
     }
@@ -63,27 +83,35 @@ class ArticuloController extends Controller
 
     public function update(Request $request, Articulo $articulo)
     {
-        $eraPublico = $articulo->publico;
+        // Validar también archivos y metadatos ANTES de escribir texto o borrar.
+        $datos = $this->validar($request, $articulo);
+        $nuevasRutas = [];
+        $rutasRetiradas = [];
+        try {
+            DB::transaction(function () use ($request, $articulo, $datos, &$nuevasRutas, &$rutasRetiradas) {
+                $actual = Articulo::query()->lockForUpdate()->findOrFail($articulo->id);
+                $eraPublico = $actual->publico;
+                $actual->update($datos);
+                $this->actualizarDescripciones($request, $actual);
+                $rutasRetiradas = $this->eliminarImagenes($request, $actual);
+                $this->guardarImagenes($request, $actual, $nuevasRutas);
 
-        $articulo->update($this->validar($request));
-
-        $this->actualizarDescripciones($request, $articulo);
-        $this->eliminarImagenes($request, $articulo);
-        $this->guardarImagenes($request, $articulo);
-
-        AuditLog::record('articulo.updated', 'Articulo', $articulo->id, [
-            'title' => $articulo->title,
-        ]);
-
-        // Se registra aparte porque no es un cambio de contenido: es exponer
-        // un artículo a cualquiera que llegue a la pantalla de login, o dejar
-        // de hacerlo. Conviene poder responder después quién y cuándo.
-        if ($eraPublico !== $articulo->publico) {
-            AuditLog::record('articulo.visibilidad_publica', 'Articulo', $articulo->id, [
-                'title'   => $articulo->title,
-                'publico' => $articulo->publico,
-            ]);
+                AuditLog::record('articulo.updated', 'Articulo', $actual->id, [
+                    'title' => $actual->title,
+                ]);
+                if ($eraPublico !== $actual->publico) {
+                    AuditLog::record('articulo.visibilidad_publica', 'Articulo', $actual->id, [
+                        'title' => $actual->title,
+                        'publico' => $actual->publico,
+                    ]);
+                }
+            });
+        } catch (\Throwable $e) {
+            $this->limpiarImagenesSinReferencias($nuevasRutas);
+            throw $e;
         }
+        // El disco no participa de la transacción: borrar solo tras confirmarla.
+        $this->limpiarImagenesSinReferencias($rutasRetiradas);
 
         return redirect()
             ->route('admin.articulos.index')
@@ -104,32 +132,32 @@ class ArticuloController extends Controller
      * Van al disco privado, igual que los adjuntos: se sirven por
      * FileController y no quedan accesibles sin sesión.
      */
-    private function guardarImagenes(Request $request, Articulo $articulo): void
+    private function guardarImagenes(Request $request, Articulo $articulo, array &$nuevasRutas): void
     {
         if (! $request->hasFile('imagenes')) {
             return;
         }
 
-        $request->validate([
-            'imagenes'   => ['array', 'max:15'],
-            'imagenes.*' => ['image', 'mimes:' . implode(',', self::IMAGENES_PERMITIDAS), 'max:4096'],
-        ], [
-            'imagenes.*.image' => 'Cada archivo debe ser una imagen.',
-            'imagenes.*.max'   => 'Cada imagen debe pesar menos de 4 MB.',
-        ]);
-
         // Las nuevas se agregan después de las que ya estaban.
         $orden = (int) $articulo->imagenes()->max('orden');
 
         foreach ($request->file('imagenes') as $archivo) {
-            if (! $archivo->isValid()) {
-                continue;
-            }
-
             // Nombre propio: el original puede traer acentos, espacios o
             // repetirse entre artículos distintos.
             $nombre = Str::uuid() . '.' . strtolower($archivo->getClientOriginalExtension());
-            $ruta   = $archivo->storeAs('articulos/' . $articulo->id, $nombre, 'local');
+            $ruta = 'articulos/' . $articulo->id . '/' . $nombre;
+            $nuevasRutas[] = $ruta;
+            try {
+                $guardado = $archivo->storeAs('articulos/' . $articulo->id, $nombre, 'local');
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo almacenar una imagen de artículo.', ['exception' => get_class($e)]);
+                $guardado = false;
+            }
+            if ($guardado === false) {
+                throw ValidationException::withMessages([
+                    'imagenes' => 'No se pudieron guardar las imágenes. Intenta nuevamente; no se guardaron cambios.',
+                ]);
+            }
 
             $articulo->imagenes()->create([
                 'ruta'            => $ruta,
@@ -144,33 +172,52 @@ class ArticuloController extends Controller
      */
     private function actualizarDescripciones(Request $request, Articulo $articulo): void
     {
-        foreach ((array) $request->input('imagen_descripcion', []) as $id => $descripcion) {
-            $articulo->imagenes()
-                ->whereKey($id)
-                ->update([
-                    'descripcion' => $descripcion !== '' ? mb_substr($descripcion, 0, 300) : null,
-                    'orden'       => (int) $request->input("imagen_orden.{$id}", 0),
-                ]);
+        $descripciones = $request->input('imagen_descripcion', []);
+        $ordenes = $request->input('imagen_orden', []);
+        foreach (array_unique(array_merge(array_keys($descripciones), array_keys($ordenes))) as $id) {
+            $datos = [];
+            if (array_key_exists($id, $descripciones)) {
+                $datos['descripcion'] = $descripciones[$id] !== '' ? $descripciones[$id] : null;
+            }
+            if (array_key_exists($id, $ordenes)) {
+                $datos['orden'] = (int) $ordenes[$id];
+            }
+            $articulo->imagenes()->whereKey($id)->update($datos);
         }
     }
 
     /**
-     * Borra las imágenes marcadas, del disco y de la base.
-     *
-     * Aquí sí se elimina de verdad: a diferencia de un artículo, una imagen no
-     * deja rastro en ningún ticket y conservarla solo ocupa espacio.
+     * Retira solo las filas marcadas y devuelve rutas para limpiar tras el commit.
      */
-    private function eliminarImagenes(Request $request, Articulo $articulo): void
+    private function eliminarImagenes(Request $request, Articulo $articulo): array
     {
         $ids = (array) $request->input('eliminar_imagen', []);
 
         if (empty($ids)) {
-            return;
+            return [];
         }
 
+        $rutas = [];
         foreach ($articulo->imagenes()->whereKey($ids)->get() as $imagen) {
-            Storage::disk('local')->delete($imagen->ruta);
+            $rutas[] = $imagen->ruta;
             $imagen->delete();
+        }
+        return $rutas;
+    }
+
+    private function limpiarImagenesSinReferencias(array $rutas): void
+    {
+        foreach (array_unique($rutas) as $ruta) {
+            try {
+                if (! ArticuloImagen::where('ruta', $ruta)->exists()
+                    && ! Storage::disk('local')->delete($ruta)) {
+                    Log::warning('No se pudo retirar una imagen sin referencias.', ['path' => $ruta]);
+                }
+            } catch (\Throwable $e) {
+                // Conservar el archivo y registrar el incidente: no convertir
+                // un guardado confirmado en un error que provoque reintentos.
+                Log::warning('Se conserva una imagen al fallar su limpieza.', ['path' => $ruta, 'exception' => get_class($e)]);
+            }
         }
     }
 
@@ -192,9 +239,9 @@ class ArticuloController extends Controller
         );
     }
 
-    private function validar(Request $request): array
+    private function validar(Request $request, ?Articulo $articulo = null): array
     {
-        return $request->validate([
+        $datos = $request->validate([
             'title'           => 'required|string|max:255',
             'symptoms'        => 'nullable|string|max:1000',
             'content'         => 'required|string|max:10000',
@@ -203,7 +250,17 @@ class ArticuloController extends Controller
             // Solo llega desde el formulario de edición. Si no viene, el
             // artículo conserva lo que tenía, y uno nuevo nace privado.
             'publico'         => 'sometimes|boolean',
+            'imagenes'        => ['sometimes', 'array', 'max:15'],
+            'imagenes.*'      => ['required', 'image', 'mimes:' . implode(',', self::IMAGENES_PERMITIDAS), 'max:4096'],
+            'imagen_descripcion'   => ['sometimes', 'array'],
+            'imagen_descripcion.*' => ['nullable', 'string', 'max:300'],
+            'imagen_orden'         => ['sometimes', 'array'],
+            'imagen_orden.*'       => ['required', 'integer', 'between:0,999'],
+            'eliminar_imagen'      => ['sometimes', 'array'],
+            'eliminar_imagen.*'    => ['required', 'integer', Rule::exists('articulo_imagenes', 'id')->where('articulo_id', $articulo?->id ?? 0)],
         ], [
+            'imagenes.*.image' => 'Cada archivo debe ser una imagen.',
+            'imagenes.*.max' => 'Cada imagen debe pesar menos de 4 MB.',
             'required' => 'El campo :attribute es obligatorio.',
             'max'      => 'El campo :attribute no puede superar los :max caracteres.',
             'exists'   => 'La opción seleccionada en :attribute no es válida.',
@@ -214,5 +271,24 @@ class ArticuloController extends Controller
             'categoria_id'    => 'categoría',
             'subcategoria_id' => 'subcategoría',
         ]);
+
+        // Las claves de estos mapas son ID de imagen, no valores de formulario.
+        // No aceptar datos malformados ni imágenes pertenecientes a otro artículo.
+        $ids = array_unique(array_merge(
+            array_keys($datos['imagen_descripcion'] ?? []),
+            array_keys($datos['imagen_orden'] ?? [])
+        ));
+        if ($ids !== []) {
+            $validos = $articulo ? $articulo->imagenes()->pluck('id')->map(fn ($id) => (string) $id)->all() : [];
+            foreach ($ids as $id) {
+                if (! in_array((string) $id, $validos, true)) {
+                    throw ValidationException::withMessages([
+                        'imagenes' => 'Una de las imágenes seleccionadas no pertenece a este artículo. Recarga el formulario.',
+                    ]);
+                }
+            }
+        }
+
+        return Arr::only($datos, ['title', 'symptoms', 'content', 'categoria_id', 'subcategoria_id', 'publico']);
     }
 }

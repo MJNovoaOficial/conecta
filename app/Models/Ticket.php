@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\Eloquent\Model;
 
 class Ticket extends Model
@@ -60,6 +61,7 @@ class Ticket extends Model
     const STATUS_FORWARDED = 'forwarded';
     const STATUS_RESOLVED = 'resolved';
     const STATUS_CLOSED = 'closed';
+    public const STATUS_LABEL_CACHE_KEY = 'ticket_status_labels:v1';
 
     // Relaciones
     public function user()
@@ -80,6 +82,7 @@ class Ticket extends Model
     public function hasAssignedSupport(): bool
     {
         return $this->assigned_to !== null && $this->assignedTo !== null
+            && $this->assignedTo->is_active
             && ($this->assignedTo->isSupport() || $this->assignedTo->isAdmin());
     }
 
@@ -165,17 +168,27 @@ class Ticket extends Model
     }
 
 
+    public static function statusLabels(): array
+    {
+        return Cache::remember(self::STATUS_LABEL_CACHE_KEY, 3600, function () {
+            $labels = [
+                self::STATUS_OPEN => 'Abierto', self::STATUS_IN_PROGRESS => 'En Proceso',
+                self::STATUS_PENDING_USER => 'Pendiente Usuario', self::STATUS_FORWARDED => 'Derivado',
+                self::STATUS_RESOLVED => 'Resuelto', self::STATUS_CLOSED => 'Cerrado',
+            ];
+            $keys = array_map(fn ($status) => 'state_label_'.$status, array_keys($labels));
+            $stored = SystemSetting::whereIn('key', $keys)->pluck('value', 'key');
+            foreach ($labels as $status => $default) {
+                $label = $stored->get('state_label_'.$status);
+                if (is_string($label) && trim($label) !== '' && mb_strlen($label) <= 60) $labels[$status] = $label;
+            }
+            return $labels;
+        });
+    }
+
     public function getStatusLabel()
     {
-        return match($this->status) {
-            self::STATUS_OPEN => 'Abierto',
-            self::STATUS_IN_PROGRESS => 'En Proceso',
-            self::STATUS_PENDING_USER => 'Pendiente Usuario',
-            self::STATUS_FORWARDED => 'Derivado',
-            self::STATUS_RESOLVED => 'Resuelto',
-            self::STATUS_CLOSED => 'Cerrado',
-            default => 'Desconocido',
-        };
+        return self::statusLabels()[$this->status] ?? 'Desconocido';
     }
 
     public function getPriorityLabel()

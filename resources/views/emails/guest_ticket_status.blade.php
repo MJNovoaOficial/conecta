@@ -7,8 +7,10 @@
         <p>Hola {{ $ticket->guest_name }},</p>
         <p>{{ $statusMessage }}</p>
         <p><strong>{{ $ticket->ticket_number }}</strong> — {{ $ticket->title }}</p>
+        @if($ticket->solution_text)
         <p><strong>Solución registrada:</strong></p>
         <div style="white-space:pre-wrap;overflow-wrap:anywhere;">{{ $ticket->solution_text }}</div>
+        @endif
         <p><a href="{{ route('tickets.guest.show', $ticket->guest_token) }}" style="display:inline-block;padding:12px 18px;border-radius:6px;background:#2563eb;color:white;text-decoration:none;">Ver mi ticket</a></p>
         <p style="font-size:12px;color:#718096;">Conecta Soporte. Para responder, usa el enlace de tu ticket.</p>
     </div>

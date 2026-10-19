@@ -3,6 +3,9 @@
 @section('title', 'Mis Tickets de Soporte')
 
 @section('content')
+@php
+    $statusLabels = \App\Models\Ticket::statusLabels();
+@endphp
 <div class="page-wrapper tickets-index-page">
 
     {{-- SIDEBAR --}}
@@ -28,37 +31,37 @@
             </a>
             <a href="{{ route('tickets.index', ['status' => 'open']) }}" class="sidebar-item {{ request('status') == 'open' ? 'active' : '' }}">
                 <div class="item-left">
-                    <div class="item-dot"></div> Abierto
+                    <div class="item-dot"></div> {{ $statusLabels['open'] }}
                 </div>
                 <span class="sidebar-badge badge-open">{{ $counts['open'] ?? 0 }}</span>
             </a>
             <a href="{{ route('tickets.index', ['status' => 'in_progress']) }}" class="sidebar-item {{ request('status') == 'in_progress' ? 'active' : '' }}">
                 <div class="item-left">
-                    <div class="item-dot"></div> En Progreso
+                    <div class="item-dot"></div> {{ $statusLabels['in_progress'] }}
                 </div>
                 <span class="sidebar-badge badge-pending">{{ $counts['in_progress'] ?? 0 }}</span>
             </a>
             <a href="{{ route('tickets.index', ['status' => 'pending_user']) }}" class="sidebar-item {{ request('status') == 'pending_user' ? 'active' : '' }}">
                 <div class="item-left">
-                    <div class="item-dot"></div> Resp. Cliente
+                    <div class="item-dot"></div> {{ $statusLabels['pending_user'] }}
                 </div>
                 <span class="sidebar-badge badge-pending">{{ $counts['pending_user'] ?? 0 }}</span>
             </a>
             <a href="{{ route('tickets.index', ['status' => 'forwarded']) }}" class="sidebar-item {{ request('status') == 'forwarded' ? 'active' : '' }}">
                 <div class="item-left">
-                    <div class="item-dot"></div> Derivado
+                    <div class="item-dot"></div> {{ $statusLabels['forwarded'] }}
                 </div>
                 <span class="sidebar-badge">{{ $counts['forwarded'] ?? 0 }}</span>
             </a>
             <a href="{{ route('tickets.index', ['status' => 'resolved']) }}" class="sidebar-item {{ request('status') == 'resolved' ? 'active' : '' }}">
                 <div class="item-left">
-                    <div class="item-dot"></div> Resuelto
+                    <div class="item-dot"></div> {{ $statusLabels['resolved'] }}
                 </div>
                 <span class="sidebar-badge">{{ $counts['resolved'] ?? 0 }}</span>
             </a>
             <a href="{{ route('tickets.index', ['status' => 'closed']) }}" class="sidebar-item {{ request('status') == 'closed' ? 'active' : '' }}">
                 <div class="item-left">
-                    <div class="item-dot"></div> Cerrado
+                    <div class="item-dot"></div> {{ $statusLabels['closed'] }}
                 </div>
                 <span class="sidebar-badge">{{ $counts['closed'] ?? 0 }}</span>
             </a>
@@ -547,6 +550,11 @@
 .tickets-index-page .sidebar {
     width: 200px;
 }
+
+.tickets-index-page .sidebar-item { gap: 8px; }
+.tickets-index-page .sidebar-item .item-left { min-width: 0; overflow-wrap: anywhere; }
+.tickets-index-page .item-dot, .tickets-index-page .sidebar-badge { flex-shrink: 0; }
+.tickets-index-page .status-badge { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 
 .tickets-index-page .main-content {
     min-width: 0;

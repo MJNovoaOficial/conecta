@@ -145,7 +145,8 @@ class GlobalAttachmentSettingsTest extends TestCase
         $owner=User::factory()->create(); $ticket=$this->ticket($owner); $ticket->update(['status'=>'closed']);
         $this->actingAs($ticket->assignedTo)->post(route('tickets.addComment',$ticket),['comment'=>'No debe abrir el chat.','attachments'=>[$this->pdf()]])->assertSessionHasErrors('comment');
         $this->assertSame(0,$ticket->comments()->count());
-        $this->actingAs($owner)->post(route('tickets.store'),['title'=>'Tipo no permitido','attachments'=>[UploadedFile::fake()->create('ejecutable.php',1,'application/pdf')]])->assertSessionHasNoErrors();
+        $this->actingAs($owner)->post(route('tickets.store'),['title'=>'Tipo no permitido','attachments'=>[UploadedFile::fake()->create('ejecutable.php',1,'application/pdf')]])->assertSessionHasErrors('attachments.0');
+        $this->assertDatabaseCount('tickets', 1);
         $this->assertSame(0,TicketAttachment::count());
     }
 

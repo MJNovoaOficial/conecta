@@ -36,6 +36,7 @@
 .tk-badge {
     display:inline-flex; align-items:center; gap:5px;
     padding:4px 12px; border-radius:20px; font-size:.72rem; font-weight:700;
+    max-width:100%; white-space:normal; overflow-wrap:anywhere;
 }
 .tk-badge-open    { background:#d1fae5; color:#065f46; }
 .tk-badge-inprog  { background:#fef3c7; color:#92400e; }
@@ -209,7 +210,10 @@
 @php
   $statusCls = ['open'=>'tk-badge-open','in_progress'=>'tk-badge-inprog','pending_user'=>'tk-badge-pending','forwarded'=>'tk-badge-fwd','resolved'=>'tk-badge-resolved','closed'=>'tk-badge-closed'];
   $priCls    = ['low'=>'tk-badge-low','medium'=>'tk-badge-medium','high'=>'tk-badge-high','critical'=>'tk-badge-critical'];
-  $sLabel    = ['open'=>'🟢 Abierto','in_progress'=>'🟡 En Proceso','pending_user'=>'🟠 Pendiente Usuario','forwarded'=>'🔵 Derivado','resolved'=>'✅ Resuelto','closed'=>'⚫ Cerrado'];
+  $sLabel = \App\Models\Ticket::statusLabels();
+  foreach (['open'=>'🟢', 'in_progress'=>'🟡', 'pending_user'=>'🟠', 'forwarded'=>'🔵', 'resolved'=>'✅', 'closed'=>'⚫'] as $state => $icon) $sLabel[$state] = $icon.' '.$sLabel[$state];
+  $guestLinkAccess = request()->routeIs('tickets.guest.show') && $ticket->isGuestTicket()
+      && (!Auth::check() || Auth::user()->isUser());
   $pLabel    = ['low'=>'Baja','medium'=>'Media','high'=>'Alta','critical'=>'Crítica'];
 @endphp
 
@@ -391,7 +395,7 @@
             <div class="reply-wrap" role="status" style="margin-top:16px;">
                 La conversación se habilitará cuando un agente de soporte tome este ticket.
             </div>
-            @elseif(Auth::check() && !Auth::user()->can('comment', $ticket))
+            @elseif(Auth::check() && !$guestLinkAccess && !Auth::user()->can('comment', $ticket))
             <div class="reply-wrap" role="status" style="margin-top:16px;">
                 Este ticket está siendo atendido por otro agente. La conversación está disponible para consulta.
             </div>
@@ -432,7 +436,7 @@
                  El token del enlace es la credencial. Sin esto, pedirle
                  informacion a un invitado era un callejon sin salida: no tenia
                  como contestar y el ticket se cerraba solo. --}}
-            @guest
+            @if($guestLinkAccess)
             @if($ticket->isGuestTicket() && $ticket->hasAssignedSupport() && !in_array($ticket->status, ['closed','resolved']))
             <div class="reply-wrap" style="margin-top:16px;">
                 @if($ticket->status === 'pending_user')
@@ -465,7 +469,7 @@
                 </form>
             </div>
             @endif
-            @endguest
+            @endif
         </div>
     </div>
 
@@ -650,7 +654,7 @@
     @endauth
 
     {{-- Lo mismo para el invitado, con el token de su enlace. --}}
-    @guest
+    @if($guestLinkAccess)
     @if($ticket->isGuestTicket() && $ticket->status === 'resolved')
     <div class="side-card" style="border-left:3px solid #22c55e;">
         <div class="side-card-header" style="color:#065f46;"><i class="fas fa-check-double me-1"></i> Confirmar Resolución</div>
@@ -676,7 +680,7 @@
         </div>
     </div>
     @endif
-    @endguest
+    @endif
 
     @include('partials.encuesta_satisfaccion')
 
@@ -729,7 +733,7 @@
                     <div class="hist-time">{{ $entry->created_at->format('d/m H:i') }}</div>
                     <div class="hist-text">
                         @php
-                            $sNames = ['open'=>'Abierto','in_progress'=>'En Proceso','pending_user'=>'Pendiente Usuario','forwarded'=>'Derivado','resolved'=>'Resuelto','closed'=>'Cerrado'];
+                            $sNames = \App\Models\Ticket::statusLabels();
                         @endphp
                         @if($entry->action === 'status_change')
                             Estado: {{ $sNames[$entry->old_value] ?? $entry->old_value }} → {{ $sNames[$entry->new_value] ?? $entry->new_value }}

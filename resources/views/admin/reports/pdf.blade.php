@@ -46,7 +46,7 @@
 
 <div class="header">
     <h1>📊 Reporte de Tickets — Conecta</h1>
-    <p>Generado: {{ now()->format('d/m/Y H:i') }} &nbsp;|&nbsp; Filtros aplicados: {{ request()->hasAny(['status','priority','agent_id','date_from','date_to']) ? 'Sí' : 'Ninguno' }}</p>
+    <p>Generado: {{ now()->format('d/m/Y H:i') }} &nbsp;|&nbsp; Filtros aplicados: {{ request()->anyFilled(['search','categoria_id','status','priority','agent_id','user_id','department_id','date_from','date_to']) ? 'Sí' : 'Ninguno' }}</p>
 </div>
 
 {{-- KPIs --}}

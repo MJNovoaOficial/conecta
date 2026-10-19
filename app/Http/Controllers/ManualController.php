@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Manual;
+use App\Support\FilterValidation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -13,6 +14,11 @@ class ManualController extends Controller
      */
     public function index(Request $request)
     {
+        FilterValidation::validate($request, [
+            'buscar'    => ['nullable', 'string'],
+            'categoria' => ['nullable', 'string'],
+        ], 'manuales.index');
+
         $query = Manual::activos()->with('uploader')->latest();
 
         if ($request->filled('buscar')) {

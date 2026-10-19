@@ -35,6 +35,7 @@ class SystemSetting extends Model
 
     public static function forgetCached(string $key): void
     {
+        if (str_starts_with($key, 'state_label_')) Cache::forget(Ticket::STATUS_LABEL_CACHE_KEY);
         Cache::forget("setting_{$key}:v2");
         Cache::forget("setting_{$key}");
         if(in_array($key,TicketAttachmentLimits::SETTINGS_KEYS,true)) Cache::forget(TicketAttachmentLimits::CACHE_KEY);

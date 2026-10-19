@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Articulo;
 use App\Models\Categoria;
+use App\Support\FilterValidation;
 use Illuminate\Http\Request;
 
 /**
@@ -19,6 +20,12 @@ class AyudaController extends Controller
      */
     public function index(Request $request)
     {
+        FilterValidation::validate($request, [
+            'q'            => ['nullable', 'string'],
+            'categoria_id' => ['nullable', 'integer', 'min:1'],
+            'page'         => ['nullable', 'integer', 'min:1'],
+        ], 'ayuda.index');
+
         $articulos = Articulo::activos()
             ->with('categoria')
             ->when($request->filled('q'), fn ($q) => $q->buscar($request->q))
@@ -58,6 +65,7 @@ class AyudaController extends Controller
      */
     public function sugerencias(Request $request)
     {
+        FilterValidation::validate($request, ['q' => ['nullable', 'string']], 'ayuda.index');
         $termino = trim((string) $request->q);
 
         // Con menos de 4 caracteres cualquier búsqueda devuelve medio catálogo.

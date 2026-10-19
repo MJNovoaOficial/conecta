@@ -10,9 +10,9 @@
 @php
     $encuesta      = $ticket->encuesta;
     $sesion        = auth()->user();
-    $esSolicitante = $sesion
-        ? $ticket->user_id !== null && $ticket->user_id === $sesion->id
-        : $ticket->isGuestTicket();
+    $invitadoPorEnlace = $ticket->isGuestTicket() && request()->routeIs('tickets.guest.show')
+        && (!$sesion || $sesion->isUser());
+    $esSolicitante = $invitadoPorEnlace || ($sesion && $ticket->user_id !== null && $ticket->user_id === $sesion->id);
     $esPersonal    = $sesion && ($sesion->isSupport() || $sesion->isAdmin());
     $caras         = \App\Models\EncuestaSatisfaccion::CARAS;
     $etiquetas     = \App\Models\EncuestaSatisfaccion::ETIQUETAS;
@@ -47,7 +47,7 @@
         </p>
 
         <form method="POST"
-              action="{{ $sesion ? route('encuesta.responder', $ticket) : route('encuesta.invitado', $ticket->guest_token) }}">
+              action="{{ $invitadoPorEnlace ? route('encuesta.invitado', $ticket->guest_token) : route('encuesta.responder', $ticket) }}">
             @csrf
 
             <fieldset class="enc-grupo">

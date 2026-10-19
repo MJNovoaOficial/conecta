@@ -12,7 +12,7 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
 .pnl-num{font-size:0.72rem;color:#90a4ae;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;}
 .pnl-title{font-size:1rem;font-weight:700;line-height:1.3;margin-bottom:10px;}
 .pnl-badges{display:flex;gap:8px;flex-wrap:wrap;}
-.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:0.72rem;font-weight:700;max-width:100%;white-space:normal;overflow-wrap:anywhere;}
 .badge-open{background:#d1fae5;color:#065f46;}
 .badge-in_progress{background:#fef3c7;color:#92400e;}
 .badge-pending_user{background:#ffedd5;color:#9a3412;}
@@ -93,7 +93,7 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
     @php
       $sCls = ['open'=>'badge-open','in_progress'=>'badge-in_progress','pending_user'=>'badge-pending_user','forwarded'=>'badge-forwarded','resolved'=>'badge-resolved','closed'=>'badge-closed'];
       $pCls = ['low'=>'badge-low','medium'=>'badge-medium','high'=>'badge-high','critical'=>'badge-critical'];
-      $sLabel = ['open'=>'Abierto','in_progress'=>'En Proceso','pending_user'=>'Pendiente Usuario','forwarded'=>'Derivado','resolved'=>'Resuelto','closed'=>'Cerrado'];
+      $sLabel = \App\Models\Ticket::statusLabels();
       $pLabel = ['low'=>'Baja','medium'=>'Media','high'=>'Alta','critical'=>'Crítica'];
     @endphp
     <span class="badge {{ $sCls[$ticket->status] ?? 'badge-closed' }}">{{ $sLabel[$ticket->status] ?? $ticket->status }}</span>

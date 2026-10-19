@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Categoria;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Support\FilterValidation;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -13,42 +15,7 @@ class ReportController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Ticket::with(['assignedTo', 'subcategoria.categoria', 'tipoIncidente', 'user'])
-            ->orderBy('created_at', 'desc');
-
-        // ── Filtros ──────────────────────────────────────────────
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-        if ($request->filled('priority')) {
-            $query->where('priority', $request->priority);
-        }
-        if ($request->filled('agent_id')) {
-            $query->where('assigned_to', $request->agent_id);
-        }
-        if ($request->filled('categoria_id')) {
-            $query->whereHas('subcategoria', fn($q) => $q->where('categoria_id', $request->categoria_id));
-        }
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-        if ($request->filled('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('ticket_number', 'like', '%' . $request->search . '%')
-                  ->orWhere('title', 'like', '%' . $request->search . '%');
-            });
-        }
-        // Filtro por solicitante (RN-25 / RF-AD-10)
-        if ($request->filled('user_id')) {
-            $query->where('user_id', $request->user_id);
-        }
-        // Filtro por departamento (RN-25)
-        if ($request->filled('department_id')) {
-            $query->where('department_id', $request->department_id);
-        }
+        $query = $this->filteredTickets($request);
 
         $tickets    = $query->paginate(50)->withQueryString();
         $agents     = User::where('role', 'support')->orWhere('role', 'admin')->orderBy('name')->get();
@@ -102,16 +69,7 @@ class ReportController extends Controller
      */
     public function export(Request $request)
     {
-        $query = Ticket::with(['assignedTo', 'subcategoria.categoria', 'tipoIncidente', 'user'])
-            ->orderBy('created_at', 'desc');
-
-        if ($request->filled('status'))    $query->where('status', $request->status);
-        if ($request->filled('priority'))  $query->where('priority', $request->priority);
-        if ($request->filled('agent_id'))  $query->where('assigned_to', $request->agent_id);
-        if ($request->filled('user_id'))   $query->where('user_id', $request->user_id);
-        if ($request->filled('department_id')) $query->where('department_id', $request->department_id);
-        if ($request->filled('date_from')) $query->whereDate('created_at', '>=', $request->date_from);
-        if ($request->filled('date_to'))   $query->whereDate('created_at', '<=', $request->date_to);
+        $query = $this->filteredTickets($request);
 
         $tickets  = $query->get();
         $filename = 'reporte_tickets_' . now()->format('Y-m-d') . '.csv';
@@ -152,16 +110,7 @@ class ReportController extends Controller
      */
     public function exportPdf(Request $request)
     {
-        $query = Ticket::with(['assignedTo', 'subcategoria.categoria', 'tipoIncidente', 'user'])
-            ->orderBy('created_at', 'desc');
-
-        if ($request->filled('status'))    $query->where('status', $request->status);
-        if ($request->filled('priority'))  $query->where('priority', $request->priority);
-        if ($request->filled('agent_id'))  $query->where('assigned_to', $request->agent_id);
-        if ($request->filled('user_id'))   $query->where('user_id', $request->user_id);
-        if ($request->filled('department_id')) $query->where('department_id', $request->department_id);
-        if ($request->filled('date_from')) $query->whereDate('created_at', '>=', $request->date_from);
-        if ($request->filled('date_to'))   $query->whereDate('created_at', '<=', $request->date_to);
+        $query = $this->filteredTickets($request);
 
         $tickets = $query->take(500)->get(); // Límite para evitar PDFs enormes
 
@@ -207,16 +156,7 @@ class ReportController extends Controller
      */
     public function exportExcel(Request $request)
     {
-        $query = Ticket::with(['assignedTo', 'subcategoria.categoria', 'tipoIncidente', 'user'])
-            ->orderBy('created_at', 'desc');
-
-        if ($request->filled('status'))    $query->where('status', $request->status);
-        if ($request->filled('priority'))  $query->where('priority', $request->priority);
-        if ($request->filled('agent_id'))  $query->where('assigned_to', $request->agent_id);
-        if ($request->filled('user_id'))   $query->where('user_id', $request->user_id);
-        if ($request->filled('department_id')) $query->where('department_id', $request->department_id);
-        if ($request->filled('date_from')) $query->whereDate('created_at', '>=', $request->date_from);
-        if ($request->filled('date_to'))   $query->whereDate('created_at', '<=', $request->date_to);
+        $query = $this->filteredTickets($request);
 
         $tickets = $query->get();
 
@@ -301,6 +241,52 @@ class ReportController extends Controller
         return response()->download($tmpPath, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);
+    }
+
+    /** El listado y las descargas deben seleccionar exactamente los mismos casos. */
+    private function filteredTickets(Request $request): Builder
+    {
+        // Validar antes de concatenar textos o pasar fechas/arrays al motor SQL.
+        // Los ID inexistentes siguen devolviendo cero resultados, sin cambiar datos.
+        FilterValidation::validate($request, [
+            'search'        => ['nullable', 'string'],
+            'status'        => ['nullable', 'string'],
+            'priority'      => ['nullable', 'string'],
+            'agent_id'      => ['nullable', 'integer', 'min:1'],
+            'categoria_id'  => ['nullable', 'integer', 'min:1'],
+            'user_id'       => ['nullable', 'integer', 'min:1'],
+            'department_id' => ['nullable', 'integer', 'min:1'],
+            'date_from'     => ['nullable', 'date_format:Y-m-d'],
+            'date_to'       => ['nullable', 'date_format:Y-m-d'],
+            'page'          => ['nullable', 'integer', 'min:1'],
+        ], 'admin.reports.index');
+
+        $query = Ticket::with(['assignedTo', 'subcategoria.categoria', 'tipoIncidente', 'user'])
+            ->orderBy('created_at', 'desc');
+
+        foreach (['status' => 'status', 'priority' => 'priority', 'agent_id' => 'assigned_to',
+            'user_id' => 'user_id', 'department_id' => 'department_id'] as $filter => $column) {
+            if ($request->filled($filter)) {
+                $query->where($column, $request->input($filter));
+            }
+        }
+        if ($request->filled('categoria_id')) {
+            $query->whereHas('subcategoria', fn ($q) => $q->where('categoria_id', $request->input('categoria_id')));
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->input('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->input('date_to'));
+        }
+        if ($request->filled('search')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('ticket_number', 'like', '%' . $request->input('search') . '%')
+                    ->orWhere('title', 'like', '%' . $request->input('search') . '%');
+            });
+        }
+
+        return $query;
     }
 
     /**

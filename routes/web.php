@@ -112,9 +112,9 @@ Route::middleware('auth')->group(function () {
 
     // ── Tickets ──────────────────────────────────────────────────────
     Route::get('/tickets/my-stats', [TicketController::class, 'myStats'])->name('tickets.my-stats');
-    // Se conserva el conjunto REST original. Las operaciones sensibles validan
-    // además la capacidad específica sobre el ticket en la propia ruta.
-    Route::resource('tickets', TicketController::class)->except(['show']);
+    // Publicar solo operaciones implementadas. No habilitar edición/borrado
+    // arbitrarios para remediar las rutas residuales del resource anterior.
+    Route::resource('tickets', TicketController::class)->only(['index', 'create', 'store']);
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])
         ->middleware('can:view,ticket')->name('tickets.show');
     Route::post('/tickets/{ticket}/comment', [TicketController::class, 'addComment'])

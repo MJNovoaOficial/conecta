@@ -25,6 +25,7 @@ use App\Support\HorarioLaboral;
 use App\Support\TicketNotificationPreferences;
 use App\Support\TicketAttachmentLimits;
 use App\Support\TicketCreationGuard;
+use App\Support\FilterValidation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -64,6 +65,22 @@ class TicketController extends Controller
 
     public function index()
     {
+        // Rechazar estructuras inválidas antes de interpolar filtros o armar
+        // consultas. Los nombres de orden desconocidos conservan su fallback.
+        FilterValidation::validate(request(), [
+            'search' => 'nullable|string|max:255',
+            'status' => 'nullable|string|max:100',
+            'priority' => 'nullable|string|max:100',
+            'agent_id' => 'nullable|integer|min:1',
+            'categoria_id' => 'nullable|integer|min:1',
+            'requester_id' => 'nullable|integer|min:1',
+            'date_from' => 'nullable|date_format:Y-m-d',
+            'date_to' => 'nullable|date_format:Y-m-d',
+            'sort' => 'nullable|string|max:100',
+            'dir' => 'nullable|string|max:100',
+            'page' => 'nullable|integer|min:1',
+        ], 'tickets.index');
+
         $user = Auth::user();
 
         if ($user->isSupport() || $user->isAdmin()) {
@@ -252,7 +269,7 @@ class TicketController extends Controller
             'tipo_incidente_id' => ['nullable', Rule::exists('tipos_incidente', 'id')->where('subcategoria_id', $request->input('subcategoria_id'))],
             'device_type'       => 'nullable|string|max:100',
             'attachments'       => 'nullable|array|max:'.$attachmentLimits['files'],
-            'attachments.*'     => 'file|max:'.$attachmentLimits['kilobytes'],
+            'attachments.*'     => $this->attachmentRules($attachmentLimits['kilobytes']),
         ], [
             'subcategoria_id.required_with' => 'Selecciona una subcategoría para ese tipo de incidente.',
             'tipo_incidente_id.exists' => 'El tipo de incidente no corresponde a la subcategoría seleccionada.',
@@ -353,7 +370,7 @@ class TicketController extends Controller
             'device_type'       => 'nullable|string|max:100',
             'department_id'     => 'nullable|integer|exists:departamentos,id',
             'attachments'       => 'nullable|array|max:'.$attachmentLimits['files'],
-            'attachments.*'     => 'file|max:'.$attachmentLimits['kilobytes'],
+            'attachments.*'     => $this->attachmentRules($attachmentLimits['kilobytes']),
         ], [
             'subcategoria_id.required_with' => 'Selecciona una subcategoría para ese tipo de incidente.',
             'tipo_incidente_id.exists' => 'El tipo de incidente no corresponde a la subcategoría seleccionada.',
@@ -501,7 +518,7 @@ class TicketController extends Controller
         $request->validate([
             'comment'       => 'required|string|min:3|max:5000',
             'attachments'   => 'nullable|array|max:'.$attachmentLimits['files'],
-            'attachments.*' => 'file|max:'.$attachmentLimits['kilobytes'],
+            'attachments.*' => $this->attachmentRules($attachmentLimits['kilobytes']),
         ], [
             'comment.required' => 'Escribe tu respuesta.',
             'comment.min'      => 'La respuesta debe tener al menos 3 caracteres.',
@@ -585,7 +602,7 @@ class TicketController extends Controller
             'comment' => 'required|string|min:3|max:5000',
             'is_internal' => 'boolean',
             'attachments' => 'nullable|array|max:'.$attachmentLimits['files'],
-            'attachments.*' => 'file|max:'.$attachmentLimits['kilobytes'],
+            'attachments.*' => $this->attachmentRules($attachmentLimits['kilobytes']),
         ], [
             'comment.required' => 'El mensaje es obligatorio.',
             'comment.string' => 'El mensaje debe ser texto válido.',
@@ -674,6 +691,11 @@ class TicketController extends Controller
                     $ticket->id
                 );
             }
+            $this->notifyTicketUpdate(
+                $ticket,
+                'El equipo de soporte solicita información adicional para continuar tu ticket. Revisa el mensaje y responde desde el enlace.',
+                'info_requested'
+            );
             return back()->with('success', 'Solicitud de información enviada. El ticket queda Pendiente del Usuario (2h).');
         }
 
@@ -717,8 +739,11 @@ class TicketController extends Controller
             );
         }
 
-        // Notificar a los involucrados por email
-        $this->notifyTicketUpdate($ticket, 'Se agregó un nuevo comentario al ticket.', 'comment');
+        // Una nota privada no es una respuesta al solicitante y no debe
+        // producir avisos externos, aunque el correo no incluya su contenido.
+        if (!$isInternal) {
+            $this->notifyTicketUpdate($ticket, 'Se agregó un nuevo comentario al ticket.', 'comment');
+        }
 
         return back()->with('success', 'Comentario agregado.');
     }
@@ -813,7 +838,7 @@ class TicketController extends Controller
         if (in_array($oldStatus, [Ticket::STATUS_OPEN, Ticket::STATUS_FORWARDED], true)) {
             $updateData['status'] = Ticket::STATUS_IN_PROGRESS;
         }
-        if (!$this->updateTicketAssignment($ticket, $updateData)) {
+        if (!$this->assignToActiveUser($ticket, $updateData, (int) $request->user_id)) {
             return back()->with('error', 'La asignación o el estado cambió mientras trabajabas. Actualiza el ticket antes de continuar.');
         }
 
@@ -843,7 +868,6 @@ class TicketController extends Controller
                 'Se te asignó el ticket: ' . $ticket->title,
                 $ticket->id
             );
-            try { $assignedUser->notify(new TicketUpdatedNotification($ticket, 'Se te ha asignado el ticket ' . $ticket->ticket_number, 'assigned')); } catch(\Throwable $e) {}
         }
 
         $this->notifyTicketUpdate($ticket, 'Tu ticket ha sido asignado a ' . ($assignedUser->name ?? 'un agente de soporte') . '.', 'assigned');
@@ -881,7 +905,7 @@ class TicketController extends Controller
         }
         $updateData = ['assigned_to' => $user->id];
         if ($wasOpen) $updateData['status'] = Ticket::STATUS_IN_PROGRESS;
-        if (!$this->updateTicketAssignment($ticket, $updateData)) {
+        if (!$this->assignToActiveUser($ticket, $updateData, $user->id)) {
             return back()->with('error', 'La asignación o el estado cambió mientras trabajabas. Actualiza el ticket antes de continuar.');
         }
 
@@ -1005,6 +1029,13 @@ class TicketController extends Controller
     private function storeConversationComment(Ticket $ticket, array $attributes, array $transition): ?TicketComment
     {
         return DB::transaction(function () use ($ticket, $attributes, $transition) {
+            // Mismo orden que al asignar: usuario antes del ticket. Además de
+            // revalidar la cuenta, evita invertir el lock del autor que exige
+            // la FK del comentario frente a una transferencia simultánea.
+            if ($authorId = $attributes['user_id'] ?? null) {
+                $author = User::query()->whereKey($authorId)->where('is_active', true)->lockForUpdate()->first();
+                if (!$author) return null;
+            }
             $current = Ticket::query()->whereKey($ticket->id)->lockForUpdate()->firstOrFail();
             foreach (['assigned_to', 'status', 'department_id', 'resolved_at', 'last_response_request_at', 'response_deadline_at', 'user_responded_at'] as $field) {
                 if ($current->getRawOriginal($field) !== $ticket->getRawOriginal($field)) return null;
@@ -1029,6 +1060,16 @@ class TicketController extends Controller
         if (!$updated) return false;
         $ticket->refresh();
         return true;
+    }
+
+    /** Serializa la asignación con la desactivación/cambio de rol de la cuenta. */
+    private function assignToActiveUser(Ticket $ticket, array $attributes, int $userId): bool
+    {
+        return DB::transaction(function () use ($ticket, $attributes, $userId) {
+            $assignee = User::query()->whereKey($userId)->where('is_active', true)
+                ->whereIn('role', ['support', 'admin'])->lockForUpdate()->first();
+            return $assignee !== null && $this->updateTicketAssignment($ticket, $attributes);
+        });
     }
 
     /**
@@ -1344,14 +1385,47 @@ class TicketController extends Controller
 
         // Notificar al creador (si es usuario registrado y no es quien hace la acción)
         if ($ticket->user_id && $ticket->user_id !== Auth::id()) {
-            $ticket->user->notify(new TicketUpdatedNotification($ticket, $message, $event));
+            $this->notifyTicketRecipient($ticket->user, $ticket, $message, $event);
             $notified->push($ticket->user_id);
         }
 
         // Notificar al asignado (si no es quien hace la acción y no fue ya notificado)
         if ($ticket->assigned_to && $ticket->assigned_to !== Auth::id() && !$notified->contains($ticket->assigned_to)) {
-            $ticket->assignedTo->notify(new TicketUpdatedNotification($ticket, $message, $event));
+            $this->notifyTicketRecipient($ticket->assignedTo, $ticket, $message, $event);
         }
+
+        // Los invitados no tienen un User notificable. Su enlace privado
+        // conserva el acceso sin login, también al pedirles información.
+        if (!$ticket->user_id && $ticket->guest_email && $ticket->guest_token
+            && in_array($event, ['comment', 'info_requested'], true)
+            && TicketNotificationPreferences::eventEnabled($event)) {
+            try {
+                Mail::to($ticket->guest_email)->send(new GuestTicketStatusMail($ticket, $message));
+            } catch (\Throwable $e) {
+                Log::warning('No se pudo avisar al invitado de la actualización del ticket '.$ticket->id.': '.$e->getMessage());
+            }
+        }
+    }
+
+    /** Un fallo de transporte no invalida el cambio que ya se guardó. */
+    private function notifyTicketRecipient(?User $recipient, Ticket $ticket, string $message, string $event): void
+    {
+        if (!$recipient) return;
+        try {
+            $recipient->notify(new TicketUpdatedNotification($ticket, $message, $event));
+        } catch (\Throwable $e) {
+            Log::warning('No se pudo avisar de la actualización del ticket '.$ticket->id.' al usuario '.$recipient->id.': '.$e->getMessage());
+        }
+    }
+
+    /** Validar cada archivo antes de crear el ticket, mensaje o turno. */
+    private function attachmentRules(int $maxKilobytes): array
+    {
+        return ['bail', 'file', 'max:'.$maxKilobytes, function ($attribute, $file, $fail) {
+            if (!$this->isValidFile($file)) {
+                $fail('El formato del archivo no está permitido. Usa PDF, Office, JPG, PNG, GIF, ZIP, TXT o videos MP4, MOV o WEBM.');
+            }
+        }];
     }
 
     /**
@@ -1364,15 +1438,6 @@ class TicketController extends Controller
         }
 
         foreach ($request->file('attachments') as $file) {
-            if (!$this->isValidFile($file)) {
-                Log::warning('Intento de upload de archivo inválido', [
-                    'user_id' => Auth::id(),
-                    'filename' => $file->getClientOriginalName(),
-                    'mime' => $file->getMimeType(),
-                ]);
-                continue;
-            }
-
             $filename = $this->sanitizeFilename($file->getClientOriginalName());
             $subfolder = $commentId ? 'tickets/' . $ticket->id . '/comments' : 'tickets/' . $ticket->id;
             // El nombre visible se conserva; la ruta es única para que dos

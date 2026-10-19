@@ -84,7 +84,7 @@ table.rp-tbl tbody tr:hover td { background:#fafbff; }
 .ticket-title { max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
 /* Priority/Status badges (override global) */
-.pb { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:20px; font-size:.67rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
+.pb { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:20px; font-size:.67rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; max-width:100%; white-space:normal; overflow-wrap:anywhere; }
 .pb-critical { background:#fef2f2; color:#dc2626; }
 .pb-high     { background:#fff7ed; color:#ea580c; }
 .pb-medium   { background:#fefce8; color:#ca8a04; }
@@ -196,11 +196,9 @@ table.rp-tbl tbody tr:hover td { background:#fafbff; }
                 <label>Estado</label>
                 <select name="status">
                     <option value="">Todos</option>
-                    <option value="open"         {{ request('status')=='open'         ?'selected':'' }}>Abierto</option>
-                    <option value="in_progress"  {{ request('status')=='in_progress'  ?'selected':'' }}>En Proceso</option>
-                    <option value="pending_user" {{ request('status')=='pending_user' ?'selected':'' }}>Pendiente</option>
-                    <option value="resolved"     {{ request('status')=='resolved'     ?'selected':'' }}>Resuelto</option>
-                    <option value="closed"       {{ request('status')=='closed'       ?'selected':'' }}>Cerrado</option>
+                    @foreach(\App\Models\Ticket::statusLabels() as $state => $label)
+                    <option value="{{ $state }}" {{ request('status') === $state ? 'selected' : '' }}>{{ $label }}</option>
+                    @endforeach
                 </select>
             </div>
             <div class="filter-group">

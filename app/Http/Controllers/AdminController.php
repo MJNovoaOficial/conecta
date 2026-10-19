@@ -8,6 +8,7 @@ use App\Models\LoginAttempt;
 use App\Models\SystemSetting;
 use App\Support\TicketNotificationPreferences;
 use App\Support\TicketAttachmentLimits;
+use App\Support\FilterValidation;
 use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Models\Department;
@@ -17,11 +18,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class AdminController extends Controller
 {
     public function dashboard(Request $request)
     {
+        FilterValidation::validate($request, ['period' => 'nullable|string|max:20'], 'admin.dashboard');
         // Filtro de tiempo
         $period = $request->get('period', '30d');
         $periodMap = [
@@ -198,35 +201,44 @@ class AdminController extends Controller
             return back()->withErrors(['is_active' => 'No puedes desactivar tu propia cuenta.']);
         }
 
-        // Log de cambios
-        $changes = [];
-        if ($user->role !== $request->role) {
-            $changes['role'] = ['from' => $user->role, 'to' => $request->role];
-        }
-        if ((bool) $user->is_active !== $isActive) {
-            $changes['is_active'] = ['from' => $user->is_active, 'to' => $isActive];
-        }
-
-        $user->update([
+        $attributes = [
             'name'          => trim($request->name),
             'email'         => strtolower($request->email),
             'role'          => $request->role,
             'department_id' => $request->department_id,
             'is_active'     => $isActive,
-        ]);
+        ];
+        $changes = DB::transaction(function () use ($user, $attributes, $isActive) {
+            // Mismo orden de bloqueo para cambios simultáneos de administradores.
+            $admins = User::where('role', 'admin')->where('is_active', true)
+                ->orderBy('id')->lockForUpdate()->get();
+            $current = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            if ($current->isAdmin() && $current->is_active
+                && (!$isActive || $attributes['role'] !== 'admin')
+                && !$admins->contains(fn ($admin) => $admin->id !== $current->id)) {
+                throw ValidationException::withMessages(['role' => 'Debe conservarse al menos un administrador activo.']);
+            }
+            $losesAccess = ($current->is_active && !$isActive)
+                || (in_array($current->role, ['support', 'admin'], true) && $attributes['role'] === 'user');
+            if ($losesAccess && Ticket::where('assigned_to', $current->id)
+                ->where('status', '!=', Ticket::STATUS_CLOSED)->exists()) {
+                throw ValidationException::withMessages([
+                    $isActive ? 'role' : 'is_active' => 'Transfiere sus tickets en atención y espera o confirma el cierre de los Resueltos antes de retirarle el acceso.',
+                ]);
+            }
+            $changes = [];
+            if ($current->role !== $attributes['role']) $changes['role'] = ['from' => $current->role, 'to' => $attributes['role']];
+            if ((bool) $current->is_active !== $isActive) $changes['is_active'] = ['from' => $current->is_active, 'to' => $isActive];
+            $current->update($attributes);
+            if ($changes) AuditLog::record('user.updated', 'User', $current->id, ['name' => $current->name, 'changes' => $changes]);
+            return $changes;
+        });
 
         Log::warning('Usuario modificado por admin', [
             'admin_id' => Auth::id(),
             'user_id'  => $user->id,
             'changes'  => $changes,
         ]);
-
-        if (!empty($changes)) {
-            AuditLog::record('user.updated', 'User', $user->id, [
-                'name'    => $user->name,
-                'changes' => $changes,
-            ]);
-        }
 
         return redirect()->route('admin.users.index')->with('success', 'Usuario actualizado correctamente.');
     }
@@ -251,8 +263,8 @@ class AdminController extends Controller
         ]);
 
         Department::create([
-            'name'         => htmlspecialchars($request->name, ENT_QUOTES, 'UTF-8'),
-            'description'  => htmlspecialchars($request->description ?? '', ENT_QUOTES, 'UTF-8'),
+            'name'         => $request->name,
+            'description'  => $request->description ?? '',
             'is_active'    => true,
             'default_role' => $request->default_role,
         ]);
@@ -284,8 +296,8 @@ class AdminController extends Controller
 
         $isActive = $request->boolean('is_active');
         $department->update([
-            'name'         => htmlspecialchars($request->name, ENT_QUOTES, 'UTF-8'),
-            'description'  => htmlspecialchars($request->description ?? '', ENT_QUOTES, 'UTF-8'),
+            'name'         => $request->name,
+            'description'  => $request->description ?? '',
             'is_active'    => $isActive,
             'default_role' => $request->default_role,
         ]);
@@ -445,6 +457,7 @@ class AdminController extends Controller
      */
     public function gerencialDashboard(Request $request)
     {
+        FilterValidation::validate($request, ['period' => 'nullable|string|max:20'], 'admin.gerencial');
         $period = $request->get('period', '30d');
         $periodMap = [
             '7d'  => ['days' => 7,   'label' => 'Últimos 7 días'],
@@ -577,7 +590,7 @@ class AdminController extends Controller
                 'default'     => 'Pendiente Usuario',
                 'icon'        => 'fas fa-hourglass-half',
                 'color'       => '#f97316',
-                'description' => 'Soporte solicitó información adicional. El usuario tiene 2 horas para responder; de lo contrario el ticket se cierra automáticamente.',
+                'description' => 'Se espera la respuesta del solicitante. El plazo de 2 horas laborales y cierre automático solo se activa al usar Solicitar información.',
                 'transitions' => ['En Proceso', 'Cerrado (automático)'],
             ],
             'forwarded' => [
@@ -644,6 +657,7 @@ class AdminController extends Controller
                     'description' => null,
                 ]
             );
+            SystemSetting::forgetCached('state_label_' . $stateKey);
             $changed[] = $stateKey;
         }
 
