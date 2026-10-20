@@ -12,7 +12,6 @@ use App\Http\Controllers\PriorityRuleController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TicketController;
-use App\Http\Controllers\TicketDelegationController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\ManualController;
@@ -136,13 +135,6 @@ Route::middleware('auth')->group(function () {
         ->middleware('can:close,ticket')->name('tickets.close');
     Route::post('/tickets/{ticket}/resolve', [TicketController::class, 'resolve'])
         ->middleware('can:manage,ticket')->name('tickets.resolve');
-    // Encargos limitados: rutas independientes, sin cambiar el rol del usuario.
-    Route::post('/tickets/{ticket}/delegations', [TicketDelegationController::class, 'store'])->name('tickets.delegations.store');
-    Route::post('/tickets/{ticket}/delegations/{delegation}/revoke', [TicketDelegationController::class, 'revoke'])->whereNumber('delegation')->name('tickets.delegations.revoke');
-    Route::post('/tickets/{ticket}/delegations/{delegation}/propose', [TicketDelegationController::class, 'propose'])->whereNumber('delegation')->name('tickets.delegations.propose');
-    Route::post('/tickets/{ticket}/delegations/{delegation}/changes', [TicketDelegationController::class, 'changes'])->whereNumber('delegation')->name('tickets.delegations.changes');
-    Route::post('/tickets/{ticket}/delegations/{delegation}/approve', [TicketController::class, 'approveDelegation'])
-        ->whereNumber('delegation')->middleware('can:manage,ticket')->name('tickets.delegations.approve');
     // El solicitante reabre su ticket cuando la solución no resolvió el problema.
     Route::post('/tickets/{ticket}/reopen', [TicketController::class, 'reopen'])
         ->middleware('can:reopen,ticket')->name('tickets.reopen');

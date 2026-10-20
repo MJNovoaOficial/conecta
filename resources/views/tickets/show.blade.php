@@ -405,11 +405,6 @@
             <div class="reply-wrap" style="margin-top:16px;">
                 <form method="POST" action="/tickets/{{ $ticket->id }}/comment" enctype="multipart/form-data" data-comment-submit>
                     @csrf
-                    @if(\App\Support\TicketDelegationAccess::available() && \App\Support\TicketDelegationAccess::isDelegate(Auth::user(), $ticket, true))
-                        @php $commentDelegation = $ticketDelegation ?? \App\Support\TicketDelegationAccess::current($ticket); @endphp
-                        <input type="hidden" name="delegation_id" value="{{ $commentDelegation->id }}">
-                        <input type="hidden" name="delegation_version" value="{{ $commentDelegation->version }}">
-                    @endif
                     @include('partials.ticket_attachment_limits', ['forComments' => true])
                     <textarea name="comment" placeholder="Escribe tu respuesta..." required></textarea>
                     <div class="reply-footer">
@@ -478,7 +473,6 @@
         </div>
     </div>
 
-    @include('partials.ticket_delegation')
     @include('partials.ticket_solution_form')
 
   </div>{{-- /ticket-main --}}
@@ -753,11 +747,6 @@
                         @elseif($entry->action === 'closed') Ticket cerrado
                         @elseif($entry->action === 'solution_registered') Solución registrada: Resuelto
                         @elseif($entry->action === 'auto_closed_resolved') Cerrado automáticamente una hora después de la solución
-                        @elseif($entry->action === 'delegation_created') Encargo de colaboración registrado
-                        @elseif($entry->action === 'delegation_proposed') Propuesta enviada para revisión de TI
-                        @elseif($entry->action === 'delegation_changes_requested') TI solicitó ajustes a la propuesta
-                        @elseif($entry->action === 'delegation_approved') Propuesta aprobada por TI
-                        @elseif($entry->action === 'delegation_revoked') Encargo retirado
                         @else {{ str_replace('_', ' ', ucfirst($entry->action)) }}
                         @endif
                         @if($entry->user) <span style="color:#a0aec0;">· {{ $entry->user->name }}</span>@endif

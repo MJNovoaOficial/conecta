@@ -226,8 +226,8 @@
              ╚══════════════════════════════════════════════════════════════╝ --}}
         @if(Auth::user()->isUser())
         @php
-            $ticketsResueltos = $tickets->where('user_id', Auth::id())->where('status', 'resolved')->count();
-            $ticketsPendUser  = $tickets->where('user_id', Auth::id())->where('status', 'pending_user')->count();
+            $ticketsResueltos = $tickets->where('status', 'resolved')->count();
+            $ticketsPendUser  = $tickets->where('status', 'pending_user')->count();
             $totalAtencion    = $ticketsResueltos + $ticketsPendUser;
         @endphp
         @if($totalAtencion > 0)
