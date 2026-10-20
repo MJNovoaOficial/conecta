@@ -1,5 +1,10 @@
 @auth
-@if($ticket->hasAssignedSupport() && Auth::user()->can('manage', $ticket) && !in_array($ticket->status, ['resolved', 'closed']))
+@php
+    $solutionDelegation = \App\Support\TicketDelegationAccess::available()
+        ? ($ticketDelegation ?? \App\Support\TicketDelegationAccess::current($ticket)) : null;
+    $solutionNeedsDelegationReview = $solutionDelegation && in_array($solutionDelegation->status, ['active', 'submitted'], true);
+@endphp
+@if(!$solutionNeedsDelegationReview && $ticket->hasAssignedSupport() && Auth::user()->can('manage', $ticket) && !in_array($ticket->status, ['resolved', 'closed']))
 <section aria-label="Registrar solución" style="padding:16px;margin-bottom:18px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;">
     <h3 style="font-size:1rem;color:#5b21b6;margin-bottom:10px;">Registrar solución</h3>
     <p style="font-size:.85rem;margin-bottom:10px;">Describe lo que se solucionó. El ticket quedará Resuelto y se cerrará automáticamente después de una hora si no se reabre.</p>

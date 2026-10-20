@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Ticket;
 use App\Models\User;
+use App\Support\TicketDelegationAccess;
 
 class TicketPolicy
 {
@@ -13,13 +14,13 @@ class TicketPolicy
      */
     public function before(User $user, string $ability): ?bool
     {
-        if ($ability === 'comment') return null;
+        if (in_array($ability, ['comment', 'delegate', 'revokeDelegation', 'proposeDelegation'], true)) return null;
         return $user->isAdmin() ? true : null;
     }
 
     public function view(User $user, Ticket $ticket): bool
     {
-        return $user->isSupport() || $user->id === $ticket->user_id;
+        return $user->isSupport() || $user->id === $ticket->user_id || TicketDelegationAccess::isDelegate($user, $ticket);
     }
 
     /**
@@ -31,7 +32,26 @@ class TicketPolicy
     {
         return $ticket->hasAssignedSupport()
             && ($user->id === $ticket->user_id
-                || (($user->isSupport() || $user->isAdmin()) && $ticket->assigned_to === $user->id));
+                || (($user->isSupport() || $user->isAdmin()) && $ticket->assigned_to === $user->id)
+                || TicketDelegationAccess::isDelegate($user, $ticket, true));
+    }
+
+    public function delegate(User $user, Ticket $ticket): bool
+    {
+        return $this->revokeDelegation($user, $ticket) && $ticket->hasAssignedSupport()
+            && !in_array($ticket->status, [Ticket::STATUS_RESOLVED, Ticket::STATUS_CLOSED], true);
+    }
+
+    public function revokeDelegation(User $user, Ticket $ticket): bool
+    {
+        return $user->is_active && TicketDelegationAccess::available()
+            && ($user->isAdmin() || ($user->isSupport() && $ticket->assigned_to === $user->id));
+    }
+
+    public function proposeDelegation(User $user, Ticket $ticket): bool
+    {
+        return TicketDelegationAccess::isDelegate($user, $ticket, true)
+            && TicketDelegationAccess::current($ticket)?->status === 'active';
     }
 
     /**

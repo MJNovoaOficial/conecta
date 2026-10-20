@@ -26,6 +26,11 @@ use App\Support\TicketNotificationPreferences;
 use App\Support\TicketAttachmentLimits;
 use App\Support\TicketCreationGuard;
 use App\Support\FilterValidation;
+use App\Models\TicketDelegation;
+use App\Support\TicketDelegationAccess;
+use App\Support\TicketDelegationNotifier;
+use App\Support\TicketDelegationWorkflow;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -87,8 +92,13 @@ class TicketController extends Controller
             $query = Ticket::with(['user', 'assignedTo', 'department', 'subcategoria.categoria']);
             $countQuery = Ticket::query();
         } else {
-            $query = Ticket::where('user_id', $user->id)->with(['user', 'assignedTo', 'department', 'subcategoria.categoria']);
-            $countQuery = Ticket::where('user_id', $user->id);
+            $countQuery = Ticket::where(function ($visible) use ($user) {
+                $visible->where('user_id', $user->id);
+                if (TicketDelegationAccess::available()) {
+                    $visible->orWhere(fn ($delegated) => TicketDelegationAccess::constrainVisible($delegated, $user));
+                }
+            });
+            $query = (clone $countQuery)->with(['user', 'assignedTo', 'department', 'subcategoria.categoria']);
         }
 
         // Filtros
@@ -450,7 +460,8 @@ class TicketController extends Controller
         $departments  = Department::where('is_active', true)->get();
         $supportUsers = User::whereIn('role', ['support', 'admin'])->where('is_active', true)->get();
 
-        return view('tickets.show', compact('ticket', 'departments', 'supportUsers'));
+        [$ticketDelegation, $delegateUsers] = $this->delegationViewData($ticket);
+        return view('tickets.show', compact('ticket', 'departments', 'supportUsers', 'ticketDelegation', 'delegateUsers'));
     }
 
     /**
@@ -462,7 +473,8 @@ class TicketController extends Controller
         $ticket->load(['user', 'assignedTo', 'department', 'comments.user', 'comments.attachments', 'attachments', 'history.user']);
         $departments  = Department::where('is_active', true)->get();
         $supportUsers = User::whereIn('role', ['support', 'admin'])->where('is_active', true)->get();
-        return view('tickets.panel', compact('ticket', 'departments', 'supportUsers'));
+        [$ticketDelegation, $delegateUsers] = $this->delegationViewData($ticket);
+        return view('tickets.panel', compact('ticket', 'departments', 'supportUsers', 'ticketDelegation', 'delegateUsers'));
     }
 
     /**
@@ -477,7 +489,22 @@ class TicketController extends Controller
         $departments = Department::where('is_active', true)->get();
         $supportUsers = User::whereIn('role', ['support', 'admin'])->where('is_active', true)->get();
 
-        return view('tickets.show', compact('ticket', 'departments', 'supportUsers'));
+        [$ticketDelegation, $delegateUsers] = $this->delegationViewData($ticket);
+        return view('tickets.show', compact('ticket', 'departments', 'supportUsers', 'ticketDelegation', 'delegateUsers'));
+    }
+
+    private function delegationViewData(Ticket $ticket): array
+    {
+        if (!Auth::check() || !TicketDelegationAccess::available()) return [null, collect()];
+        $current = TicketDelegationAccess::current($ticket);
+        $people = collect();
+        if (Auth::user()->can('delegate', $ticket)) {
+            $people = User::with('department')->where('role', 'user')->where('is_active', true)
+                ->whereNotNull('department_id')->whereKeyNot($ticket->user_id ?? 0)
+                ->when($ticket->assignedTo?->department_id, fn ($query, $id) => $query->where('department_id', '!=', $id))
+                ->whereHas('department', fn ($query) => $query->where('is_active', true))->orderBy('name')->get();
+        }
+        return [$current, $people];
     }
 
     /**
@@ -570,6 +597,7 @@ class TicketController extends Controller
             }
         }
 
+        TicketDelegationNotifier::notifyDelegate($ticket, 'comment', 'El solicitante respondió en este caso.');
         return back()->with('success', 'Tu respuesta fue enviada. Soporte la revisará.');
     }
 
@@ -636,7 +664,14 @@ class TicketController extends Controller
         $requestsInfo = $request->boolean('request_info');
         $isInternal = $request->boolean('is_internal');
         $ownerResponds = !$isInternal && $oldStatus === Ticket::STATUS_PENDING_USER && Auth::id() === $ticket->user_id;
-        $agentResponds = !$isInternal && Auth::id() === $ticket->assigned_to && Auth::id() !== $ticket->user_id;
+        $delegateResponds = TicketDelegationAccess::isDelegate(Auth::user(), $ticket, true);
+        $delegationSnapshot = null;
+        if ($delegateResponds) {
+            $fields = $request->validate(['delegation_id' => 'required|integer|min:1', 'delegation_version' => 'required|integer|min:1']);
+            $delegationSnapshot = [(int) $fields['delegation_id'], (int) $fields['delegation_version']];
+        }
+        $agentResponds = !$isInternal && Auth::id() !== $ticket->user_id
+            && (Auth::id() === $ticket->assigned_to || $delegateResponds);
         $transition = [];
         if ($requestsInfo) {
             $transition = [
@@ -663,7 +698,7 @@ class TicketController extends Controller
             'comment'                 => $request->comment,
             'ticket_status_at_comment'=> $oldStatus,
             'is_internal'             => $isInternal,
-        ], $transition);
+        ], $transition, $delegationSnapshot);
         if (!$comment) {
             return back()->withErrors(['comment' => 'El estado o el responsable cambió mientras respondías. Actualiza el ticket antes de continuar.']);
         }
@@ -766,15 +801,38 @@ class TicketController extends Controller
         if (!$ticket->hasAssignedSupport()) {
             return back()->with('error', 'Primero debe asignarse un agente de soporte al ticket.');
         }
-        $data = $request->validate(['solution_text' => 'required|string|min:10|max:5000']);
+        $review = $request->attributes->get('conecta.reviewed_delegation');
+        $data = $review instanceof TicketDelegation
+            ? $request->validate(['version' => 'required|integer|min:1'], [
+                'version.required' => 'Actualiza la página antes de aprobar la propuesta.',
+                'version.integer' => 'La versión del encargo no es válida. Actualiza la página.',
+                'version.min' => 'La versión del encargo no es válida. Actualiza la página.',
+            ])
+            : $request->validate(['solution_text' => 'required|string|min:10|max:5000']);
         $oldStatus = $ticket->status;
-        $updated = DB::transaction(function () use ($ticket, $data, $oldStatus) {
+        $updated = DB::transaction(function () use ($ticket, $data, $oldStatus, $review) {
+            $solution = $data['solution_text'] ?? null;
+            if (TicketDelegationAccess::available()) {
+                [$locked, $actor] = TicketDelegationWorkflow::lockContext($ticket, Auth::user(), [$review?->delegate_id]);
+                Gate::forUser($actor)->authorize('manage', $locked);
+                if ($review instanceof TicketDelegation) {
+                    $approved = TicketDelegationWorkflow::approveLocked($locked, $actor, $review->id, (int) $data['version']);
+                    $solution = $approved->proposal_text;
+                } else {
+                    TicketDelegationWorkflow::assertNoPendingReview($locked);
+                }
+            }
             if (!$this->updateTicketAssignment($ticket, [
                 'status' => Ticket::STATUS_RESOLVED,
-                'solution_text' => $data['solution_text'],
+                'solution_text' => $solution,
                 'resolved_at' => now(),
                 'response_deadline_at' => null,
-            ])) return false;
+            ])) {
+                if ($review instanceof TicketDelegation) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['delegation' => 'El ticket cambió antes de confirmar la aprobación. Actualiza la página.']);
+                }
+                return false;
+            }
             TicketHistory::create([
                 'ticket_id' => $ticket->id, 'user_id' => Auth::id(),
                 'action' => 'solution_registered', 'old_value' => $oldStatus,
@@ -797,7 +855,16 @@ class TicketController extends Controller
         } catch (\Throwable $e) {
             Log::warning('No se pudo avisar de la solución del ticket '.$ticket->id.': '.$e->getMessage());
         }
+        TicketDelegationNotifier::notifyDelegate($ticket, 'delegation_approved', 'TI aprobó la solución de este caso. El ticket está Resuelto y su cierre automático comienza desde esa aprobación.');
         return back()->with('success', 'Solución registrada. El ticket está Resuelto y se cerrará automáticamente después de una hora si no se reabre.');
+    }
+
+    public function approveDelegation(Request $request, Ticket $ticket, string $delegation)
+    {
+        abort_unless(TicketDelegationAccess::available(), 404);
+        $delegation = TicketDelegation::where('ticket_id', $ticket->id)->whereKey($delegation)->firstOrFail();
+        $request->attributes->set('conecta.reviewed_delegation', $delegation);
+        return $this->resolve($request, $ticket);
     }
 
     public function assignTo(Request $request, Ticket $ticket)
@@ -1026,9 +1093,9 @@ class TicketController extends Controller
      * esta transacción, nunca durante archivos o correos. Una pestaña antigua
      * no puede intervenir después de una reasignación, respuesta o cierre.
      */
-    private function storeConversationComment(Ticket $ticket, array $attributes, array $transition): ?TicketComment
+    private function storeConversationComment(Ticket $ticket, array $attributes, array $transition, ?array $delegationSnapshot = null): ?TicketComment
     {
-        return DB::transaction(function () use ($ticket, $attributes, $transition) {
+        return DB::transaction(function () use ($ticket, $attributes, $transition, $delegationSnapshot) {
             // Mismo orden que al asignar: usuario antes del ticket. Además de
             // revalidar la cuenta, evita invertir el lock del autor que exige
             // la FK del comentario frente a una transferencia simultánea.
@@ -1039,6 +1106,12 @@ class TicketController extends Controller
             $current = Ticket::query()->whereKey($ticket->id)->lockForUpdate()->firstOrFail();
             foreach (['assigned_to', 'status', 'department_id', 'resolved_at', 'last_response_request_at', 'response_deadline_at', 'user_responded_at'] as $field) {
                 if ($current->getRawOriginal($field) !== $ticket->getRawOriginal($field)) return null;
+            }
+            if (isset($author) && !Gate::forUser($author)->allows('comment', $current)) return null;
+            if ($delegationSnapshot !== null) {
+                $delegation = TicketDelegationAccess::current($current);
+                if (!$delegation || $delegation->id !== $delegationSnapshot[0] || $delegation->version !== $delegationSnapshot[1]
+                    || !TicketDelegationAccess::isDelegate($author, $current, true)) return null;
             }
             if ($transition && !$this->updateTicketAssignment($ticket, $transition)) return null;
             return TicketComment::create(['ticket_id' => $ticket->id] + $attributes);
@@ -1051,15 +1124,21 @@ class TicketController extends Controller
      */
     private function updateTicketAssignment(Ticket $ticket, array $attributes): bool
     {
-        $updated = Ticket::query()->whereKey($ticket->id)
-            ->where('assigned_to', $ticket->assigned_to)
-            ->where('status', $ticket->status)
-            ->where('department_id', $ticket->department_id)
-            ->where('resolved_at', $ticket->resolved_at)
-            ->update($attributes);
-        if (!$updated) return false;
-        $ticket->refresh();
-        return true;
+        return DB::transaction(function () use ($ticket, $attributes) {
+            $updated = Ticket::query()->whereKey($ticket->id)
+                ->where('assigned_to', $ticket->assigned_to)
+                ->where('status', $ticket->status)
+                ->where('department_id', $ticket->department_id)
+                ->where('resolved_at', $ticket->resolved_at)
+                ->update($attributes);
+            if (!$updated) return false;
+            if ((array_key_exists('assigned_to', $attributes) && (int) $attributes['assigned_to'] !== (int) $ticket->assigned_to)
+                || (array_key_exists('department_id', $attributes) && (int) $attributes['department_id'] !== (int) $ticket->department_id)) {
+                TicketDelegationAccess::invalidate($ticket, Auth::id());
+            }
+            $ticket->refresh();
+            return true;
+        });
     }
 
     /** Serializa la asignación con la desactivación/cambio de rol de la cuenta. */
@@ -1230,6 +1309,7 @@ class TicketController extends Controller
     {
         $sla = SlaConfig::forPriority($ticket->priority);
 
+        $updated = DB::transaction(function () use ($ticket, $sla) {
         $updated = Ticket::query()->whereKey($ticket->id)
             ->where('status', Ticket::STATUS_RESOLVED)
             ->where('resolved_at', $ticket->resolved_at)
@@ -1244,6 +1324,9 @@ class TicketController extends Controller
             // El aviso de vencimiento vuelve a armarse para el plazo nuevo.
             'sla_warned_for'             => null,
         ]);
+        if ($updated) TicketDelegationAccess::invalidate($ticket, Auth::id());
+        return $updated;
+        });
         if (!$updated) return false;
         $ticket->refresh();
 
@@ -1344,6 +1427,7 @@ class TicketController extends Controller
         }
 
         AuditLog::record('ticket.closed', 'Ticket', $ticket->id, ['solution' => substr($request->solution_text, 0, 100)]);
+        TicketDelegationNotifier::notifyDelegate($ticket, 'closed', 'El cierre de este caso fue confirmado.');
 
         return back()->with('success', 'Ticket cerrado correctamente.');
     }
@@ -1405,6 +1489,9 @@ class TicketController extends Controller
                 Log::warning('No se pudo avisar al invitado de la actualización del ticket '.$ticket->id.': '.$e->getMessage());
             }
         }
+        // La resolución avisa una sola vez al encargado después de confirmar
+        // su aprobación; el resto de eventos públicos se comunica aquí.
+        if ($event !== 'resolved') TicketDelegationNotifier::notifyDelegate($ticket, $event, $message, Auth::id());
     }
 
     /** Un fallo de transporte no invalida el cambio que ya se guardó. */

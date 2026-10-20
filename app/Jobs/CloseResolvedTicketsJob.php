@@ -9,6 +9,7 @@ use App\Models\Ticket;
 use App\Models\TicketHistory;
 use App\Notifications\TicketUpdatedNotification;
 use App\Support\TicketNotificationPreferences;
+use App\Support\TicketDelegationNotifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -64,6 +65,7 @@ class CloseResolvedTicketsJob implements ShouldQueue
             } catch (\Throwable $e) {
                 Log::warning('No se pudo avisar del cierre del ticket resuelto '.$ticket->id.': '.$e->getMessage());
             }
+            TicketDelegationNotifier::notifyDelegate($ticket, 'closed', 'El caso cuya solución aprobó TI se cerró al cumplirse una hora sin reapertura.');
         }
     }
 }

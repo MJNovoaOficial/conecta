@@ -111,6 +111,11 @@ class Ticket extends Model
         return $this->hasMany(TicketHistory::class)->orderBy('created_at', 'desc');
     }
 
+    public function delegations()
+    {
+        return $this->hasMany(TicketDelegation::class);
+    }
+
     /**
      * La calificación que dejó quien pidió la ayuda.
      */

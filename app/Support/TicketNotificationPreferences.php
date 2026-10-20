@@ -16,6 +16,11 @@ class TicketNotificationPreferences
         'info_requested' => 'notify_on_status_change',
         'status_change' => 'notify_on_status_change',
         'closed' => 'notify_on_close',
+        'delegation_assigned' => 'notify_on_assignment',
+        'delegation_proposed' => 'notify_on_comment',
+        'delegation_changes' => 'notify_on_comment',
+        'delegation_revoked' => 'notify_on_assignment',
+        'delegation_approved' => 'notify_on_status_change',
     ];
 
     public static function emailKey(int $userId): string
