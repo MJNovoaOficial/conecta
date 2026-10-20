@@ -36,6 +36,12 @@ class SecurityHeaders
             $response->headers->set($key, $value);
         }
 
+        // Only access forms: do not disable caching of CSS, downloads or tickets.
+        if (($request->isMethod('GET') || $request->isMethod('HEAD'))
+            && $request->routeIs('home', 'login', 'register', 'password.forgot', 'password.reset.form')) {
+            $response->headers->set('Cache-Control', 'private, no-store');
+        }
+
         return $response;
     }
 }

@@ -628,10 +628,10 @@
             .ticket-table td.celda-asunto::before { content: none; }
         }
     </style>
-    <link rel="stylesheet" href="{{ asset('css/premium.css') }}">
+    <link rel="stylesheet" href="{{ \App\Support\VersionedAsset::url('css/premium.css') }}">
     @yield('styles')
     @stack('styles')
-    <link rel="stylesheet" href="{{ asset('css/responsive.css') }}?v={{ filemtime(public_path('css/responsive.css')) }}">
+    <link rel="stylesheet" href="{{ \App\Support\VersionedAsset::url('css/responsive.css') }}">
 </head>
 <body>
 
@@ -750,6 +750,7 @@
 @endauth
 @yield('scripts')
 @stack('scripts')
+@include('partials.auth_form_freshness')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.auto-toast').forEach(function (el) {
