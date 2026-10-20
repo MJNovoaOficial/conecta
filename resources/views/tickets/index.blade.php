@@ -499,7 +499,7 @@
                                 {{ $ticket->assignedTo->name ?? '—' }}
                             </td>
                             <td class="ticket-updated-cell" data-label="Actualizado">
-                                {{ $ticket->updated_at->format('d/m/Y (H:i)') }}
+                                {{ \App\Support\DisplayDate::format($ticket->updated_at, 'd/m/Y (H:i)') }}
                             </td>
                         </tr>
                         @endforeach

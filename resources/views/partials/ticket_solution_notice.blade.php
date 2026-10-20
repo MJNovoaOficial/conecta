@@ -3,7 +3,7 @@
     <h3 style="font-size:1rem;color:#166534;margin-bottom:8px;">Solución registrada</h3>
     <div style="white-space:pre-wrap;overflow-wrap:anywhere;">{{ $ticket->solution_text }}</div>
     @if($ticket->status === 'resolved' && $ticket->resolved_at && $ticket->history()->where('action', 'solution_registered')->exists())
-        <p style="font-size:.85rem;margin-top:10px;">Cierre automático a partir del {{ $ticket->resolved_at->copy()->addHour()->format('d/m/Y H:i') }} (una hora desde la solución). Si el problema sigue, reabre el ticket antes del cierre.</p>
+        <p style="font-size:.85rem;margin-top:10px;">Cierre automático a partir del {{ \App\Support\DisplayDate::format($ticket->resolved_at->copy()->addHour()) }} (una hora desde la solución). Si el problema sigue, reabre el ticket antes del cierre.</p>
     @elseif($ticket->status === 'closed')
         <p style="font-size:.85rem;margin-top:10px;">Ticket cerrado definitivamente. La solución y la conversación quedan disponibles para consulta.</p>
     @endif

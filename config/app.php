@@ -67,6 +67,9 @@ return [
 
     'timezone' => 'UTC',
 
+    // Local presentation only. Keep storage, SLA and scheduled jobs in UTC.
+    'display_timezone' => 'America/Santiago',
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

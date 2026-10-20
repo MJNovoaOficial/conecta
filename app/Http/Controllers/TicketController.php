@@ -113,8 +113,8 @@ class TicketController extends Controller
             $s = request('search');
             $query->where(fn($q) => $q->where('ticket_number','like',"%{$s}%")->orWhere('title','like',"%{$s}%"));
         }
-        if (request('date_from'))  $query->whereDate('created_at','>=',request('date_from'));
-        if (request('date_to'))    $query->whereDate('created_at','<=',request('date_to'));
+        if (request('date_from'))  $query->where('created_at', '>=', \App\Support\DisplayDate::dayStartUtc(request('date_from')));
+        if (request('date_to'))    $query->where('created_at', '<', \App\Support\DisplayDate::nextDayStartUtc(request('date_to')));
 
         // Ordenamiento por columna (los <th> del listado son clickeables).
         // IMPORTANTE: el valor llega desde la URL, asi que se resuelve contra una

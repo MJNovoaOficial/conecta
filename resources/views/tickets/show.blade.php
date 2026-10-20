@@ -253,7 +253,7 @@
                 @endif
             @endauth
             &nbsp;·&nbsp; <i class="fas fa-building"></i> {{ $ticket->getCreatorDepartment() }}
-            &nbsp;·&nbsp; {{ $ticket->created_at->format('d/m/Y H:i') }}
+            &nbsp;·&nbsp; {{ \App\Support\DisplayDate::format($ticket->created_at) }}
             &nbsp;·&nbsp; hace {{ $ticket->created_at->diffForHumans() }}
         </div>
         <div class="tk-badges">
@@ -275,7 +275,7 @@
         @if($ticket->isResponseTimeExpired())
             <strong>⚠️ Tiempo de respuesta expirado.</strong> El ticket puede cerrarse automáticamente.
         @else
-            <strong>Pendiente de respuesta.</strong> Plazo: {{ $ticket->response_deadline_at->format('d/m/Y H:i') }} ({{ $ticket->response_deadline_at->diffForHumans() }})
+            <strong>Pendiente de respuesta.</strong> Plazo: {{ \App\Support\DisplayDate::format($ticket->response_deadline_at) }} ({{ $ticket->response_deadline_at->diffForHumans() }})
         @endif
     </div>
     @endif
@@ -356,7 +356,7 @@
                                 @endif
                                 @if($isInt)<span style="font-size:.68rem;background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:10px;margin-left:5px;">🔒 Interno</span>@endif
                             </div>
-                            <div class="c-time">{{ $comment->created_at->format('d/m/Y H:i') }}</div>
+                            <div class="c-time">{{ \App\Support\DisplayDate::format($comment->created_at) }}</div>
                         </div>
                         <div class="c-body">{{ $comment->comment }}</div>
                         @if($comment->attachments && $comment->attachments->count() > 0)
@@ -537,7 +537,7 @@
             <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:6px;padding:8px 10px;font-size:.76rem;color:#92400e;margin-top:6px;">
                 <i class="fas fa-clock"></i> Esperando respuesta del usuario
                 @if($ticket->response_deadline_at)
-                    <br><small>Vence: {{ $ticket->response_deadline_at->format('d/m H:i') }}</small>
+                    <br><small>Vence: {{ \App\Support\DisplayDate::format($ticket->response_deadline_at, 'd/m H:i') }}</small>
                 @endif
             </div>
             @endif
@@ -712,10 +712,10 @@
                     <span class="val" title="Excluye espera de respuesta del usuario">{{ $ticket->getSupportTimeFormatted() }}</span>
                 </li>
                 <x-sla-info :ticket="$ticket" />
-                <li><span class="lbl">Creado</span><span class="val">{{ $ticket->created_at->format('d/m/Y H:i') }}</span></li>
-                <li><span class="lbl">Actualizado</span><span class="val">{{ $ticket->updated_at->format('d/m/Y H:i') }}</span></li>
+                <li><span class="lbl">Creado</span><span class="val">{{ \App\Support\DisplayDate::format($ticket->created_at) }}</span></li>
+                <li><span class="lbl">Actualizado</span><span class="val">{{ \App\Support\DisplayDate::format($ticket->updated_at) }}</span></li>
                 @if($ticket->closed_at)
-                <li><span class="lbl">Cerrado</span><span class="val">{{ $ticket->closed_at->format('d/m/Y H:i') }}</span></li>
+                <li><span class="lbl">Cerrado</span><span class="val">{{ \App\Support\DisplayDate::format($ticket->closed_at) }}</span></li>
                 @endif
             </ul>
         </div>
@@ -730,7 +730,7 @@
             <div class="hist-item">
                 <div class="hist-dot"></div>
                 <div>
-                    <div class="hist-time">{{ $entry->created_at->format('d/m H:i') }}</div>
+                    <div class="hist-time">{{ \App\Support\DisplayDate::format($entry->created_at, 'd/m H:i') }}</div>
                     <div class="hist-text">
                         @php
                             $sNames = \App\Models\Ticket::statusLabels();

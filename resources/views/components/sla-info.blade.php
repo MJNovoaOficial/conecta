@@ -24,7 +24,7 @@
         @else
             ✓
         @endif
-        {{ $ticket->sla_resolution_deadline_at->format('d/m/Y H:i') }}
+        {{ \App\Support\DisplayDate::format($ticket->sla_resolution_deadline_at) }}
     </span>
     @if($slaRestante)
         <span class="text-xs font-medium" style="color: {{ $slaColor }};">

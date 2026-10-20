@@ -46,7 +46,7 @@
 
 <div class="header">
     <h1>📊 Reporte de Tickets — Conecta</h1>
-    <p>Generado: {{ now()->format('d/m/Y H:i') }} &nbsp;|&nbsp; Filtros aplicados: {{ request()->anyFilled(['search','categoria_id','status','priority','agent_id','user_id','department_id','date_from','date_to']) ? 'Sí' : 'Ninguno' }}</p>
+    <p>Generado: {{ \App\Support\DisplayDate::format(now()) }} &nbsp;|&nbsp; Filtros aplicados: {{ request()->anyFilled(['search','categoria_id','status','priority','agent_id','user_id','department_id','date_from','date_to']) ? 'Sí' : 'Ninguno' }}</p>
 </div>
 
 {{-- KPIs --}}
@@ -91,8 +91,8 @@
             <td><span class="badge {{ $prCls[$t->priority] ?? 'b-medium' }}">{{ $t->getPriorityLabel() }}</span></td>
             <td>{{ $t->subcategoria?->categoria?->name ?? $t->category ?? '—' }} {{ $t->subcategoria ? '› '.$t->subcategoria->name : '' }}</td>
             <td>{{ $t->assignedTo?->name ?? '—' }}</td>
-            <td>{{ $t->created_at->format('d/m/Y') }}</td>
-            <td>{{ $t->closed_at?->format('d/m/Y') ?? '—' }}</td>
+            <td>{{ \App\Support\DisplayDate::format($t->created_at, 'd/m/Y') }}</td>
+            <td>{{ \App\Support\DisplayDate::format($t->closed_at, 'd/m/Y') }}</td>
         </tr>
         @endforeach
     </tbody>

@@ -112,7 +112,7 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
   <span>👤 {{ $ticket->getCreatorName() }}</span>
   <span>🗂 {{ ucfirst($ticket->category) }}</span>
   <span>💻 {{ ucfirst($ticket->device_type) }}</span>
-  <span>🕐 {{ $ticket->created_at->format('d/m/Y H:i') }}</span>
+  <span>🕐 {{ \App\Support\DisplayDate::format($ticket->created_at) }}</span>
 </div>
 
 {{-- ── BODY ── --}}
@@ -204,7 +204,7 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
               <div class="comment-who">{{ $cu->name ?? 'Sistema' }}
                 @if($isInternal)<span style="font-size:0.68rem;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:10px;margin-left:4px;">🔒 Interno</span>@endif
               </div>
-              <div class="comment-when">{{ $comment->created_at->format('d/m/Y H:i') }} · {{ $comment->created_at->diffForHumans() }}</div>
+              <div class="comment-when">{{ \App\Support\DisplayDate::format($comment->created_at) }} · {{ $comment->created_at->diffForHumans() }}</div>
             </div>
           </div>
           <div class="comment-text">{{ $comment->comment }}</div>

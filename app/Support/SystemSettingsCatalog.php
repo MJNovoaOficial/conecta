@@ -14,7 +14,7 @@ class SystemSettingsCatalog
     {
         return [
             ['key'=>'app_name','value'=>'Conecta','type'=>'string','group'=>'general','label'=>'Nombre del sistema','description'=>'Nombre informado por la configuración actual de la aplicación.'],
-            ['key'=>'app_timezone','value'=>'America/Santiago','type'=>'string','group'=>'general','label'=>'Zona horaria','description'=>'Hora y zona efectivas de Laravel/PHP en el servidor. No modifica ni reinterpreta fechas guardadas.'],
+            ['key'=>'app_timezone','value'=>'America/Santiago','type'=>'string','group'=>'general','label'=>'Zona horaria','description'=>'Hora local de visualización. Las fechas internas se conservan en UTC, sin modificar los registros guardados.'],
             ['key'=>'tickets_per_page','value'=>'15','type'=>'integer','group'=>'general','label'=>'Tickets por página','description'=>'Cantidad actual de tickets antes de pasar a la siguiente página del listado.'],
             ['key'=>'allow_guest_tickets','value'=>'1','type'=>'boolean','group'=>'general','label'=>'Acceso de invitados','description'=>'La creación y el seguimiento sin login mediante enlace privado se mantienen habilitados.'],
             ['key'=>'attachments_global_enabled','value'=>'0','type'=>'boolean','group'=>'attachments','label'=>'Usar límites globales de adjuntos','description'=>'Al activar, los límites siguientes se aplican a creación y respuestas, también de invitados. Desactivado conserva los límites anteriores.'],

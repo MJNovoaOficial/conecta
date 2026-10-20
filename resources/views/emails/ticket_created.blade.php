@@ -65,7 +65,7 @@
                     </div>
                     <div class="info-item">
                         <div class="lbl">Creado</div>
-                        <div class="val">{{ $ticket->created_at->format('d/m/Y H:i') }}</div>
+                        <div class="val">{{ \App\Support\DisplayDate::format($ticket->created_at) }}</div>
                     </div>
                 </div>
             </div>
@@ -73,7 +73,7 @@
             @if($ticket->sla_resolution_deadline_at)
             <div class="sla-box">
                 <strong>⏱ Plazo de resolución:</strong>
-                {{ $ticket->sla_resolution_deadline_at->format('d/m/Y H:i') }}
+                {{ \App\Support\DisplayDate::format($ticket->sla_resolution_deadline_at) }}
                 ({{ $ticket->sla_resolution_deadline_at->diffForHumans() }})
             </div>
             @endif

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Categoria;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Support\DisplayDate;
 use App\Support\FilterValidation;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
@@ -72,7 +73,7 @@ class ReportController extends Controller
         $query = $this->filteredTickets($request);
 
         $tickets  = $query->get();
-        $filename = 'reporte_tickets_' . now()->format('Y-m-d') . '.csv';
+        $filename = 'reporte_tickets_' . DisplayDate::format(now(), 'Y-m-d') . '.csv';
         $tmpPath  = tempnam(sys_get_temp_dir(), 'conecta_csv_');
 
         // Escribir CSV al disco temporal
@@ -94,8 +95,8 @@ class ReportController extends Controller
                 $t->subcategoria?->name ?? '',
                 $t->tipoIncidente?->name ?? '',
                 $t->assignedTo?->name ?? 'Sin asignar',
-                $t->created_at->format('d/m/Y H:i'),
-                $t->closed_at?->format('d/m/Y H:i') ?? '',
+                DisplayDate::format($t->created_at),
+                DisplayDate::format($t->closed_at, empty: ''),
             ], ';');
         }
         fclose($file);
@@ -141,7 +142,7 @@ class ReportController extends Controller
 
         $pdf      = Pdf::loadView('admin.reports.pdf', compact('tickets', 'summary', 'slaCompliance', 'byAgent'))
                        ->setPaper('a4', 'landscape');
-        $filename = 'reporte_tickets_' . now()->format('Y-m-d') . '.pdf';
+        $filename = 'reporte_tickets_' . DisplayDate::format(now(), 'Y-m-d') . '.pdf';
         $tmpPath  = tempnam(sys_get_temp_dir(), 'conecta_pdf_') . '.pdf';
         $pdf->save($tmpPath);
 
@@ -211,10 +212,10 @@ class ReportController extends Controller
                 'G' => $t->subcategoria?->name ?? '',
                 'H' => $t->tipoIncidente?->name ?? '',
                 'I' => $t->assignedTo?->name ?? 'Sin asignar',
-                'J' => $t->created_at->format('d/m/Y H:i'),
-                'K' => $t->closed_at?->format('d/m/Y H:i') ?? '',
-                'L' => $t->sla_response_deadline_at?->format('d/m/Y H:i') ?? '',
-                'M' => $t->sla_resolution_deadline_at?->format('d/m/Y H:i') ?? '',
+                'J' => DisplayDate::format($t->created_at),
+                'K' => DisplayDate::format($t->closed_at, empty: ''),
+                'L' => DisplayDate::format($t->sla_response_deadline_at, empty: ''),
+                'M' => DisplayDate::format($t->sla_resolution_deadline_at, empty: ''),
             ];
 
             foreach ($rowData as $col => $val) {
@@ -234,7 +235,7 @@ class ReportController extends Controller
         }
 
         $writer   = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
-        $filename = 'reporte_tickets_' . now()->format('Y-m-d') . '.xlsx';
+        $filename = 'reporte_tickets_' . DisplayDate::format(now(), 'Y-m-d') . '.xlsx';
         $tmpPath  = tempnam(sys_get_temp_dir(), 'conecta_xlsx_') . '.xlsx';
         $writer->save($tmpPath);
 
@@ -274,10 +275,10 @@ class ReportController extends Controller
             $query->whereHas('subcategoria', fn ($q) => $q->where('categoria_id', $request->input('categoria_id')));
         }
         if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->input('date_from'));
+            $query->where('created_at', '>=', DisplayDate::dayStartUtc($request->input('date_from')));
         }
         if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->input('date_to'));
+            $query->where('created_at', '<', DisplayDate::nextDayStartUtc($request->input('date_to')));
         }
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {

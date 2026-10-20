@@ -259,7 +259,7 @@ table.rp-tbl tbody tr:hover td { background:#fafbff; }
                 <button type="submit" class="btn-filter btn-f-apply"><i class="fas fa-filter"></i> Filtrar</button>
                 <a href="{{ route('admin.reports.index') }}" class="btn-filter btn-f-clear"><i class="fas fa-times"></i> Limpiar</a>
                 @php
-                    $dlDate   = now()->format('Y-m-d');
+                    $dlDate   = \App\Support\DisplayDate::format(now(), 'Y-m-d');
                     $dlParams = http_build_query(request()->except('page'));
                     $dlPrefix = 'reporte_tickets_' . $dlDate;
                     // Usar URL relativa para garantizar same-origin (requerido por atributo download en Chrome/Edge)
@@ -330,7 +330,7 @@ table.rp-tbl tbody tr:hover td { background:#fafbff; }
                                 {{ $ticket->getClassificationLabel() }}
                             </td>
                             <td style="font-size:.8rem;font-weight:500;color:#374151;">{{ $ticket->assignedTo?->name ?? '—' }}</td>
-                            <td style="font-size:.78rem;white-space:nowrap;color:#94a3b8;">{{ $ticket->created_at->format('d/m/Y') }}</td>
+                            <td style="font-size:.78rem;white-space:nowrap;color:#94a3b8;">{{ \App\Support\DisplayDate::format($ticket->created_at, 'd/m/Y') }}</td>
                             <td>
                                 @if($sla === 'exceeded')
                                     <span class="sla-over"><i class="fas fa-exclamation-triangle me-1"></i>Vencido</span>

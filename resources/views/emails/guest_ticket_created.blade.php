@@ -53,7 +53,7 @@
                     </div>
                     <div class="info-item">
                         <div class="lbl">Creado</div>
-                        <div class="val">{{ $ticket->created_at->format('d/m/Y H:i') }}</div>
+                        <div class="val">{{ \App\Support\DisplayDate::format($ticket->created_at) }}</div>
                     </div>
                 </div>
             </div>

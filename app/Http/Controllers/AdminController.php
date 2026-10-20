@@ -350,7 +350,7 @@ class AdminController extends Controller
         $replyLimits=TicketAttachmentLimits::forRequest(true);
         $readOnlyValues = [
             'app_name' => config('app.name'),
-            'app_timezone' => config('app.timezone').' — '.now()->format('d/m/Y H:i:s'),
+            'app_timezone' => \App\Support\DisplayDate::timezone().' — '.\App\Support\DisplayDate::format(now(), 'd/m/Y H:i:s').' (fechas internas: '.config('app.timezone').')',
             'tickets_per_page' => '15 tickets',
             'allow_guest_tickets' => 'Habilitado: creación y seguimiento sin login mediante enlace privado',
             'support_email' => config('mail.from.address'),

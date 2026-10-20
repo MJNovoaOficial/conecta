@@ -105,7 +105,7 @@
                     <strong>{{ $encuesta->etiqueta() }}</strong>
                     <span style="color:#64748b;">({{ $encuesta->calificacion }}/5)</span>
                 </div>
-                <div style="font-size:.72rem;color:#94a3b8;">{{ $encuesta->created_at->format('d/m/Y H:i') }}</div>
+                <div style="font-size:.72rem;color:#94a3b8;">{{ \App\Support\DisplayDate::format($encuesta->created_at) }}</div>
             </div>
         </div>
         @if($encuesta->comentario)
