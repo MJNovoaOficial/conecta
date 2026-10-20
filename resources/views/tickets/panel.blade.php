@@ -236,6 +236,11 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
     <div class="reply-form">
       <form method="POST" action="/tickets/{{ $ticket->id }}/comment" enctype="multipart/form-data" data-comment-submit>
         @csrf
+        @if(\App\Support\TicketDelegationAccess::available() && \App\Support\TicketDelegationAccess::isDelegate(Auth::user(), $ticket, true))
+          @php $commentDelegation = $ticketDelegation ?? \App\Support\TicketDelegationAccess::current($ticket); @endphp
+          <input type="hidden" name="delegation_id" value="{{ $commentDelegation->id }}">
+          <input type="hidden" name="delegation_version" value="{{ $commentDelegation->version }}">
+        @endif
         <textarea name="comment" placeholder="Escribe tu respuesta..." required></textarea>
         <div class="reply-footer">
           <div class="reply-opts">
@@ -253,6 +258,7 @@ body{font-family:'Inter',system-ui,sans-serif;font-size:0.875rem;color:#2d3748;b
     @endauth
 
   </div>
+  @include('partials.ticket_delegation')
   @include('partials.ticket_solution_form')
 
 </div>
