@@ -1510,7 +1510,7 @@ class TicketController extends Controller
     {
         return ['bail', 'file', 'max:'.$maxKilobytes, function ($attribute, $file, $fail) {
             if (!$this->isValidFile($file)) {
-                $fail('El formato del archivo no está permitido. Usa PDF, Office, JPG, PNG, GIF, ZIP, TXT o videos MP4, MOV o WEBM.');
+                $fail('El formato del archivo no está permitido. Usa PDF, Office, JPG/JPEG, PNG, GIF, ZIP, TXT o videos MP4, MOV o WEBM.');
             }
         }];
     }
@@ -1537,7 +1537,7 @@ class TicketController extends Controller
                 'comment_id' => $commentId,
                 'file_path' => $path,
                 'file_name' => $filename,
-                'file_type' => $file->getMimeType(),
+                'file_type' => $this->attachmentMimeType($file),
                 'file_size' => $file->getSize(),
                 'uploaded_by' => Auth::id(),
             ]);
@@ -1550,10 +1550,27 @@ class TicketController extends Controller
     private function isValidFile($file): bool
     {
         $extension = strtolower($file->getClientOriginalExtension());
-        $mimeType = $file->getMimeType();
+        $mimeType = $this->attachmentMimeType($file);
 
         return in_array($extension, self::ALLOWED_EXTENSIONS) && 
                in_array($mimeType, self::ALLOWED_MIME_TYPES);
+    }
+
+    /** Compatibilidad JPEG sin confiar en el MIME declarado por el navegador. */
+    private function attachmentMimeType($file): ?string
+    {
+        $mimeType = $file->getMimeType();
+        if (in_array(strtolower($file->getClientOriginalExtension()), ['jpg', 'jpeg'], true)
+            && in_array($mimeType, ['image/jpg', 'image/pjpeg'], true)) {
+            // Solo normalizar alias detectados por el servidor y con estructura
+            // JPEG. No admitir tipos genéricos ni otro formato renombrado.
+            $image = @getimagesize($file->getPathname());
+            if ($image !== false && $image[2] === IMAGETYPE_JPEG) {
+                return 'image/jpeg';
+            }
+        }
+
+        return $mimeType;
     }
 
     /**
