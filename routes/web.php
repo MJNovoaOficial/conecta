@@ -16,6 +16,19 @@ use App\Http\Controllers\TicketDelegationController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\ManualController;
+use App\Http\Controllers\ProjectLogController;
+
+// Autorización y disponibilidad antes de consultar los registros de la bitácora.
+Route::middleware(['auth', \App\Http\Middleware\ProjectLogAccess::class])->prefix('bitacora')->name('project-log.')->group(function () {
+    Route::get('/', [ProjectLogController::class, 'index'])->name('index');
+    Route::get('/publicar', [ProjectLogController::class, 'create'])->name('create');
+    Route::post('/', [ProjectLogController::class, 'store'])->name('store');
+    Route::get('/reportes/{format}', [ProjectLogController::class, 'export'])->where('format', 'pdf|excel')->name('export');
+    Route::get('/{entry}', [ProjectLogController::class, 'show'])->whereNumber('entry')->name('show');
+    Route::get('/{entry}/editar', [ProjectLogController::class, 'edit'])->whereNumber('entry')->name('edit');
+    Route::put('/{entry}', [ProjectLogController::class, 'update'])->whereNumber('entry')->name('update');
+    Route::get('/{entry}/adjuntos/{attachment}', [ProjectLogController::class, 'download'])->whereNumber(['entry', 'attachment'])->name('download');
+});
 
 // Página de inicio
 Route::get('/', function () {

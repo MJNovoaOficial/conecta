@@ -69,6 +69,9 @@
 
         {{-- Navegación de soporte --}}
         @if(Auth::user()->isSupport() || Auth::user()->isAdmin())
+        @if(\App\Support\ProjectLogAccess::available())
+        <div class="sidebar-section"><a href="{{ route('project-log.index') }}" class="sidebar-item"><div class="item-left"><span class="item-icon"><i class="fas fa-book-open" aria-hidden="true"></i></span>Bitácora de proyectos</div></a></div>
+        @endif
         <div class="sidebar-section">
             <div class="sidebar-section-header">
                 <span><i class="fas fa-headset me-2"></i>Soporte</span>

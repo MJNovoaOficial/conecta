@@ -24,6 +24,9 @@
         ['route' => 'admin.states.index', 'icon' => 'fas fa-sitemap', 'label' => 'Estados del Flujo', 'key' => 'states'],
         ['route' => 'admin.audit.index', 'icon' => 'fas fa-shield-alt', 'label' => 'Auditoría', 'key' => 'audit'],
     ];
+    if (\App\Support\ProjectLogAccess::staff(auth()->user()) && \App\Support\ProjectLogAccess::available()) {
+        $navItems[] = ['route' => 'project-log.index', 'icon' => 'fas fa-book-open', 'label' => 'Bitácora de proyectos', 'key' => 'project_log'];
+    }
 @endphp
 
 <style>

@@ -1,0 +1,78 @@
+.log-shell { max-width: 1120px; margin: 0 auto; padding: 28px 24px 124px; color: #22334b; font-size: 1rem; }
+.log-shell * { min-width: 0; }
+.log-form-shell { max-width: 900px; }
+.log-back { display: inline-block; color: #436588; text-decoration: none; margin-bottom: 26px; }
+.log-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+.log-heading h1, .log-detail h1 { font-size: clamp(1.65rem, 3vw, 2.2rem); font-weight: 700; line-height: 1.25; margin: 0 0 12px; overflow-wrap: anywhere; }
+.log-heading p { margin: 0; color: #56677d; }
+.log-heading .log-eyebrow { color: #29779e; font-size: .75rem; font-weight: 700; letter-spacing: .1em; margin-bottom: 10px; }
+.log-button { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #257fb2; border-radius: 8px; background: #257fb2; color: white; font-size: .95rem; font-weight: 600; text-decoration: none; padding: 11px 17px; min-height: 44px; line-height: 1.35; text-align: center; cursor: pointer; }
+.log-button:hover { background: #1c658e; color: white; }
+.log-button:disabled { opacity: .65; cursor: wait; }
+.log-secondary { background: white; border-color: #becddd; color: #304d6b; }
+.log-secondary:hover { background: #edf4fa; color: #22334b; }
+.log-panel { padding: 24px; border: 1px solid #e0e6ee; border-radius: 12px; background: white; }
+.log-panel h2, .log-results h2 { font-size: 1.1rem; font-weight: 700; margin: 0 0 8px; }
+.log-muted, .log-help { color: #586a80; }
+.log-muted { margin-bottom: 18px; font-size: .9rem; }
+.log-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.log-filters > div { flex: 1 1 150px; }
+.log-shell label { display: block; font-weight: 600; margin-bottom: 7px; font-size: .94rem; }
+.log-shell label span { font-weight: 400; color: #586a80; }
+.log-shell input, .log-shell select, .log-shell textarea { font: inherit; width: 100%; max-width: 100%; background: #fff; color: #22334b; border: 1px solid #b9c8d8; border-radius: 7px; padding: 10px 12px; min-height: 44px; }
+.log-shell input[type=file] { padding: 8px; font-size: .9rem; }
+.log-shell input:focus, .log-shell select:focus, .log-shell textarea:focus, .log-shell a:focus-visible, .log-shell button:focus-visible { outline: 3px solid #9ed8f6; outline-offset: 2px; }
+.log-shell textarea { resize: vertical; min-height: 180px; line-height: 1.6; }
+.log-results { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 28px 0 14px; }
+.log-results h2 { margin: 0; }
+.log-results span { color: #586a80; font-size: .9rem; }
+.log-feed { display: grid; gap: 16px; }
+.log-entry-top { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; color: #586a80; font-size: .85rem; margin-bottom: 16px; }
+.log-entry-top time { margin-left: auto; }
+.log-project { font-weight: 600; overflow-wrap: anywhere; }
+.log-type { border-radius: 5px; background: #eaf3ff; color: #235c98; padding: 4px 9px; font-weight: 600; }
+.log-type-creation { background: #e2f5eb; color: #236848; }
+.log-type-correction { background: #fff1dc; color: #87571e; }
+.log-entry h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 12px; overflow-wrap: anywhere; }
+.log-entry h3 a { color: #22334b; text-decoration: none; }
+.log-entry h3 a:hover { color: #257fb2; text-decoration: underline; }
+.log-excerpt { color: #526176; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
+.log-entry-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-top: 12px; border-top: 1px solid #ecf0f5; font-size: .88rem; overflow-wrap: anywhere; }
+.log-entry-footer a, .log-attachments a { color: #226e9b; }
+.log-empty { text-align: center; padding: 44px 20px; }
+.log-empty h3 { font-size: 1.2rem; }
+.log-empty p { color: #586a80; }
+.log-pagination { margin-top: 24px; overflow-wrap: anywhere; }
+.log-pagination .pagination { flex-wrap: wrap; }
+.log-errors { border: 1px solid #f5b5b5; background: #fff3f3; color: #973232; padding: 16px; border-radius: 8px; margin-bottom: 20px; overflow-wrap: anywhere; }
+.log-errors ul { margin-bottom: 0; padding-left: 20px; }
+.log-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+.log-full { grid-column: 1 / -1; }
+.log-help { font-size: .85rem; line-height: 1.5; margin: 7px 0 0; overflow-wrap: anywhere; }
+.log-form-actions { display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid #e0e6ee; margin-top: 26px; padding-top: 22px; }
+.log-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; border-block: 1px solid #e0e6ee; padding: 22px 0; margin: 24px 0; }
+.log-meta dt { font-size: .82rem; font-weight: 400; color: #586a80; margin-bottom: 4px; }
+.log-meta dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.log-description { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.75; }
+.log-attachments { margin-top: 28px; padding-top: 22px; border-top: 1px solid #e0e6ee; }
+.log-attachments ul { padding-left: 20px; margin-bottom: 0; }
+.log-attachments li { margin-top: 12px; overflow-wrap: anywhere; }
+.log-attachments span { color: #586a80; font-size: .85rem; }
+.log-detail-footer { margin-top: 28px; padding-top: 22px; border-top: 1px solid #e0e6ee; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.log-detail-footer span { font-size: .85rem; color: #586a80; }
+@media (max-width: 700px) {
+    .log-shell { padding: 20px 16px 124px; }
+    .log-heading { align-items: stretch; flex-direction: column; gap: 18px; }
+    .log-heading .log-button { align-self: flex-start; }
+    .log-panel { padding: 20px; }
+    .log-form-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    .log-filters > div { flex-basis: calc(50% - 12px); }
+    .log-filters .log-button { flex: 1 1 100%; }
+    .log-form-actions { flex-direction: column-reverse; }
+    .log-detail-footer { align-items: stretch; flex-direction: column; }
+}
+@media (max-width: 380px) {
+    .log-panel { padding: 16px; }
+    .log-filters > div { flex-basis: 100%; }
+    .log-meta { grid-template-columns: minmax(0, 1fr); }
+}
