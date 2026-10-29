@@ -28,6 +28,7 @@ Route::middleware(['auth', \App\Http\Middleware\ProjectLogAccess::class])->prefi
     Route::get('/{entry}/editar', [ProjectLogController::class, 'edit'])->whereNumber('entry')->name('edit');
     Route::put('/{entry}', [ProjectLogController::class, 'update'])->whereNumber('entry')->name('update');
     Route::get('/{entry}/adjuntos/{attachment}', [ProjectLogController::class, 'download'])->whereNumber(['entry', 'attachment'])->name('download');
+    Route::get('/{entry}/imagenes/{attachment}', [ProjectLogController::class, 'image'])->whereNumber(['entry', 'attachment'])->name('image');
 });
 
 // Página de inicio

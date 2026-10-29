@@ -9,6 +9,8 @@ use App\Models\SystemSetting;
 use App\Support\TicketNotificationPreferences;
 use App\Support\TicketAttachmentLimits;
 use App\Support\FilterValidation;
+use App\Support\ProjectLogAccess;
+use App\Support\ProjectLogSummary;
 use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Models\Department;
@@ -555,12 +557,15 @@ class AdminController extends Controller
                 ->select(DB::raw('COUNT(tickets.id)'))
         ])->orderByDesc('ticket_count')->take(8)->get();
 
+        $projectLogSummary = ProjectLogAccess::staff($request->user()) && ProjectLogAccess::available()
+            ? ProjectLogSummary::current() : null;
+
         return view('admin.gerencial', compact(
             'period', 'periodLabel',
             'totalTickets', 'openTickets', 'resolvedTickets', 'criticalOpen',
             'avgResolutionHours', 'slaCompliance', 'slaMissed', 'totalResolved',
             'byPriority', 'byCategory', 'trendLabels', 'trendValues',
-            'agentPerformance', 'topRequesters', 'categoryTrend'
+            'agentPerformance', 'topRequesters', 'categoryTrend', 'projectLogSummary'
         ));
     }
 

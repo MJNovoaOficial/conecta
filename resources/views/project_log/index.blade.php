@@ -27,6 +27,7 @@
             <div class="log-entry-top"><span class="log-type log-type-{{ $entry->type }}">{{ \App\Models\ProjectLogEntry::TYPES[$entry->type] ?? $entry->type }}</span><span class="log-project">{{ $entry->project->name }}</span><time datetime="{{ $entry->performed_on->format('Y-m-d') }}">{{ $entry->performed_on->format('d/m/Y') }}</time></div>
             <h3><a href="{{ route('project-log.show', $entry) }}">{{ $entry->title }}</a></h3>
             <p class="log-excerpt">{{ \Illuminate\Support\Str::limit($entry->description, 280) }}</p>
+            @include('project_log.images')
             <div class="log-entry-footer"><span>Responsable: <strong>{{ $entry->responsible_name }}</strong></span><a href="{{ route('project-log.show', $entry) }}">Ver actualización{{ $entry->attachments_count ? ' · '.$entry->attachments_count.($entry->attachments_count === 1 ? ' adjunto' : ' adjuntos') : '' }} →</a></div>
         </article>
     @empty

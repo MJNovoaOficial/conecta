@@ -15,3 +15,13 @@ window.addEventListener('pageshow', function () {
         if (button) { button.disabled = false; if (button.dataset.label) button.textContent = button.dataset.label; }
     });
 });
+
+document.querySelectorAll('[data-log-image]').forEach(function (image) {
+    function unavailable() {
+        image.hidden = true;
+        const fallback = image.parentElement.querySelector('.log-image-fallback');
+        if (fallback) fallback.hidden = false;
+    }
+    image.addEventListener('error', unavailable);
+    if (image.complete && image.naturalWidth === 0) unavailable();
+});

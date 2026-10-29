@@ -124,6 +124,10 @@
         </div>
     </div>
 
+    @if($projectLogSummary)
+        @include('admin.project_log_summary', ['summary' => $projectLogSummary])
+    @endif
+
     {{-- Tendencia + Prioridad --}}
     <div class="section-grid2">
         {{-- Tendencia mensual --}}

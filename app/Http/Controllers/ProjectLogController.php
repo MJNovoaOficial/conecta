@@ -30,7 +30,7 @@ class ProjectLogController extends Controller
     {
         [$query, $filters] = $this->filtered($request);
         $total = (clone $query)->count();
-        $entries = $query->paginate(15)->withQueryString()->appends($filters);
+        $entries = $query->with('attachments')->paginate(15)->withQueryString()->appends($filters);
         return view('project_log.index', compact('entries', 'filters', 'total'));
     }
 
@@ -213,6 +213,22 @@ class ProjectLogController extends Controller
         $file = ProjectLogAttachment::where('entry_id', $entry)->findOrFail($attachment);
         abort_unless(Storage::disk('local')->exists($file->path), 404);
         return Storage::disk('local')->download($file->path, $file->original_name, ['Content-Type' => 'application/octet-stream']);
+    }
+
+    public function image(int $entry, int $attachment)
+    {
+        $file = ProjectLogAttachment::where('entry_id', $entry)->findOrFail($attachment);
+        abort_unless($file->isPreviewableImage() && Storage::disk('local')->exists($file->path), 404);
+        $path = Storage::disk('local')->path($file->path);
+        // La extensión decide qué mostrar; el contenido real decide qué servir.
+        $info = @getimagesize($path);
+        $mime = match ($info[2] ?? null) {
+            IMAGETYPE_JPEG => 'image/jpeg', IMAGETYPE_PNG => 'image/png',
+            IMAGETYPE_GIF => 'image/gif', IMAGETYPE_WEBP => 'image/webp',
+            default => null,
+        };
+        abort_unless($mime, 404);
+        return response()->file($path, ['Content-Type' => $mime, 'Content-Disposition' => 'inline']);
     }
 
     private function filtered(Request $request): array

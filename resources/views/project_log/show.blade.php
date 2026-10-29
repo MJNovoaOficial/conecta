@@ -9,8 +9,10 @@
         <h1>{{ $entry->title }}</h1>
         <dl class="log-meta"><div><dt>Fecha del trabajo</dt><dd>{{ $entry->performed_on->format('d/m/Y') }}</dd></div><div><dt>Responsable</dt><dd>{{ $entry->responsible_name }}</dd></div><div><dt>Publicado por</dt><dd>{{ $entry->author_name }}</dd></div><div><dt>Publicación</dt><dd>{{ \App\Support\DisplayDate::format($entry->created_at) }}</dd></div></dl>
         <div class="log-description">{{ $entry->description }}</div>
-        @if($entry->attachments->isNotEmpty())
-        <section class="log-attachments" aria-labelledby="log-attachments-title"><h2 id="log-attachments-title">Adjuntos</h2><ul>@foreach($entry->attachments as $file)<li><a href="{{ route('project-log.download', [$entry, $file]) }}">{{ $file->original_name }}</a> <span>({{ number_format($file->size / 1024, 0, ',', '.') }} KB)</span></li>@endforeach</ul></section>
+        @include('project_log.images')
+        @php($documents = $entry->attachments->reject(fn ($file) => $file->isPreviewableImage()))
+        @if($documents->isNotEmpty())
+        <section class="log-attachments" aria-labelledby="log-attachments-title"><h2 id="log-attachments-title">Archivos adjuntos</h2><ul>@foreach($documents as $file)<li><a href="{{ route('project-log.download', [$entry, $file]) }}">{{ $file->original_name }}</a> <span>({{ number_format($file->size / 1024, 0, ',', '.') }} KB)</span></li>@endforeach</ul></section>
         @endif
         <footer class="log-detail-footer"><span>Última edición: {{ \App\Support\DisplayDate::format($entry->updated_at) }}</span>@if(\App\Support\ProjectLogAccess::canEdit(auth()->user(), $entry))<a href="{{ route('project-log.edit', $entry) }}" class="log-button log-secondary">Editar actualización</a>@endif</footer>
     </article>
