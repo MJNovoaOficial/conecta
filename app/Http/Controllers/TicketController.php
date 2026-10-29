@@ -1250,18 +1250,25 @@ class TicketController extends Controller
             return back()->with('error', 'Solo se puede reabrir un ticket que está marcado como resuelto.');
         }
 
-        $request->validate([
-            'motivo' => 'required|string|min:10|max:5000',
+        $staffReopening = $user->can('manage', $ticket);
+        $data = $request->validate([
+            'motivo' => ($staffReopening ? 'nullable' : 'required').'|string|min:10|max:5000',
         ], [
             'motivo.required' => 'Cuéntanos qué sigue fallando.',
             'motivo.min'      => 'Describe con un poco más de detalle qué sigue fallando.',
         ]);
 
-        if (!$this->reabrir($ticket, $request->motivo, $user->id)) {
+        $motivo = $data['motivo'] ?? ($user->isAdmin()
+            ? 'Ticket reabierto por administración para continuar la atención.'
+            : 'Ticket reabierto por soporte para continuar la atención.');
+
+        if (!$this->reabrir($ticket, $motivo, $user->id, $staffReopening)) {
             return back()->with('error', 'El ticket cambió o ya fue cerrado. Actualiza la página antes de continuar.');
         }
 
-        return back()->with('success', 'Tu ticket fue reabierto. Soporte lo va a revisar de nuevo.');
+        return back()->with('success', $staffReopening
+            ? 'Ticket reabierto. Puedes continuar la atención.'
+            : 'Tu ticket fue reabierto. Soporte lo va a revisar de nuevo.');
     }
 
     /**
@@ -1305,7 +1312,7 @@ class TicketController extends Controller
      * un ticket reabierto tres veces se ve como tal aunque cada ciclo cumpla
      * su plazo.
      */
-    private function reabrir(Ticket $ticket, string $motivo, ?int $usuarioId): bool
+    private function reabrir(Ticket $ticket, string $motivo, ?int $usuarioId, bool $staffReopening = false): bool
     {
         $sla = SlaConfig::forPriority($ticket->priority);
 
@@ -1358,8 +1365,10 @@ class TicketController extends Controller
             try {
                 $ticket->assignedTo->notify(new TicketUpdatedNotification(
                     $ticket,
-                    'El solicitante reabrió el ticket ' . $ticket->ticket_number
-                    . ': la solución entregada no resolvió su problema.', 'reopened'
+                    $staffReopening
+                        ? 'El equipo de soporte reabrió el ticket '.$ticket->ticket_number.' para continuar su atención.'
+                        : 'El solicitante reabrió el ticket '.$ticket->ticket_number.': la solución entregada no resolvió su problema.',
+                    'reopened'
                 ));
             } catch (\Throwable $e) {
                 Log::warning('No se pudo avisar de la reapertura: ' . $e->getMessage());

@@ -627,66 +627,10 @@
                     <i class="fas fa-check-circle"></i> Sí, confirmar y cerrar
                 </button>
             </form>
-            {{-- Reabrir de verdad.
-                 Antes este botón solo llevaba al formulario de comentarios: el
-                 ticket seguía en "Resuelto" y contando como tal en los
-                 reportes, aunque el problema siguiera ahí. --}}
-            <button type="button" class="side-btn side-btn-outline"
-                    style="font-size:.78rem;padding:6px 10px;width:100%;"
-                    onclick="document.getElementById('reabrirCaja').style.display='block';this.style.display='none';document.getElementById('motivoReabrir').focus();">
-                <i class="fas fa-rotate-left"></i> No, el problema sigue
-            </button>
-
-            <div id="reabrirCaja" style="display:none;margin-top:10px;">
-                <form method="POST" action="{{ route('tickets.reopen', $ticket) }}">
-                    @csrf
-                    <label for="motivoReabrir" style="font-size:.78rem;color:#4a5568;font-weight:600;display:block;margin-bottom:5px;">
-                        ¿Qué sigue fallando?
-                    </label>
-                    <textarea name="motivo" id="motivoReabrir" rows="3" required minlength="10"
-                              placeholder="Cuéntanos qué pasó al probar la solución..."
-                              style="width:100%;border:1.5px solid #cbd5e0;border-radius:7px;padding:8px 10px;font-size:.82rem;resize:vertical;"></textarea>
-                    @error('motivo')
-                        <div style="color:#e74c3c;font-size:.76rem;margin-top:4px;">{{ $message }}</div>
-                    @enderror
-                    <button type="submit" class="side-btn" style="background:#e67e22;color:#fff;margin-top:8px;">
-                        <i class="fas fa-paper-plane"></i> Reabrir el ticket
-                    </button>
-                </form>
-            </div>
         </div>
     </div>
     @endif
     @endauth
-
-    {{-- Lo mismo para el invitado, con el token de su enlace. --}}
-    @if($guestLinkAccess)
-    @if($ticket->isGuestTicket() && $ticket->status === 'resolved')
-    <div class="side-card" style="border-left:3px solid #22c55e;">
-        <div class="side-card-header" style="color:#065f46;"><i class="fas fa-check-double me-1"></i> Confirmar Resolución</div>
-        <div class="side-card-body">
-            <p style="font-size:.8rem;color:#4a5568;margin-bottom:10px;">
-                Soporte marcó tu ticket como <strong>Resuelto</strong>. ¿Se solucionó tu problema?
-            </p>
-            <form method="POST" action="{{ route('tickets.guest.reopen', $ticket->guest_token) }}">
-                @csrf
-                <label for="motivoInvitado" style="font-size:.78rem;color:#4a5568;font-weight:600;display:block;margin-bottom:5px;">
-                    Si sigue fallando, cuéntanos qué pasó
-                </label>
-                <textarea name="motivo" id="motivoInvitado" rows="3" required minlength="10"
-                          placeholder="Cuéntanos qué pasó al probar la solución..."
-                          style="width:100%;border:1.5px solid #cbd5e0;border-radius:7px;padding:8px 10px;font-size:.82rem;resize:vertical;"></textarea>
-                @error('motivo')
-                    <div style="color:#e74c3c;font-size:.76rem;margin-top:4px;">{{ $message }}</div>
-                @enderror
-                <button type="submit" class="side-btn" style="background:#e67e22;color:#fff;margin-top:8px;">
-                    <i class="fas fa-rotate-left"></i> Reabrir el ticket
-                </button>
-            </form>
-        </div>
-    </div>
-    @endif
-    @endif
 
     @include('partials.encuesta_satisfaccion')
 
@@ -748,7 +692,7 @@
                         @elseif($entry->action === 'auto_closed') Cerrado automáticamente
                         @elseif($entry->action === 'user_responded') Usuario respondió
                         @elseif($entry->action === 'requested_info') ❓ Información adicional solicitada al usuario
-                        @elseif($entry->action === 'reopened') 🔄 Reabierto: la solución no resolvió el problema
+                        @elseif($entry->action === 'reopened') 🔄 Ticket reabierto
                         @elseif($entry->action === 'guest_responded') 💬 El solicitante respondió
                         @elseif($entry->action === 'closed') Ticket cerrado
                         @elseif($entry->action === 'solution_registered') Solución registrada: Resuelto

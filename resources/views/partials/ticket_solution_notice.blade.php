@@ -9,3 +9,4 @@
     @endif
 </section>
 @endif
+@include('partials.ticket_reopen_form')
