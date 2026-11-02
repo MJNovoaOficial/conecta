@@ -24,7 +24,12 @@ class DetectIpChange
 
                 // Invalidar sesión
                 Auth::logout();
-                return redirect('/login')->withErrors(['email' => 'Sesión invalidada por cambio de IP. Por favor, inicie sesión nuevamente.']);
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                // El inicio contiene el formulario; evitar perder el aviso
+                // en la redirección adicional de /login hacia /.
+                return redirect()->route('home')->withErrors(['email' => 'Sesión invalidada por cambio de IP. Por favor, inicie sesión nuevamente.']);
             }
 
             session(['user_ip' => $currentIp]);

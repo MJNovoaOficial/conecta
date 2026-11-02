@@ -36,6 +36,11 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
+            // La autenticación nueva inicia sus propios controles de sesión.
+            $request->session()->put([
+                'user_ip' => $request->ip(),
+                'last_activity_at' => now(),
+            ]);
 
             // Log de login exitoso (RNF-08)
             LoginAttempt::record($request->email, $request->ip(), $request->userAgent(), true);
@@ -95,6 +100,11 @@ class AuthController extends Controller
         ]);
 
         Auth::login($user);
+        $request->session()->regenerate();
+        $request->session()->put([
+            'user_ip' => $request->ip(),
+            'last_activity_at' => now(),
+        ]);
 
         return redirect('/tickets')->with('success', 'Cuenta creada exitosamente');
     }
