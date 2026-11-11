@@ -36,7 +36,8 @@ class AdminController extends Controller
             '6m'  => ['days' => 180, 'label' => 'Últimos 6 meses',  'months' => 6,    'dbformat' => '%Y-%m'],
             '12m' => ['days' => 365, 'label' => 'Últimos 12 meses', 'months' => 12,   'dbformat' => '%Y-%m'],
         ];
-        $pCfg = $periodMap[$period] ?? $periodMap['30d'];
+        $period = array_key_exists($period, $periodMap) ? $period : '30d';
+        $pCfg = $periodMap[$period];
         $since = now()->subDays($pCfg['days']);
         $dbformat = $pCfg['dbformat'];
         $periodLabel = $pCfg['label'];
@@ -70,13 +71,14 @@ class AdminController extends Controller
             ->pluck('ticket_count', 'name');
 
         // Tickets por técnico (activos — sin filtro de tiempo)
-        $byAgent = User::where(function($q) {
-                $q->where('role', 'support')->orWhere('role', 'admin');
-            })
+        $byAgent = User::whereIn('role', ['support', 'admin'])
+            ->where('is_active', true)
             ->withCount(['assignedTickets as active_count' => fn($q) =>
-                $q->whereIn('status', ['open','in_progress','pending_user'])
+                $q->whereIn('status', ['open','in_progress','pending_user','forwarded'])
             ])
             ->orderByDesc('active_count')
+            ->orderBy('name')
+            ->orderBy('id')
             ->get();
 
         // Tendencia (agrupado según período)
@@ -106,13 +108,16 @@ class AdminController extends Controller
         // Tiempo promedio de resolución (horas) (RN-24)
         $avgResolutionHours = Ticket::whereNotNull('resolved_at')
             ->where('created_at', '>=', $since)
-            ->select(DB::raw('AVG(TIMESTAMPDIFF(HOUR, created_at, resolved_at)) as avg_h'))
+            ->select(DB::raw('AVG(TIMESTAMPDIFF(SECOND, created_at, resolved_at)) / 3600 as avg_h'))
             ->value('avg_h');
 
         // % Cumplimiento de SLA (RN-24 / RN-17)
-        $totalResolved  = Ticket::whereNotNull('resolved_at')->count();
+        $totalResolved  = Ticket::whereNotNull('resolved_at')
+            ->whereNotNull('sla_resolution_deadline_at')
+            ->where('created_at', '>=', $since)->count();
         $resolvedInSla  = Ticket::whereNotNull('resolved_at')
             ->whereNotNull('sla_resolution_deadline_at')
+            ->where('created_at', '>=', $since)
             ->where('resolved_at', '<=', DB::raw('sla_resolution_deadline_at'))
             ->count();
         $slaCompliance = $totalResolved > 0 ? round(($resolvedInSla / $totalResolved) * 100, 1) : null;
@@ -468,7 +473,8 @@ class AdminController extends Controller
             '6m'  => ['days' => 180, 'label' => 'Últimos 6 meses'],
             '12m' => ['days' => 365, 'label' => 'Últimos 12 meses'],
         ];
-        $pCfg = $periodMap[$period] ?? $periodMap['30d'];
+        $period = array_key_exists($period, $periodMap) ? $period : '30d';
+        $pCfg = $periodMap[$period];
         $since = now()->subDays($pCfg['days']);
         $periodLabel = $pCfg['label'];
 
@@ -477,17 +483,19 @@ class AdminController extends Controller
         $openTickets      = \App\Models\Ticket::whereIn('status', ['open', 'in_progress', 'pending_user', 'forwarded'])->count();
         $resolvedTickets  = \App\Models\Ticket::whereIn('status', ['resolved', 'closed'])
                                 ->where('created_at', '>=', $since)->count();
-        $criticalOpen     = \App\Models\Ticket::whereIn('status', ['open', 'in_progress'])
+        $criticalOpen     = \App\Models\Ticket::whereIn('status', ['open', 'in_progress', 'pending_user', 'forwarded'])
                                 ->where('priority', 'critical')->count();
 
         // ── Tiempo promedio de resolución (horas) ─────────────────────
         $avgResolutionHours = \App\Models\Ticket::whereNotNull('resolved_at')
             ->where('created_at', '>=', $since)
-            ->selectRaw('AVG(TIMESTAMPDIFF(HOUR, created_at, resolved_at)) as avg_h')
+            ->selectRaw('AVG(TIMESTAMPDIFF(SECOND, created_at, resolved_at)) / 3600 as avg_h')
             ->value('avg_h');
 
         // ── Cumplimiento de SLA ───────────────────────────────────────
-        $totalResolved  = \App\Models\Ticket::whereNotNull('resolved_at')->where('created_at', '>=', $since)->count();
+        $totalResolved  = \App\Models\Ticket::whereNotNull('resolved_at')
+            ->whereNotNull('sla_resolution_deadline_at')
+            ->where('created_at', '>=', $since)->count();
         $resolvedInSla  = \App\Models\Ticket::whereNotNull('resolved_at')
             ->whereNotNull('sla_resolution_deadline_at')
             ->where('created_at', '>=', $since)
@@ -511,8 +519,9 @@ class AdminController extends Controller
         ])->orderByDesc('ticket_count')->take(5)->get();
 
         // ── Tendencia mensual (últimos 6 meses) ───────────────────────
+        $currentMonth = now()->startOfMonth();
         $monthlyData = \App\Models\Ticket::selectRaw("DATE_FORMAT(created_at, '%Y-%m') as mes, COUNT(*) as total")
-            ->where('created_at', '>=', now()->subMonths(6)->startOfMonth())
+            ->where('created_at', '>=', $currentMonth->copy()->subMonths(5))
             ->groupBy('mes')
             ->orderBy('mes')
             ->pluck('total', 'mes');
@@ -520,8 +529,9 @@ class AdminController extends Controller
         $trendLabels = [];
         $trendValues = [];
         for ($i = 5; $i >= 0; $i--) {
-            $key = now()->subMonths($i)->format('Y-m');
-            $trendLabels[] = now()->subMonths($i)->locale('es')->isoFormat('MMM Y');
+            $month = $currentMonth->copy()->subMonths($i);
+            $key = $month->format('Y-m');
+            $trendLabels[] = $month->locale('es')->isoFormat('MMM Y');
             $trendValues[] = $monthlyData[$key] ?? 0;
         }
 
@@ -531,9 +541,11 @@ class AdminController extends Controller
             ->withCount([
                 'assignedTickets as total_assigned'  => fn($q) => $q->where('created_at', '>=', $since),
                 'assignedTickets as total_resolved'  => fn($q) => $q->whereIn('status', ['resolved', 'closed'])->where('created_at', '>=', $since),
-                'assignedTickets as total_active'    => fn($q) => $q->whereIn('status', ['open', 'in_progress', 'pending_user']),
+                'assignedTickets as total_active'    => fn($q) => $q->whereIn('status', ['open', 'in_progress', 'pending_user', 'forwarded']),
             ])
             ->orderByDesc('total_resolved')
+            ->orderBy('name')
+            ->orderBy('id')
             ->get()
             ->map(function ($agent) {
                 $agent->resolution_rate = $agent->total_assigned > 0

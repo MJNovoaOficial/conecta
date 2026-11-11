@@ -38,14 +38,15 @@
 
 /* Trend chart placeholder */
 .trend-bar-wrap { display:flex; align-items:flex-end; gap:6px; height:80px; }
-.trend-bar { flex:1; border-radius:4px 4px 0 0; background:linear-gradient(180deg,#3b82f6,#2563eb); min-width:16px; transition:height .3s; }
+.trend-bar { width:100%; flex:none; border-radius:4px 4px 0 0; background:linear-gradient(180deg,#3b82f6,#2563eb); transition:height .3s; }
 .trend-label { font-size:.65rem; color:#a0aec0; text-align:center; margin-top:4px; }
 
 /* Agent table */
 .agent-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f7f9fc; }
 .agent-row:last-child { border:none; }
 .agent-av { width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,#3b82f6,#2563eb); color:#fff; display:flex; align-items:center; justify-content:center; font-size:.8rem; font-weight:700; flex-shrink:0; }
-.agent-name { font-size:.83rem; font-weight:600; color:#1a2332; }
+.agent-name { font-size:.83rem; font-weight:600; color:#1a2332; overflow-wrap:anywhere; }
+.agent-list { max-height:360px; overflow-y:auto; }
 .agent-sub { font-size:.72rem; color:#718096; }
 .progress-bar-wrap { flex:1; background:#f0f2f5; border-radius:4px; height:6px; overflow:hidden; }
 .progress-bar-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,#3b82f6,#60a5fa); }
@@ -74,7 +75,7 @@
     <div class="gd-header">
         <div>
             <h1><i class="fas fa-chart-pie" style="color:#8b5cf6;margin-right:8px;"></i>Dashboard Gerencial</h1>
-            <p>Indicadores ejecutivos de alto nivel · {{ $periodLabel }} · {{ now()->format('d/m/Y H:i') }}</p>
+            <p>Indicadores ejecutivos de alto nivel · {{ $periodLabel }} · {{ \App\Support\DisplayDate::format(now()) }}</p>
         </div>
         <div class="period-pills">
             @foreach(['7d'=>'7 días','30d'=>'30 días','3m'=>'3 meses','6m'=>'6 meses','12m'=>'12 meses'] as $p => $lbl)
@@ -113,7 +114,7 @@
         <div class="kpi-card purple">
             <div class="kpi-label">SLA Cumplido</div>
             <div class="kpi-val">{{ $slaCompliance !== null ? $slaCompliance . '%' : 'N/A' }}</div>
-            <div class="kpi-sub">{{ $slaCompliance !== null ? "{$totalResolved} resueltos, {$slaMissed} fuera de SLA" : 'Sin datos suficientes' }}</div>
+            <div class="kpi-sub">{{ $slaCompliance !== null ? "{$totalResolved} resueltos con SLA, {$slaMissed} fuera de plazo" : 'Sin datos suficientes' }}</div>
             <i class="fas fa-clock kpi-icon"></i>
         </div>
         <div class="kpi-card blue">
@@ -140,15 +141,15 @@
                 @php $maxVal = max(array_merge($trendValues, [1])); @endphp
                 <div class="trend-bar-wrap">
                     @foreach($trendValues as $idx => $val)
-                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;">
-                        <div class="trend-bar" style="height:{{ max(6, ($val/$maxVal)*76) }}px;"
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;">
+                        <div class="trend-bar" style="height:{{ ($val/$maxVal)*76 }}px;"
                              title="{{ $trendLabels[$idx] }}: {{ $val }} tickets"></div>
                         <div class="trend-label">{{ $trendLabels[$idx] }}</div>
                     </div>
                     @endforeach
                 </div>
                 <div style="margin-top:10px;font-size:.75rem;color:#94a3b8;text-align:center;">
-                    Total período: {{ array_sum($trendValues) }} tickets
+                    Total últimos 6 meses: {{ array_sum($trendValues) }} tickets
                 </div>
             </div>
         </div>
@@ -193,8 +194,8 @@
                 <i class="fas fa-users-cog" style="color:#10b981;"></i>
                 <h3>Rendimiento por Técnico</h3>
             </div>
-            <div class="card-body">
-                @forelse($agentPerformance->take(6) as $agent)
+            <div class="card-body agent-list">
+                @forelse($agentPerformance as $agent)
                 <div class="agent-row">
                     <div class="agent-av">{{ strtoupper(substr($agent->name, 0, 1)) }}</div>
                     <div style="flex:1;min-width:0;">

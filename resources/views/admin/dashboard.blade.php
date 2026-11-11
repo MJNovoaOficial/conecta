@@ -60,6 +60,8 @@
 .dash-card-header h3 { color:#fff; font-size:.88rem; font-weight:600; margin:0; }
 .dash-card-header i { color:#60a5fa; font-size:.85rem; }
 .dash-card-body { padding:18px 20px; }
+.agent-chart-scroll { max-height:480px; overflow-y:auto; }
+.agent-chart-container { position:relative; min-width:0; }
 
 /* ═══ TICKETS TABLE ══════════════════════════════════════════════ */
 .tickets-mini { width:100%; border-collapse:collapse; }
@@ -95,7 +97,7 @@
         <div class="dash-header">
             <div>
                 <h1><i class="fas fa-tachometer-alt" style="color:#4f8cff;margin-right:8px;"></i>Dashboard Administrativo</h1>
-                <p>{{ $periodLabel }} · {{ now()->format('d/m/Y H:i') }}</p>
+                <p>{{ $periodLabel }} · {{ \App\Support\DisplayDate::format(now()) }}</p>
             </div>
             <div class="period-pills">
                 @foreach(['7d'=>'7 días','30d'=>'30 días','3m'=>'3 meses','6m'=>'6 meses','12m'=>'12 meses'] as $p => $lbl)
@@ -110,7 +112,7 @@
             <div class="kpi-card kpi-blue">
                 <div class="kpi-val">{{ $totalTickets }}</div>
                 <div class="kpi-name">Total Tickets</div>
-                <div class="kpi-sub">{{ $closedTickets }} cerrados</div>
+                <div class="kpi-sub">{{ $closedTickets }} cerrados · total histórico</div>
             </div>
             <div class="kpi-card kpi-amber">
                 <div class="kpi-val">{{ $openTickets }}</div>
@@ -140,7 +142,7 @@
             <div class="kpi-card {{ $slaCompliance !== null && $slaCompliance >= 80 ? 'kpi-green' : 'kpi-red' }}">
                 <div class="kpi-val">{{ $slaCompliance !== null ? $slaCompliance.'%' : '—' }}</div>
                 <div class="kpi-name">Cumplimiento SLA</div>
-                <div class="kpi-sub">tickets resueltos en plazo</div>
+                <div class="kpi-sub">resueltos con SLA en el período</div>
             </div>
         </div>
 
@@ -175,8 +177,10 @@
                     <i class="fas fa-users"></i>
                     <h3>Carga de Trabajo por Técnico (tickets activos)</h3>
                 </div>
-                <div class="dash-card-body" style="padding:20px 16px;">
-                    <canvas id="agentChart" style="max-height:180px;"></canvas>
+                <div class="dash-card-body agent-chart-scroll" style="padding:20px 16px;">
+                    <div class="agent-chart-container" style="height:{{ max(180, $byAgent->count() * 36 + 40) }}px;">
+                        <canvas id="agentChart" role="img" aria-label="Tickets activos por técnico"></canvas>
+                    </div>
                 </div>
             </div>
 
@@ -293,7 +297,22 @@ new Chart(document.getElementById('monthlyChart'), {
 });
 
 // ── Bar horizontal: técnicos ──
-const agents = @json($byAgent);
+const agents = @json($byAgent->map->only(['name', 'active_count'])->values());
+const agentLabelLines = agents.map(agent => {
+    const lines = [''];
+    for (const word of agent.name.match(/\S{1,22}/gu) || []) {
+        const lastLine = lines.length - 1;
+        const combined = `${lines[lastLine]} ${word}`.trim();
+        if (combined.length <= 22) {
+            lines[lastLine] = combined;
+        } else {
+            lines.push(word);
+        }
+    }
+    return lines;
+});
+const agentRowHeight = Math.max(36, ...agentLabelLines.map(lines => lines.length * 16 + 12));
+document.getElementById('agentChart').parentElement.style.height = `${Math.max(180, agents.length * agentRowHeight + 40)}px`;
 new Chart(document.getElementById('agentChart'), {
     type: 'bar',
     data: {
@@ -302,7 +321,14 @@ new Chart(document.getElementById('agentChart'), {
     },
     options: {
         indexAxis: 'y',
-        scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } }, y: { grid: { display: false } } },
+        maintainAspectRatio: false,
+        scales: {
+            x: { beginAtZero: true, ticks: { stepSize: 1 } },
+            y: {
+                grid: { display: false },
+                ticks: { autoSkip: false, callback: value => agentLabelLines[value] }
+            }
+        },
         plugins: { legend: { display: false } }
     }
 });
